@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { ShoppingBag, User, LogOut, LayoutDashboard, Package, Menu } from "lucide-react";
+import { ShoppingBag, User, LogOut, LayoutDashboard, Package, Menu, Search } from "lucide-react";
 import { FaShopify } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/store/cart";
@@ -22,6 +22,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
+import { SearchBar } from "@/components/site/search-bar";
 
 const NAV_LINKS = [
   { href: "/products", label: "Shop" },
@@ -33,6 +34,8 @@ export function SiteHeader() {
   const { data: session } = useSession();
   const count = useCart((s) => s.count());
   const [mounted, setMounted] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -60,7 +63,18 @@ export function SiteHeader() {
           </nav>
         </div>
 
+        <SearchBar className="hidden flex-1 max-w-md md:flex" />
+
         <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Search"
+            className="md:hidden"
+            onClick={() => setMobileSearchOpen((v) => !v)}
+          >
+            <Search className="size-5" />
+          </Button>
           <Button asChild variant="ghost" size="icon" aria-label="Cart">
             <Link href="/cart" className="relative">
               <ShoppingBag className="size-5" />
@@ -120,7 +134,7 @@ export function SiteHeader() {
             </Button>
           )}
 
-          <Sheet>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
                 <Menu className="size-5" />
@@ -130,12 +144,16 @@ export function SiteHeader() {
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
+              <div className="px-4 pt-2">
+                <SearchBar onSubmitted={() => setMenuOpen(false)} />
+              </div>
               <nav className="flex flex-col gap-3 p-4">
                 {NAV_LINKS.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     className="text-base font-medium"
+                    onClick={() => setMenuOpen(false)}
                   >
                     {link.label}
                   </Link>
@@ -145,6 +163,14 @@ export function SiteHeader() {
           </Sheet>
         </div>
       </div>
+      {mobileSearchOpen && (
+        <div className="border-t bg-background px-4 py-2 md:hidden">
+          <SearchBar
+            autoFocus
+            onSubmitted={() => setMobileSearchOpen(false)}
+          />
+        </div>
+      )}
     </header>
   );
 }
