@@ -156,7 +156,7 @@ export function ProductBannerCarousel({
                             <span className="text-3xl font-bold tracking-tight sm:text-4xl">
                               {formatPrice(p.price)}
                             </span>
-                            {p.compareAt && p.compareAt > p.price && (
+                            {p.compareAt != null && p.compareAt > p.price && (
                               <span className="text-lg text-white/60 line-through">
                                 {formatPrice(p.compareAt)}
                               </span>
