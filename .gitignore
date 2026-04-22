@@ -50,3 +50,4 @@ screenshots/
 *-test-report.md
 test-plan.md
 test-report.md
+.env*.local

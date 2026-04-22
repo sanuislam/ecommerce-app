@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
+import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -74,6 +75,37 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               <span>Total</span>
               <span>{formatPrice(Number(order.total))}</span>
             </div>
+          </div>
+          <div className="rounded-lg border bg-card p-4 text-sm">
+            <h3 className="font-semibold">Payment</h3>
+            <div className="mt-2 flex justify-between">
+              <span className="text-muted-foreground">Method</span>
+              <span className="font-medium">
+                {order.paymentMethod === "STRIPE"
+                  ? "Card (Stripe)"
+                  : order.paymentMethod === "COD"
+                    ? "Cash on Delivery"
+                    : MFS_LABELS[order.paymentMethod as MfsMethod]}
+              </span>
+            </div>
+            {order.paymentSenderNumber && (
+              <div className="mt-1 flex justify-between">
+                <span className="text-muted-foreground">Sender</span>
+                <span className="font-mono">{order.paymentSenderNumber}</span>
+              </div>
+            )}
+            {order.paymentTransactionId && (
+              <div className="mt-1 flex justify-between gap-2">
+                <span className="text-muted-foreground">TrxID</span>
+                <span className="break-all font-mono">{order.paymentTransactionId}</span>
+              </div>
+            )}
+            {order.stripeId && (
+              <div className="mt-1 flex justify-between gap-2">
+                <span className="text-muted-foreground">Stripe</span>
+                <span className="break-all font-mono text-xs">{order.stripeId}</span>
+              </div>
+            )}
           </div>
           {order.address && (
             <div className="rounded-lg border bg-card p-4 text-sm">

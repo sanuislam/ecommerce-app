@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { CheckCircle2 } from "lucide-react";
 import { Role } from "@/generated/prisma";
 import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
+import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +113,32 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               <span>Total</span>
               <span>{formatPrice(Number(order.total))}</span>
             </div>
+          </div>
+          <div className="rounded-lg border bg-card p-4 text-sm">
+            <h3 className="font-semibold">Payment</h3>
+            <div className="mt-2 flex justify-between">
+              <span className="text-muted-foreground">Method</span>
+              <span className="font-medium">
+                {order.paymentMethod === "STRIPE"
+                  ? "Card (Stripe)"
+                  : order.paymentMethod === "COD"
+                    ? "Cash on Delivery"
+                    : MFS_LABELS[order.paymentMethod as MfsMethod]}
+              </span>
+            </div>
+            {order.paymentTransactionId && (
+              <div className="mt-1 flex justify-between gap-2">
+                <span className="text-muted-foreground">TrxID</span>
+                <span className="break-all font-mono">{order.paymentTransactionId}</span>
+              </div>
+            )}
+            {order.status === "PENDING" &&
+              order.paymentMethod !== "STRIPE" &&
+              order.paymentMethod !== "COD" && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Awaiting payment verification. You&apos;ll be notified once confirmed.
+                </p>
+              )}
           </div>
           {order.address && (
             <div className="rounded-lg border bg-card p-4 text-sm">

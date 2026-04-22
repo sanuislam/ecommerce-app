@@ -3,29 +3,61 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
-import type { OrderStatus } from "@/generated/prisma";
+import type { OrderStatus, PaymentMethod } from "@/generated/prisma";
 import { calculateShipping, calculateTax } from "@/lib/utils";
 
-const schema = z.object({
-  address: z.object({
-    fullName: z.string().min(1),
-    phone: z.string().optional().default(""),
-    line1: z.string().min(1),
-    line2: z.string().optional().default(""),
-    city: z.string().min(1),
-    state: z.string().optional().default(""),
-    postalCode: z.string().min(1),
-    country: z.string().min(1),
-  }),
-  items: z
-    .array(
-      z.object({
-        productId: z.string().min(1),
-        quantity: z.number().int().positive(),
-      }),
-    )
-    .min(1),
-});
+const paymentMethodSchema = z.enum([
+  "STRIPE",
+  "BKASH",
+  "NAGAD",
+  "ROCKET",
+  "UPAY",
+  "COD",
+]);
+
+const schema = z
+  .object({
+    address: z.object({
+      fullName: z.string().min(1),
+      phone: z.string().optional().default(""),
+      line1: z.string().min(1),
+      line2: z.string().optional().default(""),
+      city: z.string().min(1),
+      state: z.string().optional().default(""),
+      postalCode: z.string().min(1),
+      country: z.string().min(1),
+    }),
+    items: z
+      .array(
+        z.object({
+          productId: z.string().min(1),
+          quantity: z.number().int().positive(),
+        }),
+      )
+      .min(1),
+    paymentMethod: paymentMethodSchema.default("STRIPE"),
+    paymentSenderNumber: z.string().optional().default(""),
+    paymentTransactionId: z.string().optional().default(""),
+  })
+  .superRefine((v, ctx) => {
+    const mfs = ["BKASH", "NAGAD", "ROCKET", "UPAY"] as const;
+    if ((mfs as readonly string[]).includes(v.paymentMethod)) {
+      if (!v.paymentSenderNumber.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["paymentSenderNumber"],
+          message: "Sender mobile number is required",
+        });
+      }
+      if (!v.paymentTransactionId.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["paymentTransactionId"],
+          message: "Transaction ID is required",
+        });
+      }
+    }
+  });
 
 class StockError extends Error {
   constructor(public productName: string) {
@@ -42,10 +74,20 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    const first = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: first?.message ?? "Invalid input" },
+      { status: 400 },
+    );
   }
 
-  const { address, items } = parsed.data;
+  const {
+    address,
+    items,
+    paymentMethod,
+    paymentSenderNumber,
+    paymentTransactionId,
+  } = parsed.data;
 
   const products = await prisma.product.findMany({
     where: {
@@ -94,7 +136,17 @@ export async function POST(req: Request) {
   const total = Math.round((subtotal + shipping + tax) * 100) / 100;
 
   const stripeOn = stripeConfigured();
-  const initialStatus: OrderStatus = stripeOn ? "PENDING" : "PAID";
+  const useStripe = paymentMethod === "STRIPE" && stripeOn;
+
+  const initialStatus: OrderStatus =
+    paymentMethod === "STRIPE"
+      ? stripeOn
+        ? "PENDING"
+        : "PAID"
+      : "PENDING";
+
+  const resolvedMethod: PaymentMethod =
+    paymentMethod === "STRIPE" && !stripeOn ? "STRIPE" : paymentMethod;
 
   let order;
   try {
@@ -133,6 +185,9 @@ export async function POST(req: Request) {
           total,
           currency: "BDT",
           paymentEmail: session.user.email,
+          paymentMethod: resolvedMethod,
+          paymentSenderNumber: paymentSenderNumber.trim() || null,
+          paymentTransactionId: paymentTransactionId.trim() || null,
           addressId: addressRecord.id,
           items: { create: orderItems },
         },
@@ -148,7 +203,7 @@ export async function POST(req: Request) {
     throw err;
   }
 
-  if (stripeOn) {
+  if (useStripe) {
     const stripe = getStripe();
     const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     let checkoutSession;

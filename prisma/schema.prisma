@@ -24,6 +24,15 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum PaymentMethod {
+  STRIPE
+  BKASH
+  NAGAD
+  ROCKET
+  UPAY
+  COD
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -163,6 +172,9 @@ model Order {
   stripeId     String?     @unique
   addressId    String?
   paymentEmail String?
+  paymentMethod        PaymentMethod @default(STRIPE)
+  paymentSenderNumber  String?
+  paymentTransactionId String?
   notes        String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
