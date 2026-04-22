@@ -117,7 +117,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} {SITE_CONFIG.name}. Built with Next.js.
+        © {new Date().getFullYear()} {SITE_CONFIG.name}. All Right Reserved.
       </div>
     </footer>
   );
