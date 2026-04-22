@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { AnimatePresence, motion } from "framer-motion";
@@ -41,6 +41,7 @@ export function ProductBannerCarousel({
   const [selected, setSelected] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
   const [progressKey, setProgressKey] = useState(0);
+  const progressRef = useRef<HTMLSpanElement | null>(null);
 
   const scrollTo = useCallback(
     (idx: number) => emblaApi?.scrollTo(idx),
@@ -63,6 +64,55 @@ export function ProductBannerCarousel({
     return () => {
       emblaApi.off("reInit", onInit);
       emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi]);
+
+  // Reset + start the progress animation on each slide change.
+  // Only runs the fill if autoplay is currently playing; otherwise it
+  // stays at 0% and will be started by the autoplay:play handler below
+  // (e.g. when the user moves the mouse off the carousel).
+  useEffect(() => {
+    const el = progressRef.current;
+    if (!el) return;
+    el.style.transition = "none";
+    el.style.width = "0%";
+    // Force reflow so the next transition actually animates.
+    void el.offsetWidth;
+    const autoplay = emblaApi?.plugins().autoplay;
+    if (autoplay?.isPlaying()) {
+      el.style.transition = `width ${AUTOPLAY_MS}ms linear`;
+      el.style.width = "100%";
+    }
+  }, [emblaApi, selected, progressKey]);
+
+  // Pause/resume the progress fill together with the autoplay timer.
+  useEffect(() => {
+    if (!emblaApi) return;
+    const autoplay = emblaApi.plugins().autoplay;
+    if (!autoplay) return;
+    const pause = () => {
+      const el = progressRef.current;
+      if (!el) return;
+      const currentWidth = getComputedStyle(el).width;
+      el.style.transition = "none";
+      el.style.width = currentWidth;
+    };
+    const play = () => {
+      const el = progressRef.current;
+      const parent = el?.parentElement;
+      if (!el || !parent) return;
+      const currentW = el.getBoundingClientRect().width;
+      const parentW = parent.getBoundingClientRect().width || 1;
+      const remaining = Math.max(0, 1 - currentW / parentW);
+      void el.offsetWidth;
+      el.style.transition = `width ${AUTOPLAY_MS * remaining}ms linear`;
+      el.style.width = "100%";
+    };
+    emblaApi.on("autoplay:stop", pause);
+    emblaApi.on("autoplay:play", play);
+    return () => {
+      emblaApi.off("autoplay:stop", pause);
+      emblaApi.off("autoplay:play", play);
     };
   }, [emblaApi]);
 
@@ -224,12 +274,10 @@ export function ProductBannerCarousel({
                   )}
                 >
                   {isActive && (
-                    <motion.span
-                      key={`progress-${selected}-${progressKey}`}
-                      initial={{ width: 0 }}
-                      animate={{ width: "100%" }}
-                      transition={{ duration: AUTOPLAY_MS / 1000, ease: "linear" }}
+                    <span
+                      ref={progressRef}
                       className="absolute inset-y-0 left-0 block bg-white"
+                      style={{ width: "0%" }}
                     />
                   )}
                 </button>
