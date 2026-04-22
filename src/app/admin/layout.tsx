@@ -11,6 +11,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },

@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { stripeConfigured } from "@/lib/stripe";
 
+export const dynamic = "force-dynamic";
+
 export default async function CheckoutPage() {
   const session = await auth();
   if (!session?.user) redirect("/sign-in?callbackUrl=/checkout");
