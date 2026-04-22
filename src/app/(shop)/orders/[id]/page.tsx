@@ -9,6 +9,8 @@ import { CheckCircle2 } from "lucide-react";
 import { Role } from "@/generated/prisma";
 import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
 
+export const dynamic = "force-dynamic";
+
 type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ success?: string }>;
