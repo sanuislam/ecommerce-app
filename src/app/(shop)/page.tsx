@@ -55,27 +55,36 @@ export default async function HomePage() {
               icon: Truck,
               title: "Free shipping",
               text: "On orders over ৳1,000 across Bangladesh",
+              bg: "from-emerald-50 to-teal-100/60 dark:from-emerald-950/40 dark:to-teal-900/30",
+              ring: "ring-emerald-200/70 dark:ring-emerald-800/50",
+              iconBg: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
             },
             {
               icon: ShieldCheck,
               title: "Secure checkout",
               text: "256-bit SSL + Stripe payments",
+              bg: "from-sky-50 to-indigo-100/60 dark:from-sky-950/40 dark:to-indigo-900/30",
+              ring: "ring-sky-200/70 dark:ring-sky-800/50",
+              iconBg: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
             },
             {
               icon: Sparkles,
               title: "30-day returns",
               text: "No questions asked",
+              bg: "from-rose-50 to-amber-100/60 dark:from-rose-950/40 dark:to-amber-900/30",
+              ring: "ring-rose-200/70 dark:ring-rose-800/50",
+              iconBg: "bg-rose-500/15 text-rose-600 dark:text-rose-300",
             },
-          ].map(({ icon: Icon, title, text }) => (
+          ].map(({ icon: Icon, title, text, bg, ring, iconBg }) => (
             <div
               key={title}
-              className="flex items-start gap-3 rounded-lg border bg-card p-4"
+              className={`group flex items-start gap-3 rounded-xl bg-gradient-to-br ${bg} p-5 ring-1 ${ring} shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md`}
             >
-              <div className="rounded-md bg-primary/10 p-2 text-primary">
+              <div className={`rounded-lg p-2.5 ${iconBg} transition-transform group-hover:scale-110`}>
                 <Icon className="size-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold">{title}</div>
+                <div className="text-sm font-semibold text-foreground">{title}</div>
                 <div className="text-xs text-muted-foreground">{text}</div>
               </div>
             </div>
