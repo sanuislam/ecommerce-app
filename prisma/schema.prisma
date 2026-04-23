@@ -90,6 +90,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Category {
   id          String    @id @default(cuid())
   name        String    @unique

@@ -7,11 +7,15 @@ import { getBanners } from "@/lib/sanity";
 import { HomeHero } from "@/components/site/home-hero";
 import { ProductBannerCarousel } from "@/components/site/product-banner-carousel";
 import { CategoryCards } from "@/components/site/category-cards";
+import { FlashDeals } from "@/components/site/flash-deals";
+import { Testimonials } from "@/components/site/testimonials";
+import { TrustStrip } from "@/components/site/trust-strip";
+import { Newsletter } from "@/components/site/newsletter";
 
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [featured, latest, categories, banners] = await Promise.all([
+  const [featured, latest, categories, banners, dealsRaw] = await Promise.all([
     prisma.product.findMany({
       where: { published: true, featured: true },
       include: { category: { select: { name: true } } },
@@ -28,7 +32,24 @@ export default async function HomePage() {
       orderBy: { name: "asc" },
     }),
     getBanners(),
+    prisma.product.findMany({
+      where: { published: true, compareAt: { not: null } },
+      take: 8,
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+
+  const flashDeals = dealsRaw
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      price: Number(p.price),
+      compareAt: p.compareAt != null ? Number(p.compareAt) : 0,
+      images: p.images,
+    }))
+    .filter((p) => p.compareAt > p.price)
+    .slice(0, 4);
 
   const bannerProducts = featured.map((p) => ({
     id: p.id,
@@ -92,6 +113,8 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <FlashDeals products={flashDeals} />
 
       {categories.length > 0 && (
         <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
@@ -171,6 +194,10 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <Testimonials />
+      <TrustStrip />
+      <Newsletter />
     </div>
   );
 }
