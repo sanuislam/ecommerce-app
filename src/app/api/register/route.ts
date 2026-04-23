@@ -4,9 +4,11 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
-  name: z.string().min(1).max(80),
+  firstName: z.string().min(1).max(40),
+  lastName: z.string().min(1).max(40),
   email: z.string().email(),
   password: z.string().min(6).max(100),
+  phone: z.string().min(4).max(32),
 });
 
 function isUniqueConstraintError(err: unknown): boolean {
@@ -36,9 +38,13 @@ export async function POST(req: Request) {
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
   try {
+    const { firstName, lastName, phone } = parsed.data;
     const user = await prisma.user.create({
       data: {
-        name: parsed.data.name,
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`.trim(),
+        phone,
         email,
         passwordHash,
       },
