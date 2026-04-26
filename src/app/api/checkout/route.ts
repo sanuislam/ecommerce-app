@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
+import { bkashConfigured, createBkashPayment } from "@/lib/bkash";
 import type { OrderStatus, PaymentMethod } from "@/generated/prisma";
 import { calculateShipping, calculateTax } from "@/lib/utils";
 
@@ -40,8 +41,12 @@ const schema = z
     paymentTransactionId: z.string().optional().default(""),
   })
   .superRefine((v, ctx) => {
-    const mfs = ["BKASH", "NAGAD", "ROCKET", "UPAY"] as const;
-    if ((mfs as readonly string[]).includes(v.paymentMethod)) {
+    // Manual MFS flow (Nagad/Rocket/Upay always; bKash only when live gateway not configured)
+    const mfsManual: string[] = ["NAGAD", "ROCKET", "UPAY"];
+    if (v.paymentMethod === "BKASH" && !bkashConfigured()) {
+      mfsManual.push("BKASH");
+    }
+    if (mfsManual.includes(v.paymentMethod)) {
       if (!v.paymentSenderNumber.trim()) {
         ctx.addIssue({
           code: "custom",
@@ -136,7 +141,9 @@ export async function POST(req: Request) {
   const total = Math.round((subtotal + shipping + tax) * 100) / 100;
 
   const stripeOn = stripeConfigured();
+  const bkashOn = bkashConfigured();
   const useStripe = paymentMethod === "STRIPE" && stripeOn;
+  const useBkash = paymentMethod === "BKASH" && bkashOn;
 
   const initialStatus: OrderStatus =
     paymentMethod === "STRIPE"
@@ -277,6 +284,45 @@ export async function POST(req: Request) {
       data: { stripeId: checkoutSession.id },
     });
     return NextResponse.json({ id: order.id, checkoutUrl: checkoutSession.url });
+  }
+
+  if (useBkash) {
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    try {
+      const created = await createBkashPayment({
+        amount: total,
+        invoiceNumber: order.id,
+        payerReference: address.phone || session.user.email || order.id,
+        callbackURL: `${base}/api/payments/bkash/callback?orderId=${order.id}`,
+      });
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { bkashPaymentId: created.paymentID },
+      });
+      return NextResponse.json({ id: order.id, checkoutUrl: created.bkashURL });
+    } catch (err) {
+      console.error("bKash create_payment failed, rolling back order", err);
+      try {
+        await prisma.$transaction(async (tx) => {
+          for (const i of items) {
+            await tx.product.update({
+              where: { id: i.productId },
+              data: { stock: { increment: i.quantity } },
+            });
+          }
+          await tx.order.delete({ where: { id: order.id } });
+          if (order.addressId) {
+            await tx.address.delete({ where: { id: order.addressId } });
+          }
+        });
+      } catch (rollbackErr) {
+        console.error("Failed to rollback order after bKash error", rollbackErr);
+      }
+      return NextResponse.json(
+        { error: "bKash payment is unavailable right now. Please try again." },
+        { status: 502 },
+      );
+    }
   }
 
   return NextResponse.json({ id: order.id });

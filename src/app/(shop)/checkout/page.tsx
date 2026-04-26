@@ -2,6 +2,7 @@ import { CheckoutForm } from "@/components/checkout-form";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { stripeConfigured } from "@/lib/stripe";
+import { bkashConfigured } from "@/lib/bkash";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function CheckoutPage() {
       <CheckoutForm
         userEmail={session.user.email ?? ""}
         stripeEnabled={stripeConfigured()}
+        bkashLiveEnabled={bkashConfigured()}
       />
     </div>
   );

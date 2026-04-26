@@ -179,6 +179,7 @@ model Order {
   total        Decimal     @db.Decimal(10, 2)
   currency     String      @default("USD")
   stripeId     String?     @unique
+  bkashPaymentId String?   @unique
   addressId    String?
   paymentEmail String?
   paymentMethod        PaymentMethod @default(STRIPE)

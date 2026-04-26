@@ -30,9 +30,11 @@ type PaymentMethod = "STRIPE" | MfsMethod | "COD";
 export function CheckoutForm({
   userEmail,
   stripeEnabled,
+  bkashLiveEnabled = false,
 }: {
   userEmail: string;
   stripeEnabled: boolean;
+  bkashLiveEnabled?: boolean;
 }) {
   const router = useRouter();
   const items = useCart((s) => s.items);
@@ -63,7 +65,12 @@ export function CheckoutForm({
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
-  const isMfs = (MFS_METHODS as readonly string[]).includes(paymentMethod);
+  // Manual MFS = customer pastes their TrxID (always for Nagad/Rocket/Upay,
+  // also for bKash when the live gateway isn't configured).
+  const isManualMfs =
+    (MFS_METHODS as readonly string[]).includes(paymentMethod) &&
+    !(paymentMethod === "BKASH" && bkashLiveEnabled);
+  const isBkashLive = paymentMethod === "BKASH" && bkashLiveEnabled;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +78,7 @@ export function CheckoutForm({
       toast.error("Your cart is empty");
       return;
     }
-    if (isMfs && (!senderNumber.trim() || !trxId.trim())) {
+    if (isManualMfs && (!senderNumber.trim() || !trxId.trim())) {
       toast.error("Please enter your mobile number and Transaction ID");
       return;
     }
@@ -136,9 +143,11 @@ export function CheckoutForm({
       ? "Pay with Stripe"
       : paymentMethod === "COD"
         ? "Place order (COD)"
-        : isMfs
-          ? `Submit ${MFS_LABELS[paymentMethod as MfsMethod]} payment`
-          : "Place order";
+        : isBkashLive
+          ? "Pay with bKash"
+          : isManualMfs
+            ? `Submit ${MFS_LABELS[paymentMethod as MfsMethod]} payment`
+            : "Place order";
 
   return (
     <form
@@ -269,7 +278,20 @@ export function CheckoutForm({
               })}
           </div>
 
-          {isMfs && (
+          {isBkashLive && (
+            <div className="rounded-lg border border-dashed bg-pink-50 p-4 text-sm dark:bg-pink-950/30">
+              <div className="flex items-center gap-2 font-medium text-pink-700 dark:text-pink-300">
+                <Banknote className="size-4" /> bKash Tokenized Checkout
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                You’ll be redirected to the secure bKash page to enter your
+                wallet number and PIN. Your order is automatically marked paid
+                once the transaction completes.
+              </p>
+            </div>
+          )}
+
+          {isManualMfs && (
             <div className="space-y-3 rounded-lg border border-dashed bg-muted/30 p-4">
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -370,11 +392,13 @@ export function CheckoutForm({
           <ShieldCheck className="size-3" />
           {paymentMethod === "STRIPE" && stripeEnabled
             ? "Secure checkout powered by Stripe"
-            : isMfs
-              ? "Manual verification — no money moves until we confirm"
-              : paymentMethod === "COD"
-                ? "No online payment — pay courier on delivery"
-                : "Demo mode: no payment will be charged"}
+            : isBkashLive
+              ? "Secure checkout powered by bKash"
+              : isManualMfs
+                ? "Manual verification — no money moves until we confirm"
+                : paymentMethod === "COD"
+                  ? "No online payment — pay courier on delivery"
+                  : "Demo mode: no payment will be charged"}
         </p>
       </aside>
     </form>
