@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FaFacebookF, FaGithub, FaInstagram } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaWhatsapp } from "react-icons/fa";
 import { Mail } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/site-config";
 
@@ -30,14 +30,20 @@ export function SiteFooter() {
               <Mail className="size-5" />
             </a>
             <a
+              href={SITE_CONFIG.whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="WhatsApp"
+              className="hover:text-foreground"
+            >
+              <FaWhatsapp className="size-5" />
+            </a>
+            <a
               href="#"
               aria-label="Instagram"
               className="hover:text-foreground"
             >
               <FaInstagram className="size-5" />
-            </a>
-            <a href="#" aria-label="GitHub" className="hover:text-foreground">
-              <FaGithub className="size-5" />
             </a>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
