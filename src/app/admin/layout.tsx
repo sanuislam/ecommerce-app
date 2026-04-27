@@ -9,6 +9,8 @@ import {
   ShoppingCart,
   Users,
   ArrowLeft,
+  Settings,
+  FileText,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +21,8 @@ const NAV = [
   { href: "/admin/categories", label: "Categories", icon: Tag },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/policies", label: "Legal pages", icon: FileText },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default async function AdminLayout({

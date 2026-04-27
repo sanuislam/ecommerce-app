@@ -1,7 +1,11 @@
 import { PolicyPage } from "@/components/site/policy-page";
+import { Markdown } from "@/components/site/markdown";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { getPolicyDoc } from "@/lib/policy-docs";
 
-const UPDATED_AT = "April 21, 2026";
+const UPDATED_AT_FALLBACK = "April 21, 2026";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Privacy Policy — Eid Bazar",
@@ -9,12 +13,32 @@ export const metadata = {
     "How Eid Bazar collects, uses, and protects your personal information.",
 };
 
-export default function PrivacyPolicyPage() {
+function formatDate(d: Date) {
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export default async function PrivacyPolicyPage() {
+  const doc = await getPolicyDoc("privacy-policy");
+  if (doc) {
+    return (
+      <PolicyPage
+        title={doc.titleEn}
+        titleBn={doc.titleBn}
+        updatedAt={doc.updatedAt ? formatDate(doc.updatedAt) : UPDATED_AT_FALLBACK}
+        en={<Markdown>{doc.bodyEn}</Markdown>}
+        bn={<Markdown>{doc.bodyBn}</Markdown>}
+      />
+    );
+  }
   return (
     <PolicyPage
       title="Privacy Policy"
       titleBn="গোপনীয়তা নীতি"
-      updatedAt={UPDATED_AT}
+      updatedAt={UPDATED_AT_FALLBACK}
       en={
         <>
           <p>

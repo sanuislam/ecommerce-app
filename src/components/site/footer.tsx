@@ -2,8 +2,10 @@ import Link from "next/link";
 import { FaFacebookF, FaInstagram, FaWhatsapp } from "react-icons/fa";
 import { Mail } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { getSiteSettings } from "@/lib/site-settings";
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const settings = await getSiteSettings();
   return (
     <footer className="mt-24 border-t bg-muted/30">
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-5 lg:px-8">
@@ -13,47 +15,59 @@ export function SiteFooter() {
             Modern commerce experiences with a beautiful, accessible UI.
           </p>
           <div className="mt-4 flex items-center gap-3 text-muted-foreground">
-            <a
-              href={SITE_CONFIG.facebookUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Facebook"
-              className="hover:text-foreground"
-            >
-              <FaFacebookF className="size-5" />
-            </a>
-            <a
-              href={`mailto:${SITE_CONFIG.supportEmail}`}
-              aria-label="Email us"
-              className="hover:text-foreground"
-            >
-              <Mail className="size-5" />
-            </a>
-            <a
-              href={SITE_CONFIG.whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="WhatsApp"
-              className="hover:text-foreground"
-            >
-              <FaWhatsapp className="size-5" />
-            </a>
-            <a
-              href="#"
-              aria-label="Instagram"
-              className="hover:text-foreground"
-            >
-              <FaInstagram className="size-5" />
-            </a>
+            {settings.facebookUrl && (
+              <a
+                href={settings.facebookUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Facebook"
+                className="hover:text-foreground"
+              >
+                <FaFacebookF className="size-5" />
+              </a>
+            )}
+            {settings.supportEmail && (
+              <a
+                href={`mailto:${settings.supportEmail}`}
+                aria-label="Email us"
+                className="hover:text-foreground"
+              >
+                <Mail className="size-5" />
+              </a>
+            )}
+            {settings.whatsappUrl && (
+              <a
+                href={settings.whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="WhatsApp"
+                className="hover:text-foreground"
+              >
+                <FaWhatsapp className="size-5" />
+              </a>
+            )}
+            {settings.instagramUrl && (
+              <a
+                href={settings.instagramUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram"
+                className="hover:text-foreground"
+              >
+                <FaInstagram className="size-5" />
+              </a>
+            )}
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            <a
-              href={`mailto:${SITE_CONFIG.supportEmail}`}
-              className="hover:text-foreground"
-            >
-              {SITE_CONFIG.supportEmail}
-            </a>
-          </p>
+          {settings.supportEmail && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              <a
+                href={`mailto:${settings.supportEmail}`}
+                className="hover:text-foreground"
+              >
+                {settings.supportEmail}
+              </a>
+            </p>
+          )}
         </div>
 
         <div>

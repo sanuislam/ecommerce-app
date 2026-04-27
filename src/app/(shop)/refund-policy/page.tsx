@@ -1,19 +1,43 @@
 import { PolicyPage } from "@/components/site/policy-page";
+import { Markdown } from "@/components/site/markdown";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { getPolicyDoc } from "@/lib/policy-docs";
 
-const UPDATED_AT = "April 21, 2026";
+const UPDATED_AT_FALLBACK = "April 21, 2026";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Refund Policy — Eid Bazar",
   description: "Our refund, return and exchange policy.",
 };
 
-export default function RefundPolicyPage() {
+function formatDate(d: Date) {
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export default async function RefundPolicyPage() {
+  const doc = await getPolicyDoc("refund-policy");
+  if (doc) {
+    return (
+      <PolicyPage
+        title={doc.titleEn}
+        titleBn={doc.titleBn}
+        updatedAt={doc.updatedAt ? formatDate(doc.updatedAt) : UPDATED_AT_FALLBACK}
+        en={<Markdown>{doc.bodyEn}</Markdown>}
+        bn={<Markdown>{doc.bodyBn}</Markdown>}
+      />
+    );
+  }
   return (
     <PolicyPage
       title="Refund Policy"
       titleBn="রিফান্ড নীতি"
-      updatedAt={UPDATED_AT}
+      updatedAt={UPDATED_AT_FALLBACK}
       en={
         <>
           <p>

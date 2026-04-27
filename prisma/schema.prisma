@@ -224,3 +224,24 @@ model Review {
 
   @@unique([productId, userId])
 }
+
+model SiteSettings {
+  id            String   @id @default("default")
+  facebookUrl   String   @default("")
+  whatsappUrl   String   @default("")
+  instagramUrl  String   @default("")
+  supportEmail  String   @default("")
+  supportPhone  String   @default("")
+  address       String   @default("")
+  updatedAt     DateTime @updatedAt
+}
+
+model PolicyDocument {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  titleEn   String
+  titleBn   String
+  bodyEn    String   @db.Text
+  bodyBn    String   @db.Text
+  updatedAt DateTime @updatedAt
+}
