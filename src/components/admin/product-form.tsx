@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { ImageUploader } from "@/components/admin/image-uploader";
 import {
   Select,
   SelectContent,
@@ -55,9 +56,6 @@ export function ProductForm({
       categoryId: null,
     },
   );
-  const [imagesInput, setImagesInput] = useState<string>(
-    (initial?.images ?? []).join("\n"),
-  );
   const [saving, setSaving] = useState(false);
 
   function set<K extends keyof ProductInput>(k: K, v: ProductInput[K]) {
@@ -71,10 +69,7 @@ export function ProductForm({
       const payload = {
         ...data,
         slug: data.slug || slugify(data.name),
-        images: imagesInput
-          .split(/\r?\n/)
-          .map((s) => s.trim())
-          .filter(Boolean),
+        images: data.images.map((s) => s.trim()).filter(Boolean),
       };
       if (initial?.id) {
         await axios.patch(`/api/admin/products/${initial.id}`, payload);
@@ -207,13 +202,15 @@ export function ProductForm({
           </div>
         </div>
         <div className="sm:col-span-2">
-          <Label htmlFor="images">Image URLs (one per line)</Label>
-          <Textarea
-            id="images"
-            rows={4}
-            placeholder="https://..."
-            value={imagesInput}
-            onChange={(e) => setImagesInput(e.target.value)}
+          <Label>Product images</Label>
+          <p className="mb-2 text-xs text-muted-foreground">
+            First image is used as the cover. Drag images to reorder, or paste a
+            URL to add an image hosted elsewhere.
+          </p>
+          <ImageUploader
+            value={data.images}
+            onChange={(next) => set("images", next)}
+            disabled={saving}
           />
         </div>
       </div>
