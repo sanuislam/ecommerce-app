@@ -46,12 +46,19 @@ export function formatDate(input: string | number | Date) {
 }
 
 export const FREE_SHIPPING_THRESHOLD = 1000;
-export const FLAT_SHIPPING_FEE = 60;
+export const SHIPPING_FEE_DHAKA = 80;
+export const SHIPPING_FEE_OUTSIDE = 120;
 export const TAX_RATE = 0.08;
 
-export function calculateShipping(subtotal: number) {
+export type ShippingRegion = "DHAKA" | "OUTSIDE_DHAKA";
+
+export function calculateShipping(
+  subtotal: number,
+  region: ShippingRegion = "OUTSIDE_DHAKA",
+) {
   if (subtotal <= 0) return 0;
-  return subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
+  if (subtotal >= FREE_SHIPPING_THRESHOLD) return 0;
+  return region === "DHAKA" ? SHIPPING_FEE_DHAKA : SHIPPING_FEE_OUTSIDE;
 }
 
 export function calculateTax(subtotal: number) {

@@ -22,7 +22,8 @@ export default function CartPage() {
     setMounted(true);
   }, []);
 
-  const shipping = calculateShipping(subtotal);
+  // Cart shows the cheaper estimate (Inside Dhaka). Final fee is selected at checkout.
+  const shipping = calculateShipping(subtotal, "DHAKA");
   const tax = calculateTax(subtotal);
   const total = subtotal + shipping + tax;
 
@@ -126,8 +127,12 @@ export default function CartPage() {
                 <span>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Shipping</span>
-                <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
+                <span className="text-muted-foreground">
+                  Shipping <span className="text-xs">(estimated)</span>
+                </span>
+                <span>
+                  {shipping === 0 ? "Free" : `from ${formatPrice(shipping)}`}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tax (est.)</span>

@@ -39,6 +39,7 @@ const schema = z
     paymentMethod: paymentMethodSchema.default("STRIPE"),
     paymentSenderNumber: z.string().optional().default(""),
     paymentTransactionId: z.string().optional().default(""),
+    shippingRegion: z.enum(["DHAKA", "OUTSIDE_DHAKA"]).default("OUTSIDE_DHAKA"),
   })
   .superRefine((v, ctx) => {
     // Manual MFS flow (Nagad/Rocket/Upay always; bKash only when live gateway not configured)
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
     paymentMethod,
     paymentSenderNumber,
     paymentTransactionId,
+    shippingRegion,
   } = parsed.data;
 
   const products = await prisma.product.findMany({
@@ -136,7 +138,7 @@ export async function POST(req: Request) {
     };
   });
 
-  const shipping = calculateShipping(subtotal);
+  const shipping = calculateShipping(subtotal, shippingRegion);
   const tax = calculateTax(subtotal);
   const total = Math.round((subtotal + shipping + tax) * 100) / 100;
 

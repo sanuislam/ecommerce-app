@@ -10,7 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/store/cart";
-import { calculateShipping, calculateTax, formatPrice } from "@/lib/utils";
+import {
+  calculateShipping,
+  calculateTax,
+  formatPrice,
+  type ShippingRegion,
+} from "@/lib/utils";
 import { ShieldCheck, CreditCard, Banknote, Truck, Check } from "lucide-react";
 import { MFS_METHODS, MFS_LABELS, MFS_INSTRUCTIONS, getReceivingNumber, type MfsMethod } from "@/lib/mfs";
 
@@ -57,8 +62,10 @@ export function CheckoutForm({
   );
   const [senderNumber, setSenderNumber] = useState("");
   const [trxId, setTrxId] = useState("");
+  const [shippingRegion, setShippingRegion] =
+    useState<ShippingRegion>("DHAKA");
 
-  const shipping = calculateShipping(subtotal);
+  const shipping = calculateShipping(subtotal, shippingRegion);
   const tax = calculateTax(subtotal);
   const total = subtotal + shipping + tax;
 
@@ -96,6 +103,7 @@ export function CheckoutForm({
         paymentMethod,
         paymentSenderNumber: senderNumber,
         paymentTransactionId: trxId,
+        shippingRegion,
       });
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
@@ -234,6 +242,38 @@ export function CheckoutForm({
                 value={form.postalCode}
                 onChange={(e) => set("postalCode", e.target.value)}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Shipping zone</Label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {([
+                  { key: "DHAKA", label: "Inside Dhaka", fee: 80 },
+                  { key: "OUTSIDE_DHAKA", label: "Outside Dhaka", fee: 120 },
+                ] as const).map((opt) => {
+                  const selected = shippingRegion === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setShippingRegion(opt.key)}
+                      aria-pressed={selected}
+                      className={`flex items-center justify-between rounded-lg border p-3 text-left text-sm transition-all ${
+                        selected
+                          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                          : "hover:border-foreground/30"
+                      }`}
+                    >
+                      <span className="font-medium">{opt.label}</span>
+                      <span className="text-muted-foreground">
+                        {formatPrice(opt.fee)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Free shipping on orders over {formatPrice(1000)}.
+              </p>
             </div>
           </div>
         </div>
