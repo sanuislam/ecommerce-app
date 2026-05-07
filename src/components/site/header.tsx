@@ -29,6 +29,7 @@ const NAV_LINKS = [
   { href: "/products?featured=1", label: "Featured" },
   { href: "/women", label: "Women" },
   { href: "/mens", label: "Mens" },
+  { href: "/about", label: "About" },
 ];
 
 export function SiteHeader() {
