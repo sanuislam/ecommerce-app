@@ -27,7 +27,8 @@ import { SearchBar } from "@/components/site/search-bar";
 const NAV_LINKS = [
   { href: "/products", label: "Shop" },
   { href: "/products?featured=1", label: "Featured" },
-  { href: "/about", label: "About" },
+  { href: "/women", label: "Women" },
+  { href: "/mens", label: "Mens" },
 ];
 
 export function SiteHeader() {
