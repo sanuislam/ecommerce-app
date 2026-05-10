@@ -66,15 +66,15 @@ export function TrustStrip() {
                   key={p.name}
                   whileHover={{ y: -2, scale: 1.04 }}
                   transition={{ type: "spring", stiffness: 300, damping: 18 }}
-                  className="flex h-12 items-center rounded-md border border-foreground/10 bg-white px-3 shadow-sm"
+                  className="flex h-9 items-center rounded-md border border-slate-700/40 bg-slate-800 px-2.5 shadow-sm"
                   title={p.name}
                 >
                   <Image
                     src={p.src}
                     alt={p.name}
-                    width={96}
-                    height={32}
-                    className="h-7 w-auto object-contain"
+                    width={80}
+                    height={24}
+                    className="h-5 w-auto object-contain"
                   />
                 </motion.div>
               ))}

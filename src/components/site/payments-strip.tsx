@@ -24,16 +24,16 @@ function BrandChip({ brand }: { brand: Brand }) {
     <motion.li
       whileHover={{ y: -3 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className="flex h-16 min-w-[110px] items-center justify-center rounded-xl border border-foreground/10 bg-white px-5 shadow-sm transition hover:shadow-md sm:h-20 sm:min-w-[140px] sm:px-6"
+      className="flex h-12 min-w-[80px] items-center justify-center rounded-lg border border-slate-700/40 bg-slate-800 px-3 shadow-sm transition hover:shadow-md sm:h-14 sm:min-w-[96px] sm:px-4"
       title={brand.name}
       aria-label={brand.name}
     >
       <Image
         src={brand.src}
         alt={brand.name}
-        width={140}
-        height={48}
-        className="h-9 w-auto object-contain sm:h-11"
+        width={120}
+        height={36}
+        className="h-6 w-auto object-contain sm:h-7"
       />
     </motion.li>
   );
