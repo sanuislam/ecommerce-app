@@ -12,6 +12,7 @@ import {
   Settings,
   FileText,
   CreditCard,
+  Search,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/policies", label: "Legal pages", icon: FileText },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/seo", label: "SEO & PWA", icon: Search },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

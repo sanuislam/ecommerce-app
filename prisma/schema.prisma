@@ -250,6 +250,43 @@ model PaymentSettings {
   updatedAt       DateTime @updatedAt
 }
 
+model SeoSettings {
+  id                      String   @id @default("default")
+  siteName                String   @default("Eid Bazar")
+  titleTemplate           String   @default("%s | Eid Bazar")
+  defaultTitle            String   @default("Eid Bazar — Modern e-commerce")
+  defaultDescription      String   @default("Your trusted Eid shopping destination — curated finds, fair prices, and fast delivery across Bangladesh.")
+  defaultKeywords         String   @default("")
+  defaultOgImage          String   @default("")
+  twitterHandle           String   @default("")
+  googleSiteVerification  String   @default("")
+  bingSiteVerification    String   @default("")
+  facebookAppId           String   @default("")
+  ga4MeasurementId        String   @default("")
+  gtmContainerId          String   @default("")
+  metaPixelId             String   @default("")
+  jsonLdEnabled           Boolean  @default(true)
+  organizationLogoUrl     String   @default("")
+  updatedAt               DateTime @updatedAt
+}
+
+model PwaSettings {
+  id              String   @id @default("default")
+  enabled         Boolean  @default(true)
+  appName         String   @default("Eid Bazar")
+  shortName       String   @default("Eid Bazar")
+  description     String   @default("Your trusted Eid shopping destination — curated finds, fair prices, and fast delivery across Bangladesh.")
+  themeColor      String   @default("#0f172a")
+  backgroundColor String   @default("#ffffff")
+  icon192Url      String   @default("")
+  icon512Url      String   @default("")
+  maskableIconUrl String   @default("")
+  display         String   @default("standalone")
+  orientation     String   @default("portrait")
+  startUrl        String   @default("/")
+  updatedAt       DateTime @updatedAt
+}
+
 model PolicyDocument {
   id        String   @id @default(cuid())
   slug      String   @unique

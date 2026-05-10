@@ -1,8 +1,11 @@
 import Link from "next/link";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import { Star, Truck, ShieldCheck, Tag } from "lucide-react";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
+import { getSeoSettings } from "@/lib/seo-settings";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AddToCart } from "@/components/add-to-cart";
@@ -12,10 +15,33 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const p = await prisma.product.findUnique({ where: { slug } });
-  return { title: p?.name ?? "Product" };
+  if (!p) return { title: "Product not found" };
+  const seo = await getSeoSettings();
+  const desc =
+    p.description?.slice(0, 160) ?? seo.defaultDescription;
+  const url = `https://eidbazar.com/products/${p.slug}`;
+  const image = p.images[0] ?? seo.defaultOgImage ?? undefined;
+  return {
+    title: p.name,
+    description: desc,
+    alternates: { canonical: `/products/${p.slug}` },
+    openGraph: {
+      type: "website",
+      title: p.name,
+      description: desc,
+      url,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: p.name,
+      description: desc,
+      images: image ? [image] : undefined,
+    },
+  };
 }
 
 export default async function ProductDetailPage({ params }: Props) {
@@ -34,6 +60,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   if (!product || !product.published) notFound();
 
+  const seo = await getSeoSettings();
   const avg =
     product.reviews.length > 0
       ? product.reviews.reduce((s, r) => s + r.rating, 0) / product.reviews.length
@@ -42,8 +69,85 @@ export default async function ProductDetailPage({ params }: Props) {
   const hasDiscount =
     product.compareAt != null && Number(product.compareAt) > Number(product.price);
 
+  const productJsonLd = seo.jsonLdEnabled
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        description: product.description,
+        image: product.images,
+        sku: product.id,
+        brand: { "@type": "Brand", name: seo.siteName },
+        offers: {
+          "@type": "Offer",
+          url: `https://eidbazar.com/products/${product.slug}`,
+          priceCurrency: "BDT",
+          price: Number(product.price).toFixed(2),
+          availability:
+            product.stock > 0
+              ? "https://schema.org/InStock"
+              : "https://schema.org/OutOfStock",
+        },
+        ...(avg && product.reviews.length > 0
+          ? {
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: avg.toFixed(1),
+                reviewCount: product.reviews.length,
+              },
+            }
+          : {}),
+      }
+    : null;
+  const breadcrumbJsonLd = seo.jsonLdEnabled
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://eidbazar.com/",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Products",
+            item: "https://eidbazar.com/products",
+          },
+          ...(product.category
+            ? [
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: product.category.name,
+                  item: `https://eidbazar.com/products?category=${product.category.slug}`,
+                },
+              ]
+            : []),
+          {
+            "@type": "ListItem",
+            position: product.category ? 4 : 3,
+            name: product.name,
+            item: `https://eidbazar.com/products/${product.slug}`,
+          },
+        ],
+      }
+    : null;
+
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      {productJsonLd && (
+        <Script id="ld-product" type="application/ld+json">
+          {JSON.stringify(productJsonLd)}
+        </Script>
+      )}
+      {breadcrumbJsonLd && (
+        <Script id="ld-breadcrumb" type="application/ld+json">
+          {JSON.stringify(breadcrumbJsonLd)}
+        </Script>
+      )}
       <div className="mb-6 text-sm text-muted-foreground">
         <Link href="/" className="hover:text-foreground">Home</Link>
         <span className="mx-1">/</span>
