@@ -25,7 +25,7 @@ const GRADIENTS = [
 
 export function CategoryCards({ categories }: { categories: CategoryCard[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {categories.map((c, i) => {
         const gradient = GRADIENTS[i % GRADIENTS.length];
         return (
@@ -43,7 +43,7 @@ export function CategoryCards({ categories }: { categories: CategoryCard[] }) {
           >
             <Link
               href={`/products?category=${c.slug}`}
-              className={`group relative flex aspect-[4/3] items-end overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br ${gradient} p-4 shadow-sm transition-shadow hover:shadow-lg`}
+              className={`group relative flex aspect-[5/3] items-end overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br ${gradient} p-3 shadow-sm transition-shadow hover:shadow-lg sm:aspect-[3/2]`}
             >
               {c.image && (
                 <Image
@@ -51,7 +51,7 @@ export function CategoryCards({ categories }: { categories: CategoryCard[] }) {
                   alt=""
                   aria-hidden
                   fill
-                  sizes="(min-width: 640px) 25vw, 50vw"
+                  sizes="(min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
                   className="pointer-events-none absolute inset-0 z-0 object-cover opacity-20 mix-blend-multiply transition-all duration-500 group-hover:scale-110 group-hover:opacity-30 dark:opacity-25 dark:mix-blend-screen"
                 />
               )}
@@ -62,7 +62,7 @@ export function CategoryCards({ categories }: { categories: CategoryCard[] }) {
               <span className="relative z-10 text-sm font-semibold text-foreground drop-shadow-sm">
                 {c.name}
               </span>
-              <ArrowRight className="absolute right-3 top-3 z-10 size-4 text-foreground/70 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="absolute right-2.5 top-2.5 z-10 size-3.5 text-foreground/70 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </motion.div>
         );
