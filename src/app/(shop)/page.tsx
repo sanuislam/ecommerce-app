@@ -8,6 +8,7 @@ import { HomeHero } from "@/components/site/home-hero";
 import { ProductBannerCarousel } from "@/components/site/product-banner-carousel";
 import { CategoryCards } from "@/components/site/category-cards";
 import { FlashDeals } from "@/components/site/flash-deals";
+import { SpeciallyForYou } from "@/components/site/specially-for-you";
 import { Testimonials } from "@/components/site/testimonials";
 import { TrustStrip } from "@/components/site/trust-strip";
 import { Newsletter } from "@/components/site/newsletter";
@@ -15,7 +16,7 @@ import { Newsletter } from "@/components/site/newsletter";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [featured, latest, categories, banners, dealsRaw] = await Promise.all([
+  const [featured, latest, categories, banners, dealsRaw, speciallyRaw] = await Promise.all([
     prisma.product.findMany({
       where: { published: true, featured: true },
       include: { category: { select: { name: true } } },
@@ -41,7 +42,22 @@ export default async function HomePage() {
       take: 8,
       orderBy: { createdAt: "desc" },
     }),
+    prisma.product.findMany({
+      where: { published: true },
+      take: 12,
+      orderBy: [{ createdAt: "desc" }],
+    }),
   ]);
+
+  const speciallyForYou = speciallyRaw.map((p) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    price: Number(p.price),
+    compareAt: p.compareAt != null ? Number(p.compareAt) : null,
+    stock: p.stock,
+    images: p.images,
+  }));
 
   const flashDeals = dealsRaw
     .filter((p) => p.flashDealDiscount != null && p.flashDealDiscount > 0)
@@ -119,6 +135,8 @@ export default async function HomePage() {
       </section>
 
       <FlashDeals products={flashDeals} />
+
+      <SpeciallyForYou products={speciallyForYou} />
 
       {categories.length > 0 && (
         <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
