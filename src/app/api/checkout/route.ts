@@ -40,29 +40,6 @@ const schema = z
     paymentSenderNumber: z.string().optional().default(""),
     paymentTransactionId: z.string().optional().default(""),
     shippingRegion: z.enum(["DHAKA", "OUTSIDE_DHAKA"]).default("OUTSIDE_DHAKA"),
-  })
-  .superRefine((v, ctx) => {
-    // Manual MFS flow (Nagad/Rocket/Upay always; bKash only when live gateway not configured)
-    const mfsManual: string[] = ["NAGAD", "ROCKET", "UPAY"];
-    if (v.paymentMethod === "BKASH" && !bkashConfigured()) {
-      mfsManual.push("BKASH");
-    }
-    if (mfsManual.includes(v.paymentMethod)) {
-      if (!v.paymentSenderNumber.trim()) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["paymentSenderNumber"],
-          message: "Sender mobile number is required",
-        });
-      }
-      if (!v.paymentTransactionId.trim()) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["paymentTransactionId"],
-          message: "Transaction ID is required",
-        });
-      }
-    }
   });
 
 class StockError extends Error {
@@ -143,9 +120,28 @@ export async function POST(req: Request) {
   const total = Math.round((subtotal + shipping + tax) * 100) / 100;
 
   const stripeOn = stripeConfigured();
-  const bkashOn = bkashConfigured();
+  const bkashOn = await bkashConfigured();
   const useStripe = paymentMethod === "STRIPE" && stripeOn;
   const useBkash = paymentMethod === "BKASH" && bkashOn;
+
+  // Manual MFS flow validation (Nagad/Rocket/Upay always; bKash only when
+  // live gateway is not configured). Done after we know if bKash is live.
+  const manualMfs: string[] = ["NAGAD", "ROCKET", "UPAY"];
+  if (paymentMethod === "BKASH" && !bkashOn) manualMfs.push("BKASH");
+  if (manualMfs.includes(paymentMethod)) {
+    if (!paymentSenderNumber.trim()) {
+      return NextResponse.json(
+        { error: "Sender mobile number is required" },
+        { status: 400 },
+      );
+    }
+    if (!paymentTransactionId.trim()) {
+      return NextResponse.json(
+        { error: "Transaction ID is required" },
+        { status: 400 },
+      );
+    }
+  }
 
   const initialStatus: OrderStatus =
     paymentMethod === "STRIPE"

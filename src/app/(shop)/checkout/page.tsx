@@ -15,7 +15,7 @@ export default async function CheckoutPage() {
       <CheckoutForm
         userEmail={session.user.email ?? ""}
         stripeEnabled={stripeConfigured()}
-        bkashLiveEnabled={bkashConfigured()}
+        bkashLiveEnabled={await bkashConfigured()}
       />
     </div>
   );

@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!bkashConfigured()) {
+  if (!(await bkashConfigured())) {
     return NextResponse.json(
       { error: "bKash is not configured on this environment" },
       { status: 503 },

@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Settings,
   FileText,
+  CreditCard,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ const NAV = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/policies", label: "Legal pages", icon: FileText },
+  { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

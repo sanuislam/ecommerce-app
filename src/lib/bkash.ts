@@ -10,7 +10,12 @@
  *  2. POST /tokenized/checkout/create       → bkashURL + paymentID (redirect user)
  *  3. bKash redirects back to callbackURL?paymentID=...&status=success|failure|cancel
  *  4. POST /tokenized/checkout/execute      → final trxID + transactionStatus
+ *
+ * Credentials are read from the PaymentSettings DB row (admin-managed) first,
+ * with environment variables as a fallback for backwards compatibility.
  */
+
+import { prisma } from "@/lib/prisma";
 
 const SANDBOX_BASE = "https://tokenized.sandbox.bka.sh/v1.2.0-beta";
 const PRODUCTION_BASE = "https://tokenized.pay.bka.sh/v1.2.0-beta";
@@ -23,20 +28,52 @@ export type BkashConfig = {
   appSecret: string;
 };
 
-export function bkashConfigured(): boolean {
-  return Boolean(
+type ResolvedConfig = BkashConfig & { enabled: boolean };
+
+async function loadDbSettings() {
+  try {
+    return await prisma.paymentSettings.findUnique({ where: { id: "default" } });
+  } catch (err) {
+    console.error("bKash: failed to read PaymentSettings", err);
+    return null;
+  }
+}
+
+function baseFromMode(mode: string): string {
+  return mode.toLowerCase() === "live" ? PRODUCTION_BASE : SANDBOX_BASE;
+}
+
+async function resolveConfig(): Promise<ResolvedConfig> {
+  const db = await loadDbSettings();
+  const dbHasCreds = Boolean(
+    db &&
+      db.bkashUsername &&
+      db.bkashPassword &&
+      db.bkashAppKey &&
+      db.bkashAppSecret,
+  );
+  if (db && dbHasCreds) {
+    return {
+      enabled: db.bkashEnabled,
+      baseUrl: process.env.BKASH_BASE_URL ?? baseFromMode(db.bkashMode),
+      username: db.bkashUsername,
+      password: db.bkashPassword,
+      appKey: db.bkashAppKey,
+      appSecret: db.bkashAppSecret,
+    };
+  }
+  // Fallback: environment variables (legacy path).
+  const envHasCreds = Boolean(
     process.env.BKASH_USERNAME &&
       process.env.BKASH_PASSWORD &&
       process.env.BKASH_APP_KEY &&
       process.env.BKASH_APP_SECRET,
   );
-}
-
-function getConfig(): BkashConfig {
-  const mode = (process.env.BKASH_MODE ?? "sandbox").toLowerCase();
-  const fallbackBase = mode === "live" ? PRODUCTION_BASE : SANDBOX_BASE;
   return {
-    baseUrl: process.env.BKASH_BASE_URL ?? fallbackBase,
+    enabled: envHasCreds,
+    baseUrl:
+      process.env.BKASH_BASE_URL ??
+      baseFromMode(process.env.BKASH_MODE ?? "sandbox"),
     username: process.env.BKASH_USERNAME ?? "",
     password: process.env.BKASH_PASSWORD ?? "",
     appKey: process.env.BKASH_APP_KEY ?? "",
@@ -44,17 +81,35 @@ function getConfig(): BkashConfig {
   };
 }
 
+/** Returns true when bKash is enabled by admin AND has full credentials. */
+export async function bkashConfigured(): Promise<boolean> {
+  const cfg = await resolveConfig();
+  return (
+    cfg.enabled &&
+    Boolean(cfg.username && cfg.password && cfg.appKey && cfg.appSecret)
+  );
+}
+
+/** Clears the in-memory token cache. Call after admin saves new credentials. */
+export function resetBkashTokenCache() {
+  tokenCache = null;
+}
+
 type CachedToken = {
   idToken: string;
   refreshToken: string;
   expiresAt: number;
+  configFingerprint: string;
 };
 
 // In-memory token cache (per-instance). bKash tokens last 3600s.
 let tokenCache: CachedToken | null = null;
 
-async function grantToken(): Promise<CachedToken> {
-  const cfg = getConfig();
+function fingerprint(cfg: BkashConfig): string {
+  return `${cfg.baseUrl}|${cfg.username}|${cfg.appKey}`;
+}
+
+async function grantToken(cfg: BkashConfig): Promise<CachedToken> {
   const res = await fetch(`${cfg.baseUrl}/tokenized/checkout/token/grant`, {
     method: "POST",
     headers: {
@@ -88,15 +143,44 @@ async function grantToken(): Promise<CachedToken> {
     refreshToken: data.refresh_token ?? "",
     // Refresh ~60s before actual expiry to be safe
     expiresAt: Date.now() + (expiresInSec - 60) * 1000,
+    configFingerprint: fingerprint(cfg),
   };
 }
 
-async function getToken(): Promise<string> {
-  if (tokenCache && tokenCache.expiresAt > Date.now()) {
+async function getToken(cfg: BkashConfig): Promise<string> {
+  const fp = fingerprint(cfg);
+  if (
+    tokenCache &&
+    tokenCache.expiresAt > Date.now() &&
+    tokenCache.configFingerprint === fp
+  ) {
     return tokenCache.idToken;
   }
-  tokenCache = await grantToken();
+  tokenCache = await grantToken(cfg);
   return tokenCache.idToken;
+}
+
+/**
+ * Verifies the configured credentials by attempting a token grant.
+ * Returns ok=true with status info on success, ok=false with reason on failure.
+ */
+export async function testBkashConnection(): Promise<{
+  ok: boolean;
+  baseUrl: string;
+  message: string;
+}> {
+  const cfg = await resolveConfig();
+  if (!cfg.username || !cfg.password || !cfg.appKey || !cfg.appSecret) {
+    return { ok: false, baseUrl: cfg.baseUrl, message: "Missing credentials" };
+  }
+  try {
+    resetBkashTokenCache();
+    await grantToken(cfg);
+    return { ok: true, baseUrl: cfg.baseUrl, message: "Token granted" };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    return { ok: false, baseUrl: cfg.baseUrl, message: msg };
+  }
 }
 
 export type BkashCreateInput = {
@@ -117,8 +201,8 @@ export type BkashCreateResponse = {
 export async function createBkashPayment(
   input: BkashCreateInput,
 ): Promise<BkashCreateResponse> {
-  const cfg = getConfig();
-  const token = await getToken();
+  const cfg = await resolveConfig();
+  const token = await getToken(cfg);
   const res = await fetch(`${cfg.baseUrl}/tokenized/checkout/create`, {
     method: "POST",
     headers: {
@@ -170,8 +254,8 @@ export type BkashExecuteResponse = {
 export async function executeBkashPayment(
   paymentID: string,
 ): Promise<BkashExecuteResponse> {
-  const cfg = getConfig();
-  const token = await getToken();
+  const cfg = await resolveConfig();
+  const token = await getToken(cfg);
   const res = await fetch(`${cfg.baseUrl}/tokenized/checkout/execute`, {
     method: "POST",
     headers: {
@@ -190,8 +274,8 @@ export async function executeBkashPayment(
 export async function queryBkashPayment(
   paymentID: string,
 ): Promise<BkashExecuteResponse> {
-  const cfg = getConfig();
-  const token = await getToken();
+  const cfg = await resolveConfig();
+  const token = await getToken(cfg);
   const res = await fetch(`${cfg.baseUrl}/tokenized/checkout/payment/status`, {
     method: "POST",
     headers: {
@@ -233,8 +317,8 @@ export type BkashRefundResponse = {
 export async function refundBkashPayment(
   input: BkashRefundInput,
 ): Promise<BkashRefundResponse> {
-  const cfg = getConfig();
-  const token = await getToken();
+  const cfg = await resolveConfig();
+  const token = await getToken(cfg);
   const res = await fetch(`${cfg.baseUrl}/tokenized/checkout/payment/refund`, {
     method: "POST",
     headers: {

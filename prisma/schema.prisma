@@ -239,6 +239,17 @@ model SiteSettings {
   updatedAt     DateTime @updatedAt
 }
 
+model PaymentSettings {
+  id              String   @id @default("default")
+  bkashEnabled    Boolean  @default(false)
+  bkashMode       String   @default("sandbox")
+  bkashUsername   String   @default("")
+  bkashPassword   String   @default("")
+  bkashAppKey     String   @default("")
+  bkashAppSecret  String   @default("")
+  updatedAt       DateTime @updatedAt
+}
+
 model PolicyDocument {
   id        String   @id @default(cuid())
   slug      String   @unique
