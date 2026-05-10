@@ -12,7 +12,8 @@ export async function SiteFooter() {
         <div className="lg:col-span-2">
           <h3 className="text-lg font-semibold">{SITE_CONFIG.name}</h3>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-            Modern commerce experiences with a beautiful, accessible UI.
+            Your trusted Eid shopping destination — curated finds, fair prices,
+            and fast delivery across Bangladesh.
           </p>
           <div className="mt-4 flex items-center gap-3 text-muted-foreground">
             {settings.facebookUrl && (
