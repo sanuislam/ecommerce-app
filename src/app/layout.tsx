@@ -14,12 +14,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://eidbazar.com"),
   title: {
     default: "Eid Bazar — Modern e-commerce",
     template: "%s | Eid Bazar",
   },
   description:
-    "A full-stack e-commerce experience built with Next.js, shadcn/ui, Prisma, Sanity, and Stripe.",
+    "Your trusted Eid shopping destination — curated finds, fair prices, and fast delivery across Bangladesh.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Eid Bazar",
+    url: "https://eidbazar.com",
+    locale: "en_BD",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({
