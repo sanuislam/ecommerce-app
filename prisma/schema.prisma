@@ -117,6 +117,7 @@ model Product {
   stock       Int      @default(0)
   images      String[] @default([])
   featured    Boolean  @default(false)
+  flashDeal   Boolean  @default(false)
   published   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -130,6 +131,7 @@ model Product {
 
   @@index([slug])
   @@index([featured])
+  @@index([flashDeal])
 }
 
 model Cart {

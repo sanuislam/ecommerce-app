@@ -33,7 +33,7 @@ export default async function HomePage() {
     }),
     getBanners(),
     prisma.product.findMany({
-      where: { published: true, compareAt: { not: null } },
+      where: { published: true, flashDeal: true, compareAt: { not: null } },
       take: 8,
       orderBy: { createdAt: "desc" },
     }),

@@ -28,6 +28,7 @@ export default async function EditProductPage({ params }: Props) {
             stock: product.stock,
             images: product.images,
             featured: product.featured,
+            flashDeal: product.flashDeal,
             published: product.published,
             categoryId: product.categoryId,
           }}

@@ -14,6 +14,7 @@ const patchSchema = z.object({
   stock: z.number().int().nonnegative().optional(),
   images: z.array(z.string().url()).optional(),
   featured: z.boolean().optional(),
+  flashDeal: z.boolean().optional(),
   published: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
 });

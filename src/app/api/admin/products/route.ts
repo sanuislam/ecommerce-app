@@ -14,6 +14,7 @@ const productSchema = z.object({
   stock: z.number().int().nonnegative(),
   images: z.array(z.string().url()).default([]),
   featured: z.boolean().default(false),
+  flashDeal: z.boolean().default(false),
   published: z.boolean().default(true),
   categoryId: z.string().nullable().optional(),
 });
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
         stock: data.stock,
         images: data.images,
         featured: data.featured,
+        flashDeal: data.flashDeal,
         published: data.published,
         categoryId: data.categoryId ?? null,
       },

@@ -30,6 +30,7 @@ type ProductInput = {
   stock: number;
   images: string[];
   featured: boolean;
+  flashDeal: boolean;
   published: boolean;
   categoryId: string | null;
 };
@@ -52,6 +53,7 @@ export function ProductForm({
       stock: 0,
       images: [],
       featured: false,
+      flashDeal: false,
       published: true,
       categoryId: null,
     },
@@ -183,7 +185,7 @@ export function ProductForm({
             onChange={(e) => set("stock", parseInt(e.target.value || "0", 10))}
           />
         </div>
-        <div className="flex items-end gap-6">
+        <div className="flex flex-wrap items-end gap-6">
           <div className="flex items-center gap-2">
             <Switch
               id="featured"
@@ -191,6 +193,14 @@ export function ProductForm({
               onCheckedChange={(v) => set("featured", Boolean(v))}
             />
             <Label htmlFor="featured">Featured</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="flashDeal"
+              checked={data.flashDeal}
+              onCheckedChange={(v) => set("flashDeal", Boolean(v))}
+            />
+            <Label htmlFor="flashDeal">Flash deal</Label>
           </div>
           <div className="flex items-center gap-2">
             <Switch
