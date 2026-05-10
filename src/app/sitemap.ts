@@ -5,6 +5,17 @@ const BASE_URL = "https://eidbazar.com";
 
 export const revalidate = 3600;
 
+// Next 16 does not escape interpolated URLs in the sitemap output, so any raw
+// `&` in image/query URLs breaks the XML. Escape ourselves before returning.
+function xmlEscape(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
@@ -39,15 +50,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const productEntries: MetadataRoute.Sitemap = products.map((p) => ({
-    url: `${BASE_URL}/products/${p.slug}`,
+    url: xmlEscape(`${BASE_URL}/products/${p.slug}`),
     lastModified: p.updatedAt,
     changeFrequency: "weekly",
     priority: 0.7,
-    images: p.images.length ? [p.images[0]] : undefined,
+    images: p.images.length ? [xmlEscape(p.images[0])] : undefined,
   }));
 
   const categoryEntries: MetadataRoute.Sitemap = categories.map((c) => ({
-    url: `${BASE_URL}/products?category=${encodeURIComponent(c.slug)}`,
+    url: xmlEscape(`${BASE_URL}/products?category=${encodeURIComponent(c.slug)}`),
     lastModified: c.updatedAt,
     changeFrequency: "weekly",
     priority: 0.6,
