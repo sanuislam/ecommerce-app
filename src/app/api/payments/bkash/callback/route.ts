@@ -36,6 +36,21 @@ export async function GET(req: Request) {
     );
   }
 
+  // Idempotency: bKash callback can be hit twice (user refresh, browser back).
+  // If the order is already settled, skip the execute call and route accordingly.
+  if (order.status === "PAID") {
+    return NextResponse.redirect(
+      `${base}/orders/${order.id}?success=1`,
+      { status: 303 },
+    );
+  }
+  if (order.status === "CANCELLED" || order.status === "REFUNDED") {
+    return NextResponse.redirect(
+      `${base}/orders/${order.id}?bkash=${order.status.toLowerCase()}`,
+      { status: 303 },
+    );
+  }
+
   // User cancelled or bKash reported failure — restock and mark cancelled.
   if (status === "cancel" || status === "failure") {
     await markFailed(order.id, status === "cancel" ? "CANCELLED" : "FAILED");

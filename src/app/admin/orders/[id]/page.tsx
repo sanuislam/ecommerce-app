@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
+import { BkashRefundButton } from "@/components/admin/bkash-refund-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 
 type Props = { params: Promise<{ id: string }> };
@@ -106,6 +107,17 @@ export default async function AdminOrderDetailPage({ params }: Props) {
                 <span className="break-all font-mono text-xs">{order.stripeId}</span>
               </div>
             )}
+            {order.paymentMethod === "BKASH" &&
+              order.status === "PAID" &&
+              order.bkashPaymentId &&
+              order.paymentTransactionId && (
+                <div className="mt-3 flex justify-end">
+                  <BkashRefundButton
+                    orderId={order.id}
+                    amount={Number(order.total)}
+                  />
+                </div>
+              )}
           </div>
           {order.address && (
             <div className="rounded-lg border bg-card p-4 text-sm">

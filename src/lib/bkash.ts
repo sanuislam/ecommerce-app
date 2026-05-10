@@ -206,3 +206,52 @@ export async function queryBkashPayment(
   const data = (await res.json().catch(() => ({}))) as BkashExecuteResponse;
   return { ...data, paymentID: data.paymentID ?? paymentID };
 }
+
+export type BkashRefundInput = {
+  paymentID: string;
+  trxID: string;
+  amount: number;
+  reason?: string;
+  // bKash requires a unique idempotency reference per refund. Pass orderId or random.
+  sku?: string;
+};
+
+export type BkashRefundResponse = {
+  statusCode?: string;
+  statusMessage?: string;
+  originalTrxID?: string;
+  refundTrxID?: string;
+  transactionStatus?: string;
+  amount?: string;
+  currency?: string;
+  charge?: string;
+  completedTime?: string;
+  errorCode?: string;
+  errorMessage?: string;
+};
+
+export async function refundBkashPayment(
+  input: BkashRefundInput,
+): Promise<BkashRefundResponse> {
+  const cfg = getConfig();
+  const token = await getToken();
+  const res = await fetch(`${cfg.baseUrl}/tokenized/checkout/payment/refund`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: token,
+      "X-App-Key": cfg.appKey,
+    },
+    body: JSON.stringify({
+      paymentID: input.paymentID,
+      trxID: input.trxID,
+      amount: input.amount.toFixed(2),
+      reason: input.reason ?? "Customer refund",
+      sku: input.sku ?? input.paymentID,
+    }),
+    cache: "no-store",
+  });
+  const data = (await res.json().catch(() => ({}))) as BkashRefundResponse;
+  return data;
+}
