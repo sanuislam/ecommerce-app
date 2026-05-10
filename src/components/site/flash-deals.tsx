@@ -13,7 +13,7 @@ export type FlashDealProduct = {
   name: string;
   slug: string;
   price: number;
-  compareAt: number;
+  flashDealDiscount: number;
   images: string[];
 };
 
@@ -104,9 +104,8 @@ export function FlashDeals({ products }: { products: FlashDealProduct[] }) {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {products.map((p, i) => {
-            const discount = Math.round(
-              ((p.compareAt - p.price) / p.compareAt) * 100,
-            );
+            const discount = p.flashDealDiscount;
+            const flashPrice = Math.round(p.price * (1 - discount / 100) * 100) / 100;
             return (
               <motion.div
                 key={p.id}
@@ -139,10 +138,10 @@ export function FlashDeals({ products }: { products: FlashDealProduct[] }) {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-rose-600 dark:text-rose-400">
-                        {formatPrice(p.price)}
+                        {formatPrice(flashPrice)}
                       </span>
                       <span className="text-xs text-muted-foreground line-through">
-                        {formatPrice(p.compareAt)}
+                        {formatPrice(p.price)}
                       </span>
                     </div>
                   </div>

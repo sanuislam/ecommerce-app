@@ -15,9 +15,15 @@ const patchSchema = z.object({
   images: z.array(z.string().url()).optional(),
   featured: z.boolean().optional(),
   flashDeal: z.boolean().optional(),
+  flashDealDiscount: z.number().int().min(1).max(99).nullable().optional(),
   published: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
-});
+}).refine(
+  (d) =>
+    d.flashDeal !== true ||
+    (d.flashDealDiscount != null && d.flashDealDiscount >= 1 && d.flashDealDiscount <= 99),
+  { message: "Flash deal discount % is required (1-99) when flash deal is on", path: ["flashDealDiscount"] },
+);
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -40,6 +46,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   const data = { ...parsed.data };
   if (data.slug) data.slug = slugify(data.slug);
+  if (data.flashDeal === false) {
+    data.flashDealDiscount = null;
+  }
 
   try {
     const updated = await prisma.product.update({

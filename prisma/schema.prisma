@@ -116,9 +116,10 @@ model Product {
   compareAt   Decimal? @db.Decimal(10, 2)
   stock       Int      @default(0)
   images      String[] @default([])
-  featured    Boolean  @default(false)
-  flashDeal   Boolean  @default(false)
-  published   Boolean  @default(true)
+  featured          Boolean @default(false)
+  flashDeal         Boolean @default(false)
+  flashDealDiscount Int?
+  published         Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

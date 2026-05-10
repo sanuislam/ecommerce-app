@@ -31,6 +31,7 @@ type ProductInput = {
   images: string[];
   featured: boolean;
   flashDeal: boolean;
+  flashDealDiscount: number | null;
   published: boolean;
   categoryId: string | null;
 };
@@ -54,6 +55,7 @@ export function ProductForm({
       images: [],
       featured: false,
       flashDeal: false,
+      flashDealDiscount: null,
       published: true,
       categoryId: null,
     },
@@ -66,10 +68,18 @@ export function ProductForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (data.flashDeal) {
+      const d = data.flashDealDiscount;
+      if (d == null || !Number.isInteger(d) || d < 1 || d > 99) {
+        toast.error("Flash deal discount must be 1-99 when Flash deal is on");
+        return;
+      }
+    }
     setSaving(true);
     try {
       const payload = {
         ...data,
+        flashDealDiscount: data.flashDeal ? data.flashDealDiscount : null,
         slug: data.slug || slugify(data.name),
         images: data.images.map((s) => s.trim()).filter(Boolean),
       };
@@ -198,10 +208,37 @@ export function ProductForm({
             <Switch
               id="flashDeal"
               checked={data.flashDeal}
-              onCheckedChange={(v) => set("flashDeal", Boolean(v))}
+              onCheckedChange={(v) => {
+                const next = Boolean(v);
+                set("flashDeal", next);
+                if (!next) set("flashDealDiscount", null);
+              }}
             />
             <Label htmlFor="flashDeal">Flash deal</Label>
           </div>
+          {data.flashDeal && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="flashDealDiscount" className="text-xs text-muted-foreground">
+                Discount %
+              </Label>
+              <Input
+                id="flashDealDiscount"
+                type="number"
+                min={1}
+                max={99}
+                step={1}
+                required
+                value={data.flashDealDiscount ?? ""}
+                onChange={(e) =>
+                  set(
+                    "flashDealDiscount",
+                    e.target.value === "" ? null : parseInt(e.target.value, 10),
+                  )
+                }
+                className="h-8 w-20"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Switch
               id="published"

@@ -33,22 +33,26 @@ export default async function HomePage() {
     }),
     getBanners(),
     prisma.product.findMany({
-      where: { published: true, flashDeal: true, compareAt: { not: null } },
+      where: {
+        published: true,
+        flashDeal: true,
+        flashDealDiscount: { gt: 0 },
+      },
       take: 8,
       orderBy: { createdAt: "desc" },
     }),
   ]);
 
   const flashDeals = dealsRaw
+    .filter((p) => p.flashDealDiscount != null && p.flashDealDiscount > 0)
     .map((p) => ({
       id: p.id,
       name: p.name,
       slug: p.slug,
       price: Number(p.price),
-      compareAt: p.compareAt != null ? Number(p.compareAt) : 0,
+      flashDealDiscount: p.flashDealDiscount as number,
       images: p.images,
     }))
-    .filter((p) => p.compareAt > p.price)
     .slice(0, 4);
 
   const bannerProducts = featured.map((p) => ({

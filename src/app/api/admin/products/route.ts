@@ -15,9 +15,13 @@ const productSchema = z.object({
   images: z.array(z.string().url()).default([]),
   featured: z.boolean().default(false),
   flashDeal: z.boolean().default(false),
+  flashDealDiscount: z.number().int().min(1).max(99).nullable().optional(),
   published: z.boolean().default(true),
   categoryId: z.string().nullable().optional(),
-});
+}).refine(
+  (d) => !d.flashDeal || (d.flashDealDiscount != null && d.flashDealDiscount >= 1 && d.flashDealDiscount <= 99),
+  { message: "Flash deal discount % is required (1-99) when flash deal is on", path: ["flashDealDiscount"] },
+);
 
 export async function GET() {
   const session = await auth();
@@ -56,6 +60,7 @@ export async function POST(req: Request) {
         images: data.images,
         featured: data.featured,
         flashDeal: data.flashDeal,
+        flashDealDiscount: data.flashDeal ? (data.flashDealDiscount ?? null) : null,
         published: data.published,
         categoryId: data.categoryId ?? null,
       },
