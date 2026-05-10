@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Lock, Truck, RotateCcw, Headphones } from "lucide-react";
 
@@ -11,36 +12,14 @@ const BADGES = [
 ];
 
 const PAYMENTS = [
-  {
-    name: "bKash",
-    bg: "bg-[#e2136e]",
-    text: "bKash",
-  },
-  {
-    name: "Nagad",
-    bg: "bg-[#ec1c24]",
-    text: "Nagad",
-  },
-  {
-    name: "Rocket",
-    bg: "bg-[#8e3a9d]",
-    text: "Rocket",
-  },
-  {
-    name: "Upay",
-    bg: "bg-[#e7532c]",
-    text: "Upay",
-  },
-  {
-    name: "COD",
-    bg: "bg-emerald-600",
-    text: "COD",
-  },
-  {
-    name: "Visa / Master",
-    bg: "bg-slate-900 dark:bg-slate-100 dark:text-slate-900",
-    text: "Card",
-  },
+  { name: "bKash", src: "/payments/bkash.png" },
+  { name: "Nagad", src: "/payments/nagad.png" },
+  { name: "Rocket", src: "/payments/rocket.png" },
+  { name: "Upay", src: "/payments/upay.png" },
+  { name: "OK Wallet", src: "/payments/okwallet.png" },
+  { name: "tap", src: "/payments/tap.png" },
+  { name: "SureCash", src: "/payments/surecash.png" },
+  { name: "Bank Deposit", src: "/payments/bank.png" },
 ];
 
 export function TrustStrip() {
@@ -87,10 +66,16 @@ export function TrustStrip() {
                   key={p.name}
                   whileHover={{ y: -2, scale: 1.04 }}
                   transition={{ type: "spring", stiffness: 300, damping: 18 }}
-                  className={`flex h-10 items-center rounded-md px-3 text-xs font-bold tracking-wide text-white shadow-sm ${p.bg}`}
+                  className="flex h-12 items-center rounded-md border border-foreground/10 bg-white px-3 shadow-sm"
                   title={p.name}
                 >
-                  {p.text}
+                  <Image
+                    src={p.src}
+                    alt={p.name}
+                    width={96}
+                    height={32}
+                    className="h-7 w-auto object-contain"
+                  />
                 </motion.div>
               ))}
             </div>
