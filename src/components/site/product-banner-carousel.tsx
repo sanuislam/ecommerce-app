@@ -81,7 +81,7 @@ export function ProductBannerCarousel({
   return (
     <section
       aria-label="Featured products"
-      className="relative isolate overflow-hidden border-b bg-neutral-950 text-white md:bg-gradient-to-br md:from-rose-50/70 md:via-white md:to-amber-50/60 md:text-neutral-900"
+      className="relative isolate overflow-hidden border-b bg-gradient-to-b from-rose-50/70 via-white to-amber-50/60 text-neutral-900 md:bg-gradient-to-br md:from-rose-50/70 md:via-white md:to-amber-50/60"
     >
       <div ref={emblaRef} className="overflow-hidden">
         <div className="flex touch-pan-y">
@@ -98,94 +98,135 @@ export function ProductBannerCarousel({
                 className="relative min-w-0 flex-[0_0_100%]"
                 aria-hidden={!active}
               >
-                {/* Mobile: full-bleed image with overlay text (unchanged) */}
-                <div className="relative h-[clamp(420px,62vh,640px)] w-full md:hidden">
-                  {image ? (
-                    <motion.div
-                      key={active ? `m-active-${idx}-${progressKey}` : `m-idle-${idx}`}
-                      initial={{ scale: 1.08 }}
-                      animate={{ scale: active ? 1.14 : 1.08 }}
-                      transition={{
-                        duration: active ? AUTOPLAY_MS / 1000 + 1 : 0,
-                        ease: "linear",
-                      }}
-                      className="absolute inset-0"
-                    >
-                      <Image
-                        src={image}
-                        alt={p.name}
-                        fill
-                        priority={idx === 0}
-                        sizes="100vw"
-                        className="object-cover"
-                      />
-                    </motion.div>
-                  ) : (
-                    <div className="absolute inset-0 bg-neutral-900" />
-                  )}
+                {/* Mobile: premium image-on-top + frosted content card below */}
+                <div className="relative w-full md:hidden">
+                  {/* Image stage */}
+                  <div className="relative h-[clamp(320px,48vh,460px)] w-full overflow-hidden bg-neutral-100">
+                    {image ? (
+                      <motion.div
+                        key={active ? `m-active-${idx}-${progressKey}` : `m-idle-${idx}`}
+                        initial={{ scale: 1.06 }}
+                        animate={{ scale: active ? 1.12 : 1.06 }}
+                        transition={{
+                          duration: active ? AUTOPLAY_MS / 1000 + 1 : 0,
+                          ease: "linear",
+                        }}
+                        className="absolute inset-0"
+                      >
+                        <Image
+                          src={image}
+                          alt={p.name}
+                          fill
+                          priority={idx === 0}
+                          sizes="100vw"
+                          className="object-cover"
+                        />
+                      </motion.div>
+                    ) : (
+                      <div className="absolute inset-0 bg-neutral-200" />
+                    )}
 
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/20" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                    {/* Soft gradient toward the bottom so the frosted card peeks out cleanly */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
 
-                  <div className="relative z-10 mx-auto flex h-full w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+                    {/* Top-left eyebrow chip on the image */}
+                    <AnimatePresence mode="wait">
+                      {active && (
+                        <motion.div
+                          key={`m-top-${p.id}`}
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                          className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md"
+                        >
+                          <span className="inline-flex size-1.5 animate-pulse rounded-full bg-rose-400" />
+                          Eid Bazar Picks{p.category?.name ? ` · ${p.category.name}` : ""}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Top-right discount badge */}
+                    {discount > 0 && (
+                      <div className="absolute right-4 top-4 inline-flex items-center justify-center rounded-full bg-gradient-to-br from-rose-600 to-rose-500 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/30 ring-2 ring-white/70">
+                        Save {discount}%
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Frosted content card lifted over the image */}
+                  <div className="relative -mt-10 px-4 pb-8">
                     <AnimatePresence mode="wait">
                       {active && (
                         <motion.div
                           key={`m-${p.id}`}
-                          initial={{ opacity: 0, y: 24 }}
+                          initial={{ opacity: 0, y: 14 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -12 }}
-                          transition={{ duration: 0.55, ease: "easeOut" }}
-                          className="max-w-xl space-y-5"
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                          className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/95 px-5 pb-5 pt-5 text-neutral-900 shadow-2xl shadow-black/20 ring-1 ring-black/5 backdrop-blur-xl"
                         >
-                          <div className="flex items-center gap-2">
-                            {p.category?.name && (
-                              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.14em] backdrop-blur">
-                                {p.category.name}
-                              </span>
-                            )}
-                            {discount > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]">
-                                Save {discount}%
-                              </span>
-                            )}
-                          </div>
+                          {/* Subtle rose→amber accent in the corner */}
+                          <div
+                            aria-hidden
+                            className="pointer-events-none absolute -right-12 -top-12 size-32 rounded-full bg-gradient-to-br from-rose-300/40 to-amber-300/40 blur-2xl"
+                          />
 
-                          <h2 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+                          <h2 className="text-balance line-clamp-2 text-[clamp(1.4rem,5.4vw,1.9rem)] font-semibold leading-[1.15] tracking-tight">
                             {p.name}
                           </h2>
 
-                          {p.description && (
-                            <p className="line-clamp-2 max-w-prose text-sm text-white/75 sm:text-base">
-                              {p.description}
-                            </p>
-                          )}
-
-                          <div className="flex items-baseline gap-3">
-                            <span className="text-3xl font-bold tracking-tight sm:text-4xl">
+                          <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
+                            <span className="bg-gradient-to-br from-neutral-900 to-neutral-700 bg-clip-text text-3xl font-bold leading-none tracking-tight text-transparent">
                               {formatPrice(p.price)}
                             </span>
                             {p.compareAt && p.compareAt > p.price && (
-                              <span className="text-lg text-white/60 line-through">
-                                {formatPrice(p.compareAt)}
-                              </span>
+                              <>
+                                <span className="text-base text-neutral-400 line-through">
+                                  {formatPrice(p.compareAt)}
+                                </span>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                  <Sparkles className="size-3" />
+                                  Save {formatPrice(p.compareAt - p.price)}
+                                </span>
+                              </>
                             )}
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-3 pt-1">
-                            <Button asChild size="lg" className="h-12 px-6 text-base">
+                          <div className="mt-4 flex items-center gap-2">
+                            <Button
+                              asChild
+                              size="lg"
+                              className="group h-11 flex-1 rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition-all hover:shadow-xl hover:shadow-rose-500/40 hover:brightness-105"
+                            >
                               <Link href={`/products/${p.slug}`}>
-                                Shop now <ArrowRight className="size-4" />
+                                Shop now
+                                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
                               </Link>
                             </Button>
                             <Button
                               asChild
                               size="lg"
                               variant="outline"
-                              className="h-12 border-white/30 bg-white/5 px-6 text-base text-white hover:bg-white/15 hover:text-white"
+                              className="h-11 rounded-full border-neutral-300 px-4 text-sm font-medium text-neutral-800"
                             >
-                              <Link href="/products?featured=1">View collection</Link>
+                              <Link href="/products?featured=1">Browse</Link>
                             </Button>
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between border-t border-neutral-100 pt-3 text-[10px] font-medium uppercase tracking-[0.14em] text-neutral-500">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Truck className="size-3.5 text-rose-500" />
+                              Free over ৳1,000
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <ShieldCheck className="size-3.5 text-rose-500" />
+                              Authentic
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <RefreshCcw className="size-3.5 text-rose-500" />
+                              7-day
+                            </span>
                           </div>
                         </motion.div>
                       )}
@@ -233,7 +274,7 @@ export function ProductBannerCarousel({
                             </span>
                           </div>
 
-                          <h1 className="text-balance font-semibold leading-[1.02] tracking-tight text-neutral-900 text-[clamp(2.4rem,4.4vw,4.4rem)]">
+                          <h1 className="text-balance line-clamp-2 font-semibold leading-[1.02] tracking-tight text-neutral-900 text-[clamp(2.2rem,4vw,4rem)]">
                             {p.name}
                           </h1>
 
@@ -389,7 +430,7 @@ export function ProductBannerCarousel({
         type="button"
         onClick={scrollPrev}
         aria-label="Previous slide"
-        className="absolute left-3 top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:inline-flex md:border-neutral-300 md:bg-white/80 md:text-neutral-900 md:hover:bg-white md:focus-visible:outline-neutral-900 lg:left-6"
+        className="absolute left-3 top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-300 bg-white/80 text-neutral-900 backdrop-blur transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 md:inline-flex lg:left-6"
       >
         <ChevronLeft className="size-5" />
       </button>
@@ -397,13 +438,13 @@ export function ProductBannerCarousel({
         type="button"
         onClick={scrollNext}
         aria-label="Next slide"
-        className="absolute right-3 top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:inline-flex md:border-neutral-300 md:bg-white/80 md:text-neutral-900 md:hover:bg-white md:focus-visible:outline-neutral-900 lg:right-6"
+        className="absolute right-3 top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-300 bg-white/80 text-neutral-900 backdrop-blur transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 md:inline-flex lg:right-6"
       >
         <ChevronRight className="size-5" />
       </button>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 pb-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 pb-3 sm:px-6 md:pb-5 lg:px-8">
           <div className="pointer-events-auto flex items-center gap-2">
             {scrollSnaps.map((_, idx) => {
               const isActive = idx === selected;
@@ -415,8 +456,8 @@ export function ProductBannerCarousel({
                   aria-label={`Go to slide ${idx + 1}`}
                   aria-current={isActive}
                   className={cn(
-                    "relative h-1.5 overflow-hidden rounded-full bg-white/25 transition-[width] duration-300 md:bg-neutral-900/20",
-                    isActive ? "w-10" : "w-5 hover:bg-white/40 md:hover:bg-neutral-900/40",
+                    "relative h-1.5 overflow-hidden rounded-full bg-neutral-900/20 transition-[width] duration-300",
+                    isActive ? "w-10" : "w-5 hover:bg-neutral-900/40",
                   )}
                 >
                   {isActive && (
@@ -425,7 +466,7 @@ export function ProductBannerCarousel({
                       initial={{ width: 0 }}
                       animate={{ width: "100%" }}
                       transition={{ duration: AUTOPLAY_MS / 1000, ease: "linear" }}
-                      className="absolute inset-y-0 left-0 block bg-white md:bg-neutral-900"
+                      className="absolute inset-y-0 left-0 block bg-neutral-900"
                     />
                   )}
                 </button>
@@ -433,9 +474,9 @@ export function ProductBannerCarousel({
             })}
           </div>
 
-          <div className="font-mono text-xs tracking-widest text-white/70 tabular-nums md:text-neutral-700">
+          <div className="font-mono text-xs tracking-widest text-neutral-700 tabular-nums">
             {String(selected + 1).padStart(2, "0")}
-            <span className="mx-1 text-white/30 md:text-neutral-400">/</span>
+            <span className="mx-1 text-neutral-400">/</span>
             {String(total).padStart(2, "0")}
           </div>
         </div>
