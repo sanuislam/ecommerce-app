@@ -324,7 +324,7 @@ export function CheckoutForm({
                   >
                     <div className="flex items-center gap-2">
                       {isMfsOption ? (
-                        <span className="flex h-9 w-16 items-center justify-center rounded-md border bg-white px-1.5 shadow-sm">
+                        <span className="flex h-9 w-16 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-1.5 shadow-sm">
                           {o.icon}
                         </span>
                       ) : (
