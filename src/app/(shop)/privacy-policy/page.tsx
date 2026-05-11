@@ -8,9 +8,17 @@ const UPDATED_AT_FALLBACK = "April 21, 2026";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Privacy Policy — Eid Bazar",
+  title: "Privacy Policy",
   description:
     "How Eid Bazar collects, uses, and protects your personal information.",
+  alternates: { canonical: "/privacy-policy" },
+  openGraph: {
+    title: "Privacy Policy — Eid Bazar",
+    description:
+      "How Eid Bazar collects, uses, and protects your personal information.",
+    url: "/privacy-policy",
+    type: "article",
+  },
 };
 
 function formatDate(d: Date) {

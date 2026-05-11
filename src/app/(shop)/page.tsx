@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Truck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product-card";
 import { prisma } from "@/lib/prisma";
 import { getBanners } from "@/lib/sanity";
+import { getSeoSettings } from "@/lib/seo-settings";
 import { HomeHero } from "@/components/site/home-hero";
 import { ProductBannerCarousel } from "@/components/site/product-banner-carousel";
 import { CategoryCards } from "@/components/site/category-cards";
@@ -14,6 +16,29 @@ import { TrustStrip } from "@/components/site/trust-strip";
 import { Newsletter } from "@/components/site/newsletter";
 
 export const revalidate = 60;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoSettings();
+  const ogImages = seo.defaultOgImage ? [{ url: seo.defaultOgImage }] : [];
+  return {
+    title: { absolute: seo.defaultTitle },
+    description: seo.defaultDescription,
+    alternates: { canonical: "/" },
+    openGraph: {
+      title: seo.defaultTitle,
+      description: seo.defaultDescription,
+      url: "/",
+      type: "website",
+      images: ogImages,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seo.defaultTitle,
+      description: seo.defaultDescription,
+      images: ogImages.map((i) => i.url),
+    },
+  };
+}
 
 export default async function HomePage() {
   const [featured, latest, categories, banners, dealsRaw, speciallyRaw] = await Promise.all([

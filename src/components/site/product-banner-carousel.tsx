@@ -143,9 +143,9 @@ export function ProductBannerCarousel({
                             )}
                           </div>
 
-                          <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+                          <h2 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
                             {p.name}
-                          </h1>
+                          </h2>
 
                           {p.description && (
                             <p className="line-clamp-2 max-w-prose text-sm text-white/75 sm:text-base">

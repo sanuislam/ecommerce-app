@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
@@ -6,6 +7,13 @@ import { formatDate, formatPrice } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Your orders",
+  description: "Track and manage your Eid Bazar orders.",
+  alternates: { canonical: "/orders" },
+  robots: { index: false, follow: false },
+};
 
 export default async function OrdersPage() {
   const session = await auth();

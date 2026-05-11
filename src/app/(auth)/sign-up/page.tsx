@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SignUpForm } from "@/components/sign-up-form";
+
+export const metadata: Metadata = {
+  title: "Create account",
+  description: "Create your Eid Bazar account.",
+  alternates: { canonical: "/sign-up" },
+  robots: { index: false, follow: false },
+};
 
 export default function SignUpPage() {
   return (

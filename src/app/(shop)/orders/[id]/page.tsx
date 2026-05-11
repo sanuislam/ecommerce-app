@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,12 @@ import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Order details",
+  description: "View your Eid Bazar order details and status.",
+  robots: { index: false, follow: false },
+};
 
 type Props = {
   params: Promise<{ id: string }>;
