@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/site/header";
 import { SiteFooter } from "@/components/site/footer";
 import { PaymentsStrip } from "@/components/site/payments-strip";
 import { TawkChat } from "@/components/site/tawk-chat";
+import { PwaInstallBanner } from "@/components/pwa-install-button";
 
 export default function ShopLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       <PaymentsStrip />
       <SiteFooter />
       <TawkChat />
+      <PwaInstallBanner />
     </div>
   );
 }

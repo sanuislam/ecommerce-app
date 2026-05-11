@@ -5,35 +5,26 @@ export const dynamic = "force-dynamic";
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const s = await getPwaSettings();
-  const icons: MetadataRoute.Manifest["icons"] = [];
-  if (s.icon192Url)
-    icons.push({
-      src: s.icon192Url,
+  const icons: MetadataRoute.Manifest["icons"] = [
+    {
+      src: s.icon192Url || "/icons/icon-192.png",
       sizes: "192x192",
       type: "image/png",
       purpose: "any",
-    });
-  if (s.icon512Url)
-    icons.push({
-      src: s.icon512Url,
+    },
+    {
+      src: s.icon512Url || "/icons/icon-512.png",
       sizes: "512x512",
       type: "image/png",
       purpose: "any",
-    });
-  if (s.maskableIconUrl)
-    icons.push({
-      src: s.maskableIconUrl,
+    },
+    {
+      src: s.maskableIconUrl || "/icons/maskable-512.png",
       sizes: "512x512",
       type: "image/png",
       purpose: "maskable",
-    });
-  if (icons.length === 0) {
-    icons.push({
-      src: "/favicon.ico",
-      sizes: "any",
-      type: "image/x-icon",
-    });
-  }
+    },
+  ];
   return {
     name: s.appName,
     short_name: s.shortName,
