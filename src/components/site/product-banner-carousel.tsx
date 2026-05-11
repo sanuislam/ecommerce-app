@@ -359,8 +359,8 @@ export function ProductBannerCarousel({
                               </div>
                             )}
 
-                            {/* Floating trust pill */}
-                            <div className="absolute -bottom-4 right-6 flex items-center gap-2 rounded-full border border-white/60 bg-white/95 px-3 py-2 shadow-xl ring-1 ring-black/5 backdrop-blur">
+                            {/* Floating trust pill — anchored left to avoid the Tawk chat launcher in the bottom-right corner of the viewport */}
+                            <div className="absolute -bottom-4 left-6 flex items-center gap-2 rounded-full border border-white/60 bg-white/95 px-3 py-2 shadow-xl ring-1 ring-black/5 backdrop-blur">
                               <span className="flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                                 <ShieldCheck className="size-4" />
                               </span>
