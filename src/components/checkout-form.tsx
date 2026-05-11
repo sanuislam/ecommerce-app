@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 import axios from "axios";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -122,7 +123,20 @@ export function CheckoutForm({
     }
   }
 
-  const payOptions: { key: PaymentMethod; label: string; hint: string; icon: React.ReactNode; show: boolean }[] = [
+  const MFS_LOGOS: Record<MfsMethod, string> = {
+    BKASH: "/payments/bkash.png",
+    NAGAD: "/payments/nagad.png",
+    ROCKET: "/payments/rocket.png",
+    UPAY: "/payments/upay.png",
+  };
+
+  const payOptions: {
+    key: PaymentMethod;
+    label: string;
+    hint: string;
+    icon: React.ReactNode;
+    show: boolean;
+  }[] = [
     {
       key: "STRIPE",
       label: "Card (Stripe)",
@@ -134,7 +148,15 @@ export function CheckoutForm({
       key: m as PaymentMethod,
       label: MFS_LABELS[m],
       hint: "Mobile financial service",
-      icon: <Banknote className="size-5" />,
+      icon: (
+        <Image
+          src={MFS_LOGOS[m]}
+          alt={`${MFS_LABELS[m]} logo`}
+          width={64}
+          height={32}
+          className="h-7 w-auto object-contain"
+        />
+      ),
       show: true,
     })),
     {
@@ -285,6 +307,9 @@ export function CheckoutForm({
               .filter((o) => o.show)
               .map((o) => {
                 const selected = paymentMethod === o.key;
+                const isMfsOption = (MFS_METHODS as readonly string[]).includes(
+                  o.key,
+                );
                 return (
                   <button
                     key={o.key}
@@ -298,15 +323,21 @@ export function CheckoutForm({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`flex size-8 items-center justify-center rounded-md ${
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {o.icon}
-                      </span>
+                      {isMfsOption ? (
+                        <span className="flex h-9 w-16 items-center justify-center rounded-md border bg-white px-1.5 shadow-sm">
+                          {o.icon}
+                        </span>
+                      ) : (
+                        <span
+                          className={`flex size-8 items-center justify-center rounded-md ${
+                            selected
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {o.icon}
+                        </span>
+                      )}
                       <span className="text-sm font-medium">{o.label}</span>
                     </div>
                     <span className="text-[11px] text-muted-foreground">{o.hint}</span>
