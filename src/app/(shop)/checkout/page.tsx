@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { CheckoutForm } from "@/components/checkout-form";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
@@ -5,6 +6,13 @@ import { stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured } from "@/lib/bkash";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Checkout",
+  description: "Complete your Eid Bazar order securely.",
+  alternates: { canonical: "/checkout" },
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage() {
   const session = await auth();

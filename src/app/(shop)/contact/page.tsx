@@ -1,16 +1,45 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { FaFacebookF } from "react-icons/fa";
 import { SITE_CONFIG } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Contact — Eid Bazar",
-  description: "Get in touch with Eid Bazar support.",
+  title: "Contact",
+  description:
+    "Get in touch with Eid Bazar support — email, phone, WhatsApp, and Facebook. Based in Dhaka, Bangladesh.",
+  alternates: { canonical: "/contact" },
+  openGraph: {
+    title: "Contact — Eid Bazar",
+    description:
+      "Get in touch with Eid Bazar support — email, phone, WhatsApp, and Facebook. Based in Dhaka, Bangladesh.",
+    url: "/contact",
+    type: "website",
+  },
+};
+
+const localBusinessJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Store",
+  name: SITE_CONFIG.name,
+  url: "https://eidbazar.com",
+  email: SITE_CONFIG.supportEmail,
+  telephone: SITE_CONFIG.phone,
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: SITE_CONFIG.address,
+    addressCountry: "BD",
+    addressLocality: "Dhaka",
+  },
+  sameAs: [SITE_CONFIG.facebookUrl, SITE_CONFIG.whatsappUrl],
 };
 
 export default function ContactPage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <Script id="ld-localbusiness" type="application/ld+json">
+        {JSON.stringify(localBusinessJsonLd)}
+      </Script>
       <header className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight">Contact us</h1>
         <p className="mt-2 text-sm text-muted-foreground">

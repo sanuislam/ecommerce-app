@@ -1,5 +1,17 @@
-export const metadata = {
-  title: "আমাদের সম্পর্কে",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About Us — আমাদের সম্পর্কে",
+  description:
+    "Eid Bazar is your trusted Bangladesh-based online shop for quality apparel, baby & kids, lifestyle, and tech products at fair prices with fast nationwide delivery.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "About Us — Eid Bazar",
+    description:
+      "Eid Bazar is your trusted Bangladesh-based online shop for quality apparel, baby & kids, lifestyle, and tech products at fair prices with fast nationwide delivery.",
+    url: "/about",
+    type: "website",
+  },
 };
 
 export default function AboutPage() {

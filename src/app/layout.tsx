@@ -34,7 +34,6 @@ export async function generateMetadata(): Promise<Metadata> {
       ? seo.defaultKeywords.split(",").map((k) => k.trim()).filter(Boolean)
       : undefined,
     applicationName: seo.siteName,
-    alternates: { canonical: "/" },
     openGraph: {
       type: "website",
       siteName: seo.siteName,

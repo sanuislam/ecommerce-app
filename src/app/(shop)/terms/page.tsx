@@ -8,9 +8,17 @@ const UPDATED_AT_FALLBACK = "April 21, 2026";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Terms & Conditions — Eid Bazar",
+  title: "Terms & Conditions",
   description:
     "The terms and conditions that govern the use of Eid Bazar and its services.",
+  alternates: { canonical: "/terms" },
+  openGraph: {
+    title: "Terms & Conditions — Eid Bazar",
+    description:
+      "The terms and conditions that govern the use of Eid Bazar and its services.",
+    url: "/terms",
+    type: "article",
+  },
 };
 
 function formatDate(d: Date) {

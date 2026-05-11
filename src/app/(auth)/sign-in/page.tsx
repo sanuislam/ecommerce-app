@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SignInForm } from "@/components/sign-in-form";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description: "Sign in to your Eid Bazar account.",
+  alternates: { canonical: "/sign-in" },
+  robots: { index: false, follow: false },
+};
 
 type Props = {
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;

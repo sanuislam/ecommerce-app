@@ -8,8 +8,17 @@ const UPDATED_AT_FALLBACK = "April 21, 2026";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Refund Policy — Eid Bazar",
-  description: "Our refund, return and exchange policy.",
+  title: "Refund Policy",
+  description:
+    "Eid Bazar refund, return and exchange policy — eligibility, timelines, and how to request a refund.",
+  alternates: { canonical: "/refund-policy" },
+  openGraph: {
+    title: "Refund Policy — Eid Bazar",
+    description:
+      "Eid Bazar refund, return and exchange policy — eligibility, timelines, and how to request a refund.",
+    url: "/refund-policy",
+    type: "article",
+  },
 };
 
 function formatDate(d: Date) {
