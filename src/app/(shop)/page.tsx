@@ -112,6 +112,7 @@ export default async function HomePage() {
     slug: p.slug,
     price: toCardProduct(p).price,
     compareAt: toCardProduct(p).compareAt ?? null,
+    stock: p.stock,
     images: p.images,
     description: p.description,
     category: p.category ? { name: p.category.name } : null,
@@ -120,7 +121,14 @@ export default async function HomePage() {
   return (
     <div className="w-full">
       {bannerProducts.length > 0 ? (
-        <ProductBannerCarousel products={bannerProducts} />
+        <>
+          {/* The page's single h1; slide titles are h2. */}
+          <h1 className="sr-only">{(await getSeoSettings()).siteName} — online Eid shopping in Bangladesh</h1>
+          <ProductBannerCarousel
+            products={bannerProducts}
+            freeShippingThreshold={shipping.freeThreshold}
+          />
+        </>
       ) : (
         <HomeHero banners={banners} />
       )}

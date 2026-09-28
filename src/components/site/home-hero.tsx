@@ -8,10 +8,10 @@ import type { SanityBanner } from "@/lib/sanity";
 
 export function HomeHero({ banners }: { banners: SanityBanner[] }) {
   const primary = banners[0];
-  const title = primary?.title ?? "Design-forward gear, delivered fast.";
+  const title = primary?.title ?? "Everything for Eid, delivered to your door.";
   const subtitle =
     primary?.subtitle ??
-    "Shop curated essentials with fast delivery across Bangladesh, cash on delivery, and bKash, Nagad & Rocket payments.";
+    "Panjabi, saree, abaya, attar, gifts and more — cash on delivery across all 64 districts, or pay with bKash, Nagad & Rocket.";
   const ctaLabel = primary?.ctaLabel ?? "Shop the collection";
   const ctaHref = primary?.ctaHref ?? "/products";
 
@@ -27,7 +27,7 @@ export function HomeHero({ banners }: { banners: SanityBanner[] }) {
         >
           <span className="inline-flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-xs font-medium">
             <span className="size-1.5 rounded-full bg-emerald-500" />
-            New season drop
+            Eid collection is live
           </span>
           <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
             {title}
@@ -42,7 +42,7 @@ export function HomeHero({ banners }: { banners: SanityBanner[] }) {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/about">Learn more</Link>
+              <Link href="/products?sale=1">See deals</Link>
             </Button>
           </div>
         </motion.div>
