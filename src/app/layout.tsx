@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -6,6 +7,8 @@ import { Providers } from "@/components/providers";
 import { PwaRegister } from "@/components/pwa-register";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { getPwaSettings } from "@/lib/pwa-settings";
+import { getSiteSettings } from "@/lib/site-settings";
+import { siteUrl } from "@/lib/site-url";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -19,12 +22,16 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getSeoSettings();
-  const ogImages = seo.defaultOgImage ? [{ url: seo.defaultOgImage }] : [];
+  const ogImages = [
+    seo.defaultOgImage
+      ? { url: seo.defaultOgImage }
+      : { url: "/og-default.png", width: 1200, height: 630, alt: seo.siteName },
+  ];
   const other: Record<string, string> = {};
   if (seo.facebookAppId) other["fb:app_id"] = seo.facebookAppId;
 
   return {
-    metadataBase: new URL("https://eidbazar.com"),
+    metadataBase: new URL(siteUrl()),
     title: {
       default: seo.defaultTitle,
       template: seo.titleTemplate,
@@ -34,10 +41,12 @@ export async function generateMetadata(): Promise<Metadata> {
       ? seo.defaultKeywords.split(",").map((k) => k.trim()).filter(Boolean)
       : undefined,
     applicationName: seo.siteName,
+    category: "shopping",
+    formatDetection: { telephone: false, email: false, address: false },
     openGraph: {
       type: "website",
       siteName: seo.siteName,
-      url: "https://eidbazar.com",
+      url: "/",
       locale: "en_BD",
       images: ogImages,
     },
@@ -54,14 +63,6 @@ export async function generateMetadata(): Promise<Metadata> {
         : undefined,
     },
     other: Object.keys(other).length > 0 ? other : undefined,
-    icons: {
-      icon: [
-        { url: "/icon.png", sizes: "512x512", type: "image/png" },
-        { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-        { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
-      ],
-      apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
-    },
     appleWebApp: {
       capable: true,
       title: seo.siteName,
@@ -95,29 +96,56 @@ export async function generateViewport(): Promise<Viewport> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const [seo, pwa] = await Promise.all([getSeoSettings(), getPwaSettings()]);
+  const [seo, pwa, site] = await Promise.all([
+    getSeoSettings(),
+    getPwaSettings(),
+    getSiteSettings(),
+  ]);
+  const base = siteUrl();
+  const sameAs = [site.facebookUrl, site.instagramUrl].filter(Boolean);
   const orgJsonLd = seo.jsonLdEnabled
     ? {
         "@context": "https://schema.org",
-        "@type": "Organization",
+        "@type": "OnlineStore",
+        "@id": `${base}/#organization`,
         name: seo.siteName,
-        url: "https://eidbazar.com",
-        logo:
-          seo.organizationLogoUrl ||
-          seo.defaultOgImage ||
-          undefined,
+        url: base,
+        logo: seo.organizationLogoUrl || `${base}/icon.png`,
+        image: seo.defaultOgImage || `${base}/og-default.png`,
+        description: seo.defaultDescription,
+        areaServed: { "@type": "Country", name: "Bangladesh" },
+        currenciesAccepted: "BDT",
+        paymentAccepted: "Cash, bKash, Nagad, Rocket, Upay",
+        ...(sameAs.length ? { sameAs } : {}),
+        ...(site.supportPhone || site.supportEmail
+          ? {
+              contactPoint: {
+                "@type": "ContactPoint",
+                contactType: "customer service",
+                areaServed: "BD",
+                availableLanguage: ["en", "bn"],
+                ...(site.supportPhone ? { telephone: site.supportPhone } : {}),
+                ...(site.supportEmail ? { email: site.supportEmail } : {}),
+              },
+            }
+          : {}),
+        ...(site.address
+          ? { address: { "@type": "PostalAddress", streetAddress: site.address, addressCountry: "BD" } }
+          : {}),
       }
     : null;
   const websiteJsonLd = seo.jsonLdEnabled
     ? {
         "@context": "https://schema.org",
         "@type": "WebSite",
+        "@id": `${base}/#website`,
         name: seo.siteName,
-        url: "https://eidbazar.com",
+        url: base,
+        inLanguage: "en-BD",
+        publisher: { "@id": `${base}/#organization` },
         potentialAction: {
           "@type": "SearchAction",
-          target:
-            "https://eidbazar.com/products?q={search_term_string}",
+          target: `${base}/products?q={search_term_string}`,
           "query-input": "required name=search_term_string",
         },
       }
@@ -152,14 +180,10 @@ export default async function RootLayout({
           </Script>
         )}
         {orgJsonLd && (
-          <Script id="ld-org" type="application/ld+json">
-            {JSON.stringify(orgJsonLd)}
-          </Script>
+          <JsonLd data={orgJsonLd} />
         )}
         {websiteJsonLd && (
-          <Script id="ld-website" type="application/ld+json">
-            {JSON.stringify(websiteJsonLd)}
-          </Script>
+          <JsonLd data={websiteJsonLd} />
         )}
         <PwaRegister enabled={pwa.enabled} />
         <Providers>{children}</Providers>

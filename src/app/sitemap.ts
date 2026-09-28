@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
-
-const BASE_URL = "https://eidbazar.com";
+import { siteUrl } from "@/lib/site-url";
 
 export const revalidate = 3600;
 
@@ -17,11 +16,13 @@ function xmlEscape(value: string): string {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const BASE_URL = siteUrl();
   const now = new Date();
 
   const staticEntries: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${BASE_URL}/products`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: `${BASE_URL}/products?sale=1`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE_URL}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE_URL}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE_URL}/privacy-policy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
@@ -54,11 +55,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: p.updatedAt,
     changeFrequency: "weekly",
     priority: 0.7,
-    images: p.images.length ? [xmlEscape(p.images[0])] : undefined,
+    images: p.images.length ? p.images.slice(0, 5).map(xmlEscape) : undefined,
   }));
 
   const categoryEntries: MetadataRoute.Sitemap = categories.map((c) => ({
-    url: xmlEscape(`${BASE_URL}/products?category=${encodeURIComponent(c.slug)}`),
+    url: xmlEscape(`${BASE_URL}/category/${encodeURIComponent(c.slug)}`),
     lastModified: c.updatedAt,
     changeFrequency: "weekly",
     priority: 0.6,

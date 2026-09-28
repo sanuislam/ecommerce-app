@@ -22,7 +22,7 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getSeoSettings();
-  const ogImages = seo.defaultOgImage ? [{ url: seo.defaultOgImage }] : [];
+  const ogImages = [{ url: seo.defaultOgImage || "/og-default.png" }];
   return {
     title: { absolute: seo.defaultTitle },
     description: seo.defaultDescription,
@@ -58,7 +58,7 @@ export default async function HomePage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.category.findMany({
-      take: 8,
+      take: 12,
       orderBy: { name: "asc" },
     }),
     getBanners(),
@@ -230,6 +230,35 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8" aria-labelledby="about-shop">
+        <div className="rounded-2xl border bg-muted/30 p-5 sm:p-8">
+          <h2 id="about-shop" className="text-xl font-semibold tracking-tight sm:text-2xl">
+            Online Eid shopping in Bangladesh
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Eid Bazar brings your whole Eid list to one place — men&apos;s panjabi and kurta,
+            sarees, three-piece and salwar kameez, abaya and hijab, kids&apos; Eid outfits,
+            footwear, attar and perfume, watches, prayer essentials, home decor and Eid gifts.
+            Order online and pay with cash on delivery, bKash, Nagad, Rocket or Upay. We deliver
+            to all 64 districts, with faster delivery inside Dhaka.
+          </p>
+          {categories.length > 0 && (
+            <ul className="mt-4 flex flex-wrap gap-2 text-sm">
+              {categories.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/category/${c.slug}`}
+                    className="inline-flex h-9 items-center rounded-full border bg-background px-3 hover:border-foreground/40"
+                  >
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
 
       <Testimonials />
       <TrustStrip />

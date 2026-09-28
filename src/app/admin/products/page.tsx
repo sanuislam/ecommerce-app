@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Plus } from "lucide-react";
 import { DeleteProductButton } from "@/components/admin/delete-product-button";
+import { DemoCatalogCard } from "@/components/admin/demo-catalog-card";
 
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
@@ -29,6 +30,10 @@ export default async function AdminProductsPage() {
             <Plus className="size-4" /> New product
           </Link>
         </Button>
+      </div>
+
+      <div className="mt-6">
+        <DemoCatalogCard productCount={products.length} />
       </div>
 
       <div className="mt-6 overflow-hidden rounded-lg border bg-card">

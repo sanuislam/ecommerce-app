@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { FaShopify } from "react-icons/fa";
+import { LogoMark } from "@/components/brand/logo";
 import Link from "next/link";
 import { SignInForm } from "@/components/sign-in-form";
 
@@ -33,7 +33,7 @@ export default async function SignInPage({ searchParams }: Props) {
         href="/"
         className="mb-6 flex items-center justify-center gap-2 text-lg font-semibold tracking-tight"
       >
-        <FaShopify className="size-6 text-primary" /> Eid Bazar
+        <LogoMark className="size-8" /> Eid Bazar
       </Link>
       <div className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>

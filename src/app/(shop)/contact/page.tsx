@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+import { JsonLd } from "@/components/seo/json-ld";
+import { siteUrl } from "@/lib/site-url";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { FaFacebookF } from "react-icons/fa";
 import { SITE_CONFIG } from "@/lib/site-config";
@@ -22,7 +23,7 @@ const localBusinessJsonLd = {
   "@context": "https://schema.org",
   "@type": "Store",
   name: SITE_CONFIG.name,
-  url: "https://eidbazar.com",
+  url: siteUrl(),
   email: SITE_CONFIG.supportEmail,
   telephone: SITE_CONFIG.phone,
   address: {
@@ -37,9 +38,7 @@ const localBusinessJsonLd = {
 export default function ContactPage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      <Script id="ld-localbusiness" type="application/ld+json">
-        {JSON.stringify(localBusinessJsonLd)}
-      </Script>
+      <JsonLd data={localBusinessJsonLd} />
       <header className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight">Contact us</h1>
         <p className="mt-2 text-sm text-muted-foreground">

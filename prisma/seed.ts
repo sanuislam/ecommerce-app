@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient, Role } from "../src/generated/prisma";
 import { createDbAdapter } from "../src/lib/db-adapter";
+import { loadDemoCatalog } from "../src/lib/demo-loader";
 import bcrypt from "bcryptjs";
 
 const connectionString = process.env.DATABASE_URL;
@@ -16,117 +17,6 @@ const prisma = new PrismaClient({
   adapter: createDbAdapter(connectionString),
 });
 
-// Demo size / colour options for apparel products.
-const APPAREL_VARIANTS: Record<string, { size: string; color: string; stock: number }[]> = {
-  "minimalist-tee": ["S", "M", "L", "XL"].flatMap((size) =>
-    ["White", "Black"].map((color) => ({ size, color, stock: 15 })),
-  ),
-  "classic-hoodie": ["M", "L", "XL"].map((size) => ({ size, color: "", stock: 20 })),
-};
-
-const CATEGORIES = [
-  { name: "Apparel", slug: "apparel", description: "Clothing and wearables." },
-  { name: "Accessories", slug: "accessories", description: "Small but mighty." },
-  { name: "Home", slug: "home", description: "For your space." },
-  { name: "Tech", slug: "tech", description: "Gadgets & gear." },
-];
-
-const PRODUCTS = [
-  {
-    name: "Minimalist Tee",
-    slug: "minimalist-tee",
-    description: "A crisp, everyday tee in a beautifully soft cotton blend.",
-    price: 2640,
-    compareAt: 3520,
-    stock: 120,
-    featured: true,
-    images: [
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1200&q=80",
-    ],
-    categorySlug: "apparel",
-  },
-  {
-    name: "Classic Hoodie",
-    slug: "classic-hoodie",
-    description: "Heavyweight fleece, relaxed fit, built to last.",
-    price: 6820,
-    stock: 80,
-    featured: true,
-    images: [
-      "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=1200&q=80",
-    ],
-    categorySlug: "apparel",
-  },
-  {
-    name: "Leather Wallet",
-    slug: "leather-wallet",
-    description: "Full-grain leather, hand-stitched with six card slots.",
-    price: 5280,
-    stock: 40,
-    images: [
-      "https://images.unsplash.com/photo-1517463700628-5103184eac47?w=1200&q=80",
-    ],
-    categorySlug: "accessories",
-  },
-  {
-    name: "Canvas Tote",
-    slug: "canvas-tote",
-    description: "14oz canvas with reinforced straps and an inner pocket.",
-    price: 3080,
-    stock: 150,
-    featured: true,
-    images: [
-      "https://images.unsplash.com/photo-1544441893-675973e31985?w=1200&q=80",
-    ],
-    categorySlug: "accessories",
-  },
-  {
-    name: "Ceramic Mug",
-    slug: "ceramic-mug",
-    description: "Hand-thrown ceramic mug with a matte glaze finish.",
-    price: 1980,
-    stock: 200,
-    images: [
-      "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=1200&q=80",
-    ],
-    categorySlug: "home",
-  },
-  {
-    name: "Linen Throw",
-    slug: "linen-throw",
-    description: "Soft, breathable linen perfect for cozy afternoons.",
-    price: 8580,
-    stock: 30,
-    images: [
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1200&q=80",
-    ],
-    categorySlug: "home",
-  },
-  {
-    name: "Wireless Earbuds",
-    slug: "wireless-earbuds",
-    description: "True wireless earbuds with active noise cancellation.",
-    price: 16390,
-    compareAt: 19690,
-    stock: 60,
-    featured: true,
-    images: [
-      "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=1200&q=80",
-    ],
-    categorySlug: "tech",
-  },
-  {
-    name: "Desk Lamp",
-    slug: "desk-lamp",
-    description: "Sculptural LED lamp with dimmable warm-to-cool light.",
-    price: 9790,
-    stock: 25,
-    images: [
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=1200&q=80",
-    ],
-    categorySlug: "tech",
-  },
-];
 
 async function main() {
   // Override these in .env for any shared / deployed database.
@@ -157,59 +47,8 @@ async function main() {
     },
   });
 
-  const categoryBySlug = new Map<string, string>();
-  for (const c of CATEGORIES) {
-    const rec = await prisma.category.upsert({
-      where: { slug: c.slug },
-      update: {},
-      create: { name: c.name, slug: c.slug, description: c.description },
-    });
-    categoryBySlug.set(c.slug, rec.id);
-  }
-
-  for (const p of PRODUCTS) {
-    const data = {
-      name: p.name,
-      slug: p.slug,
-      description: p.description,
-      price: p.price,
-      compareAt: p.compareAt ?? null,
-      stock: p.stock,
-      featured: p.featured ?? false,
-      images: p.images,
-      categoryId: categoryBySlug.get(p.categorySlug) ?? null,
-    };
-    const product = await prisma.product.upsert({
-      where: { slug: p.slug },
-      update: data,
-      create: data,
-    });
-
-    const variants = APPAREL_VARIANTS[p.slug];
-    if (variants) {
-      for (const [position, v] of variants.entries()) {
-        await prisma.productVariant.upsert({
-          where: {
-            productId_size_color: {
-              productId: product.id,
-              size: v.size,
-              color: v.color,
-            },
-          },
-          update: {},
-          create: { productId: product.id, ...v, position },
-        });
-      }
-      const agg = await prisma.productVariant.aggregate({
-        where: { productId: product.id },
-        _sum: { stock: true },
-      });
-      await prisma.product.update({
-        where: { id: product.id },
-        data: { stock: agg._sum.stock ?? 0 },
-      });
-    }
-  }
+  const demo = await loadDemoCatalog(prisma);
+  console.log(`  Demo catalogue: ${demo.created} new, ${demo.updated} refreshed products`);
 
   await prisma.coupon.upsert({
     where: { code: "EID10" },

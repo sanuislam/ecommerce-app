@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FaFacebookF, FaInstagram, FaWhatsapp } from "react-icons/fa";
 import { Mail } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { LogoMark } from "@/components/brand/logo";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export async function SiteFooter() {
@@ -10,7 +11,9 @@ export async function SiteFooter() {
     <footer className="mt-16 border-t bg-muted/30 sm:mt-24">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-8 px-4 py-10 sm:px-6 md:grid-cols-4 lg:grid-cols-5 lg:gap-10 lg:px-8 lg:py-12">
         <div className="col-span-2 md:col-span-4 lg:col-span-2">
-          <h3 className="text-lg font-semibold">{SITE_CONFIG.name}</h3>
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <LogoMark className="size-7" /> {SITE_CONFIG.name}
+          </h2>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground">
             Your trusted Eid shopping destination — curated finds, fair prices,
             and fast delivery across Bangladesh.

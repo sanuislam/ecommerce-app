@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+import { JsonLd } from "@/components/seo/json-ld";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -28,7 +28,8 @@ async function resolveCategoryName(slug: string | undefined) {
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { q, category, featured } = await searchParams;
+  const sp = await searchParams;
+  const { q, category, featured } = sp;
   const seo = await getSeoSettings();
   const categoryName = await resolveCategoryName(category);
 
@@ -36,30 +37,42 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   if (categoryName) titleParts.push(categoryName);
   if (featured === "1" && !categoryName) titleParts.push("Featured");
   if (q) titleParts.push(`Search “${q}”`);
-  const base =
-    titleParts.length > 0
-      ? `${titleParts.join(" · ")} — All products`
-      : "All products";
+  const base = categoryName
+    ? `${categoryName}${q ? ` · “${q}”` : ""} — Buy Online in Bangladesh`
+    : titleParts.length > 0
+      ? `${titleParts.join(" · ")} — Shop Online`
+      : sp.sale === "1"
+        ? "Eid Deals & Discounts — Shop Online"
+        : "All Products — Eid Shopping Online in Bangladesh";
 
+  const categoryRow = category
+    ? await prisma.category.findUnique({ where: { slug: category }, select: { description: true } })
+    : null;
   const description = categoryName
-    ? `Shop ${categoryName.toLowerCase()} at ${seo.siteName}. Authentic products, fair prices, and fast delivery across Bangladesh.`
+    ? `${categoryRow?.description ? categoryRow.description.trim().replace(/\.?$/, ". ") : ""}Shop ${categoryName} online at ${seo.siteName} — best prices in Bangladesh, cash on delivery in all 64 districts, bKash & Nagad accepted.`
     : q
       ? `Search results for “${q}” on ${seo.siteName}. Authentic products, fair prices, and fast delivery across Bangladesh.`
       : `Browse the full ${seo.siteName} catalog. Authentic products, fair prices, and fast delivery across Bangladesh.`;
 
-  const params = new URLSearchParams();
-  if (category) params.set("category", category);
-  if (featured) params.set("featured", featured);
-  if (q) params.set("q", q);
-  const search = params.toString();
-  const canonical = search ? `/products?${search}` : "/products";
+  // Category listings live at /category/<slug>; the rest canonicalise to
+  // /products (plus the deals / featured views). Searches and filtered or
+  // paginated views are kept out of the index to avoid thin duplicates.
+  const canonical = category
+    ? `/category/${category}`
+    : sp.sale === "1"
+      ? "/products?sale=1"
+      : featured === "1"
+        ? "/products?featured=1"
+        : "/products";
+  const filtered = Boolean(q || sp.sort || sp.min || sp.max || sp.instock || (sp.page && sp.page !== "1"));
 
-  const ogImages = seo.defaultOgImage ? [{ url: seo.defaultOgImage }] : [];
+  const ogImages = [{ url: seo.defaultOgImage || "/og-default.png" }];
 
   return {
     title: base,
     description,
     alternates: { canonical },
+    robots: filtered ? { index: false, follow: true } : undefined,
     openGraph: {
       title: `${base} | ${seo.siteName}`,
       description,
@@ -178,7 +191,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                   "@type": "ListItem",
                   position: 3,
                   name: categoryName,
-                  item: absoluteUrl(`/products?category=${category}`),
+                  item: absoluteUrl(`/category/${category}`),
                 },
               ]
             : []),
@@ -195,14 +208,10 @@ export default async function ProductsPage({ searchParams }: Props) {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       {itemListJsonLd && (
-        <Script id="ld-itemlist" type="application/ld+json">
-          {JSON.stringify(itemListJsonLd)}
-        </Script>
+        <JsonLd data={itemListJsonLd} />
       )}
       {breadcrumbJsonLd && (
-        <Script id="ld-breadcrumb" type="application/ld+json">
-          {JSON.stringify(breadcrumbJsonLd)}
-        </Script>
+        <JsonLd data={breadcrumbJsonLd} />
       )}
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">

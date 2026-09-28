@@ -42,7 +42,7 @@ export function CategoryCards({ categories }: { categories: CategoryCard[] }) {
             whileHover={{ y: -4 }}
           >
             <Link
-              href={`/products?category=${c.slug}`}
+              href={`/category/${c.slug}`}
               className={`group relative flex aspect-[5/3] items-end overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br ${gradient} p-3 shadow-sm transition-shadow hover:shadow-lg sm:aspect-[3/2]`}
             >
               {c.image && (

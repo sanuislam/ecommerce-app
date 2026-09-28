@@ -1,8 +1,12 @@
 import type { MetadataRoute } from "next";
-
-const BASE_URL = "https://eidbazar.com";
+import { siteUrl } from "@/lib/site-url";
 
 export default function robots(): MetadataRoute.Robots {
+  const base = siteUrl();
+  // Keep preview deployments out of search results entirely.
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
+    return { rules: [{ userAgent: "*", disallow: "/" }] };
+  }
   return {
     rules: [
       {
@@ -10,19 +14,26 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: [
           "/admin",
-          "/admin/",
           "/api/",
           "/studio",
-          "/studio/",
           "/sign-in",
           "/sign-up",
           "/checkout",
-          "/orders",
           "/cart",
+          "/orders",
+          "/account",
+          "/wishlist",
+          "/offline",
+          // Filtered / sorted / searched listings are near-duplicates.
+          "/products?*sort=",
+          "/products?*q=",
+          "/products?*min=",
+          "/products?*max=",
+          "/products?*page=",
         ],
       },
     ],
-    sitemap: `${BASE_URL}/sitemap.xml`,
-    host: BASE_URL,
+    sitemap: `${base}/sitemap.xml`,
+    host: base,
   };
 }

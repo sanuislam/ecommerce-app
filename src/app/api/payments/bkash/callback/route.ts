@@ -23,7 +23,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const paymentID = url.searchParams.get("paymentID");
   const status = (url.searchParams.get("status") ?? "").toLowerCase();
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? url.origin;
+  // Redirect back to the host the customer is actually on.
+  const base = url.origin;
   const go = (path: string) => NextResponse.redirect(`${base}${path}`, { status: 303 });
 
   if (!paymentID) return go("/cart?bkash=missing-id");

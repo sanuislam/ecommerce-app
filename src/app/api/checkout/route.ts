@@ -10,6 +10,7 @@ import { transitionOrder } from "@/lib/orders";
 import { rateLimit } from "@/lib/rate-limit";
 import { manualMfsAvailable, type MfsMethod } from "@/lib/mfs";
 import { Prisma } from "@/generated/prisma";
+import { siteUrl } from "@/lib/site-url";
 
 const addressSchema = z.object({
   fullName: z.string().trim().min(2, "Please enter your full name").max(80),
@@ -44,7 +45,7 @@ const schema = z.object({
 
 class CheckoutError extends Error {}
 
-const appBase = () => process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const appBase = () => siteUrl();
 
 export async function POST(req: Request) {
   const session = await auth();

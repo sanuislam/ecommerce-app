@@ -21,10 +21,11 @@ export type SeoSettingsValues = {
 export const DEFAULT_SEO: SeoSettingsValues = {
   siteName: "Eid Bazar",
   titleTemplate: "%s | Eid Bazar",
-  defaultTitle: "Eid Bazar — Modern e-commerce",
+  defaultTitle: "Eid Bazar — Online Eid Shopping in Bangladesh | Panjabi, Saree, Attar & Gifts",
   defaultDescription:
-    "Your trusted Eid shopping destination — curated finds, fair prices, and fast delivery across Bangladesh.",
-  defaultKeywords: "",
+    "Shop Eid collections online in Bangladesh: panjabi, saree, three-piece, abaya, kids wear, attar, watches and gifts. Cash on delivery across all 64 districts, bKash & Nagad accepted.",
+  defaultKeywords:
+    "eid shopping bangladesh, online shopping bd, panjabi, saree, three piece, salwar kameez, abaya, borka, hijab, kids eid dress, attar, perfume bd, prayer mat, eid gift, cash on delivery bangladesh, bkash payment",
   defaultOgImage: "",
   twitterHandle: "",
   googleSiteVerification: "",
@@ -49,7 +50,7 @@ export async function getSeoSettings(): Promise<SeoSettingsValues> {
       defaultTitle: row.defaultTitle || DEFAULT_SEO.defaultTitle,
       defaultDescription:
         row.defaultDescription || DEFAULT_SEO.defaultDescription,
-      defaultKeywords: row.defaultKeywords,
+      defaultKeywords: row.defaultKeywords || DEFAULT_SEO.defaultKeywords,
       defaultOgImage: row.defaultOgImage,
       twitterHandle: row.twitterHandle,
       googleSiteVerification: row.googleSiteVerification,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Script from "next/script";
+import { JsonLd } from "@/components/seo/json-ld";
 import { notFound } from "next/navigation";
 import { Star, Truck, ShieldCheck, Tag, RotateCcw, Banknote } from "lucide-react";
 import type { Metadata } from "next";
@@ -9,6 +9,7 @@ import { getSeoSettings } from "@/lib/seo-settings";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getShippingConfig } from "@/lib/checkout";
 import { unitPrice } from "@/lib/pricing";
+import { offerValidUntil } from "@/lib/seo-helpers";
 import { CARD_INCLUDE, toCardProduct } from "@/lib/product-view";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
@@ -24,29 +25,42 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const p = await prisma.product.findUnique({ where: { slug } });
-  if (!p) return { title: "Product not found" };
+  const p = await prisma.product.findUnique({
+    where: { slug },
+    include: { category: { select: { name: true } } },
+  });
+  if (!p || !p.published) return { title: "Product not found", robots: { index: false } };
   const seo = await getSeoSettings();
-  const desc =
-    p.description?.slice(0, 160) ?? seo.defaultDescription;
+  const price = unitPrice(p);
+  const plain = p.description.replace(/\s+/g, " ").trim();
+  // Lead with price + delivery so the snippet sells, then the description.
+  const desc = `${formatPrice(price)} · ${p.category ? `${p.category.name} · ` : ""}Cash on delivery across Bangladesh. ${plain}`.slice(0, 158);
   const url = absoluteUrl(`/products/${p.slug}`);
-  const image = p.images[0] ?? seo.defaultOgImage ?? undefined;
+  const images = (p.images.length ? p.images.slice(0, 4) : [seo.defaultOgImage || "/og-default.png"]).map(
+    (u) => ({ url: u, alt: p.name }),
+  );
+  const title = p.category ? `${p.name} — ${p.category.name}` : p.name;
   return {
-    title: p.name,
+    title,
     description: desc,
     alternates: { canonical: `/products/${p.slug}` },
     openGraph: {
       type: "website",
-      title: p.name,
+      title,
       description: desc,
       url,
-      images: image ? [{ url: image }] : undefined,
+      images,
     },
     twitter: {
       card: "summary_large_image",
-      title: p.name,
+      title,
       description: desc,
-      images: image ? [image] : undefined,
+      images: images.map((i) => i.url),
+    },
+    other: {
+      "product:price:amount": price.toFixed(2),
+      "product:price:currency": "BDT",
+      "product:availability": p.stock > 0 ? "in stock" : "out of stock",
     },
   };
 }
@@ -105,6 +119,56 @@ export default async function ProductDetailPage({ params }: Props) {
     : undefined;
   const productUrl = absoluteUrl(`/products/${product.slug}`);
 
+  const availability = (stock: number) =>
+    stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+  const priceValidUntil = offerValidUntil();
+  const merchantExtras = {
+    itemCondition: "https://schema.org/NewCondition",
+    seller: { "@type": "Organization", name: seo.siteName },
+    shippingDetails: {
+      "@type": "OfferShippingDetails",
+      shippingDestination: { "@type": "DefinedRegion", addressCountry: "BD" },
+      shippingRate: {
+        "@type": "MonetaryAmount",
+        value: Math.min(shipping.insideDhaka, shipping.outsideDhaka),
+        currency: "BDT",
+      },
+      deliveryTime: {
+        "@type": "ShippingDeliveryTime",
+        handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" },
+        transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 5, unitCode: "DAY" },
+      },
+    },
+    hasMerchantReturnPolicy: {
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: "BD",
+      returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+      merchantReturnDays: 7,
+      returnMethod: "https://schema.org/ReturnByMail",
+    },
+  };
+  const variantPrices = product.variants.map((v) => unitPrice(product, v));
+  const offers =
+    product.variants.length > 0
+      ? {
+          "@type": "AggregateOffer",
+          url: productUrl,
+          priceCurrency: "BDT",
+          lowPrice: Math.min(...variantPrices).toFixed(2),
+          highPrice: Math.max(...variantPrices).toFixed(2),
+          offerCount: product.variants.length,
+          availability: availability(product.stock),
+          ...merchantExtras,
+        }
+      : {
+          "@type": "Offer",
+          url: productUrl,
+          priceCurrency: "BDT",
+          price: unitPrice(product).toFixed(2),
+          priceValidUntil,
+          availability: availability(product.stock),
+          ...merchantExtras,
+        };
   const productJsonLd = seo.jsonLdEnabled
     ? {
         "@context": "https://schema.org",
@@ -113,17 +177,10 @@ export default async function ProductDetailPage({ params }: Props) {
         description: product.description,
         image: product.images,
         sku: product.id,
+        url: productUrl,
         brand: { "@type": "Brand", name: seo.siteName },
-        offers: {
-          "@type": "Offer",
-          url: productUrl,
-          priceCurrency: "BDT",
-          price: unitPrice(product).toFixed(2),
-          availability:
-            product.stock > 0
-              ? "https://schema.org/InStock"
-              : "https://schema.org/OutOfStock",
-        },
+        ...(product.category ? { category: product.category.name } : {}),
+        offers,
         ...(avg && reviewCount > 0
           ? {
               aggregateRating: {
@@ -131,6 +188,13 @@ export default async function ProductDetailPage({ params }: Props) {
                 ratingValue: avg.toFixed(1),
                 reviewCount,
               },
+              review: product.reviews.slice(0, 5).map((r) => ({
+                "@type": "Review",
+                reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
+                author: { "@type": "Person", name: r.user.name ?? "Customer" },
+                datePublished: r.createdAt.toISOString().slice(0, 10),
+                ...(r.comment ? { reviewBody: r.comment } : {}),
+              })),
             }
           : {}),
       }
@@ -158,7 +222,7 @@ export default async function ProductDetailPage({ params }: Props) {
                   "@type": "ListItem",
                   position: 3,
                   name: product.category.name,
-                  item: absoluteUrl(`/products?category=${product.category.slug}`),
+                  item: absoluteUrl(`/category/${product.category.slug}`),
                 },
               ]
             : []),
@@ -175,14 +239,10 @@ export default async function ProductDetailPage({ params }: Props) {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-28 sm:px-6 sm:pt-10 lg:px-8 lg:pb-12">
       {productJsonLd && (
-        <Script id="ld-product" type="application/ld+json">
-          {JSON.stringify(productJsonLd)}
-        </Script>
+        <JsonLd data={productJsonLd} />
       )}
       {breadcrumbJsonLd && (
-        <Script id="ld-breadcrumb" type="application/ld+json">
-          {JSON.stringify(breadcrumbJsonLd)}
-        </Script>
+        <JsonLd data={breadcrumbJsonLd} />
       )}
       <nav aria-label="Breadcrumb" className="mb-4 flex min-w-0 items-center text-sm text-muted-foreground sm:mb-6">
         <Link href="/" className="shrink-0 hover:text-foreground">Home</Link>
@@ -192,7 +252,7 @@ export default async function ProductDetailPage({ params }: Props) {
           <>
             <span className="mx-1">/</span>
             <Link
-              href={`/products?category=${product.category.slug}`}
+              href={`/category/${product.category.slug}`}
               className="truncate hover:text-foreground"
             >
               {product.category.name}

@@ -14,7 +14,7 @@ import {
   Heart,
   X,
 } from "lucide-react";
-import { FaShopify } from "react-icons/fa";
+import { Logo, LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/store/cart";
 import { useState, useSyncExternalStore } from "react";
@@ -73,7 +73,7 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
             <SheetContent side="left" className="w-[85vw] max-w-xs overflow-y-auto pb-[env(safe-area-inset-bottom)]">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
-                  <FaShopify className="size-5 text-primary" /> Eid Bazar
+                  <LogoMark className="size-6" /> Eid Bazar
                 </SheetTitle>
               </SheetHeader>
               <div className="px-4">
@@ -101,7 +101,7 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
                     {categories.map((c) => (
                       <Link
                         key={c.slug}
-                        href={`/products?category=${c.slug}`}
+                        href={`/category/${c.slug}`}
                         onClick={close}
                         className="block rounded-md px-3 py-2 text-sm hover:bg-muted"
                       >
@@ -147,9 +147,8 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
             </SheetContent>
           </Sheet>
 
-          <Link href="/" className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-tight">
-            <FaShopify className="size-6 shrink-0 text-primary" />
-            <span className="truncate">Eid Bazar</span>
+          <Link href="/" aria-label="Eid Bazar home" className="min-w-0 text-lg">
+            <Logo />
           </Link>
           <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex lg:gap-5" aria-label="Main">
             {NAV_LINKS.map((link) => (

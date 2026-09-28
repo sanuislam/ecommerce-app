@@ -52,6 +52,20 @@ and Stripe (test mode).
 - Admin role is re-read from the database every minute, so demoted admins lose access quickly
 - Abandoned online-payment orders are cancelled after 60 minutes (cron + lazy cleanup)
 
+**SEO**
+
+- Canonical URLs from `NEXT_PUBLIC_SITE_URL` (or Vercel's production domain automatically)
+- Server-rendered JSON-LD: OnlineStore, WebSite + SearchAction, Product with Offer/AggregateOffer,
+  shipping & return policy, reviews, BreadcrumbList, ItemList
+- Clean category pages at `/category/<slug>`; searches/filters are `noindex` to avoid duplicates
+- Dynamic sitemap (products with images, categories), robots rules, previews blocked from indexing
+- Brand "E" logo, favicon set, app icons and a default 1200×630 share image (`/og-default.png`)
+
+**Demo catalogue**
+
+- 48 products in 11 Eid categories with real photos and size options:
+  **Admin → Products → Load demo products** (or `npm run db:seed` locally). Can be removed with one click.
+
 **Content**
 
 - Sanity Studio embedded at `/studio` with product/category/banner schemas
