@@ -60,6 +60,16 @@ export default async function HomePage() {
     prisma.category.findMany({
       take: 12,
       orderBy: { name: "asc" },
+      include: {
+        _count: { select: { products: { where: { published: true } } } },
+        // Best product photo, used when the category has no image of its own.
+        products: {
+          where: { published: true, images: { isEmpty: false } },
+          orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+          select: { images: true },
+          take: 1,
+        },
+      },
     }),
     getBanners(),
     prisma.product.findMany({
@@ -79,6 +89,17 @@ export default async function HomePage() {
     }),
     getShippingConfig(),
   ]);
+
+  // Only categories with something to buy; image falls back to a product photo.
+  const shopCategories = categories
+    .filter((c) => c._count.products > 0)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      image: c.image || c.products[0]?.images[0] || null,
+      productCount: c._count.products,
+    }));
 
   const speciallyForYou = speciallyRaw.map((p) => {
     const c = toCardProduct(p);
@@ -184,19 +205,22 @@ export default async function HomePage() {
 
       <SpeciallyForYou products={speciallyForYou} />
 
-      {categories.length > 0 && (
-        <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-end justify-between">
-            <h2 className="text-2xl font-semibold tracking-tight">Shop by category</h2>
+      {shopCategories.length > 0 && (
+        <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8" aria-labelledby="shop-by-category">
+          <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6">
+            <div>
+              <h2 id="shop-by-category" className="text-2xl font-semibold tracking-tight">
+                Shop by category
+              </h2>
+              <p className="text-sm text-muted-foreground">Find everything for Eid, all in one place.</p>
+            </div>
+            <Button asChild variant="ghost" size="sm" className="shrink-0">
+              <Link href="/products">
+                View all <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </div>
-          <CategoryCards
-            categories={categories.map((c) => ({
-              id: c.id,
-              name: c.name,
-              slug: c.slug,
-              image: c.image,
-            }))}
-          />
+          <CategoryCards categories={shopCategories} />
         </section>
       )}
 

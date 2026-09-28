@@ -3,70 +3,103 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
-type CategoryCard = {
+export type CategoryCardData = {
   id: string;
   name: string;
   slug: string;
+  /** Category image, or the best product photo in the category. */
   image: string | null;
+  productCount: number;
 };
 
-const GRADIENTS = [
-  "from-rose-100 via-pink-50 to-rose-200/70 dark:from-rose-950/60 dark:via-pink-950/40 dark:to-rose-900/50",
-  "from-sky-100 via-blue-50 to-indigo-200/70 dark:from-sky-950/60 dark:via-blue-950/40 dark:to-indigo-900/50",
-  "from-emerald-100 via-teal-50 to-cyan-200/70 dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-cyan-900/50",
-  "from-amber-100 via-orange-50 to-rose-200/70 dark:from-amber-950/60 dark:via-orange-950/40 dark:to-rose-900/50",
-  "from-violet-100 via-purple-50 to-fuchsia-200/70 dark:from-violet-950/60 dark:via-purple-950/40 dark:to-fuchsia-900/50",
-  "from-lime-100 via-green-50 to-emerald-200/70 dark:from-lime-950/60 dark:via-green-950/40 dark:to-emerald-900/50",
-  "from-yellow-100 via-amber-50 to-orange-200/70 dark:from-yellow-950/60 dark:via-amber-950/40 dark:to-orange-900/50",
-  "from-slate-100 via-gray-50 to-zinc-200/70 dark:from-slate-950/60 dark:via-gray-950/40 dark:to-zinc-900/50",
+// Fallback washes when a category has no photo yet.
+const FALLBACKS = [
+  "from-rose-500 to-amber-400",
+  "from-sky-500 to-indigo-500",
+  "from-emerald-500 to-teal-400",
+  "from-violet-500 to-fuchsia-500",
+  "from-amber-500 to-orange-500",
+  "from-slate-600 to-slate-400",
 ];
 
-export function CategoryCards({ categories }: { categories: CategoryCard[] }) {
+// One small rendition serves both the blurred backdrop and the thumbnail,
+// so each card downloads a single image.
+const IMG_SIZES = "(min-width: 640px) 176px, 136px";
+
+export function CategoryCards({ categories }: { categories: CategoryCardData[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
       {categories.map((c, i) => {
-        const gradient = GRADIENTS[i % GRADIENTS.length];
+        // On 2-column phones, a lone last card spans the full row.
+        const wide = i === categories.length - 1 && categories.length % 2 === 1;
         return (
-          <motion.div
-            key={c.id}
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{
-              duration: 0.45,
-              delay: i * 0.06,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            whileHover={{ y: -4 }}
+        <motion.li
+          key={c.id}
+          className={wide ? "col-span-2 sm:col-span-1" : undefined}
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.45, delay: Math.min(i, 8) * 0.05, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Link
+            href={`/category/${c.slug}`}
+            className={`group relative isolate flex ${wide ? "aspect-[2/1]" : "aspect-[5/6]"} flex-col justify-between overflow-hidden rounded-2xl bg-neutral-900 p-3 text-white shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none sm:aspect-square sm:p-4 md:aspect-[4/3]`}
           >
-            <Link
-              href={`/category/${c.slug}`}
-              className={`group relative flex aspect-[5/3] items-end overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br ${gradient} p-3 shadow-sm transition-shadow hover:shadow-lg sm:aspect-[3/2]`}
-            >
-              {c.image && (
-                <Image
-                  src={c.image}
-                  alt=""
-                  aria-hidden
-                  fill
-                  sizes="(min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
-                  className="pointer-events-none absolute inset-0 z-0 object-cover opacity-20 mix-blend-multiply transition-all duration-500 group-hover:scale-110 group-hover:opacity-30 dark:opacity-25 dark:mix-blend-screen"
-                />
-              )}
+            {/* Blurred backdrop */}
+            {c.image ? (
+              <Image
+                src={c.image}
+                alt=""
+                aria-hidden
+                fill
+                sizes={IMG_SIZES}
+                className="-z-20 scale-125 object-cover blur-xl brightness-[0.85] saturate-150 transition-transform duration-700 group-hover:scale-[1.35]"
+              />
+            ) : (
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-background/40 via-transparent to-transparent"
+                className={`absolute inset-0 -z-20 bg-gradient-to-br ${FALLBACKS[i % FALLBACKS.length]}`}
               />
-              <span className="relative z-10 text-sm font-semibold text-foreground drop-shadow-sm">
-                {c.name}
+            )}
+            {/* Readability scrim + soft light */}
+            <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/25 to-black/5" />
+            <div
+              aria-hidden
+              className="absolute -top-10 -right-10 -z-10 size-32 rounded-full bg-white/20 blur-2xl transition-opacity duration-500 group-hover:opacity-60"
+            />
+
+            {/* Sharp product photo */}
+            <div className="flex justify-end">
+              <div className="relative size-14 rotate-3 overflow-hidden rounded-xl bg-white/10 shadow-lg ring-2 ring-white/70 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-0 sm:size-16 lg:size-20">
+                {c.image ? (
+                  <Image src={c.image} alt={c.name} fill sizes={IMG_SIZES} className="object-cover" />
+                ) : (
+                  <span className="flex h-full items-center justify-center text-2xl font-bold">
+                    {c.name.charAt(0)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-end justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="line-clamp-3 text-[13px] leading-snug font-semibold drop-shadow min-[360px]:line-clamp-2 min-[360px]:text-sm sm:text-base">
+                  {c.name}
+                </h3>
+                <p className="mt-0.5 text-xs text-white/75">
+                  {c.productCount} {c.productCount === 1 ? "item" : "items"}
+                </p>
+              </div>
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/40 backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-neutral-900 sm:size-9">
+                <ArrowUpRight className="size-4" />
               </span>
-              <ArrowRight className="absolute right-2.5 top-2.5 z-10 size-3.5 text-foreground/70 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </motion.div>
+            </div>
+          </Link>
+        </motion.li>
         );
       })}
-    </div>
+    </ul>
   );
 }
