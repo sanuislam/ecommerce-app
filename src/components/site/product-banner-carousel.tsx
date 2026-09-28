@@ -182,7 +182,7 @@ export function ProductBannerCarousel({
                             <span className="bg-gradient-to-br from-neutral-900 to-neutral-700 bg-clip-text text-3xl font-bold leading-none tracking-tight text-transparent">
                               {formatPrice(p.price)}
                             </span>
-                            {p.compareAt && p.compareAt > p.price && (
+                            {p.compareAt != null && p.compareAt > p.price && (
                               <>
                                 <span className="text-base text-neutral-400 line-through">
                                   {formatPrice(p.compareAt)}
@@ -290,7 +290,7 @@ export function ProductBannerCarousel({
                             <span className="bg-gradient-to-br from-neutral-900 to-neutral-700 bg-clip-text text-[clamp(2rem,3vw,3rem)] font-bold leading-none tracking-tight text-transparent">
                               {formatPrice(p.price)}
                             </span>
-                            {p.compareAt && p.compareAt > p.price && (
+                            {p.compareAt != null && p.compareAt > p.price && (
                               <>
                                 <span className="text-xl text-neutral-400 line-through lg:text-2xl">
                                   {formatPrice(p.compareAt)}
