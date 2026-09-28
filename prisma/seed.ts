@@ -1,14 +1,28 @@
-import { PrismaNeon } from "@prisma/adapter-neon";
+import "dotenv/config";
 import { PrismaClient, Role } from "../src/generated/prisma";
+import { createDbAdapter } from "../src/lib/db-adapter";
 import bcrypt from "bcryptjs";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error("DATABASE_URL is not set");
 }
+if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_PRODUCTION !== "1") {
+  throw new Error(
+    "Refusing to seed demo data with NODE_ENV=production. Set SEED_ALLOW_PRODUCTION=1 if you really mean it.",
+  );
+}
 const prisma = new PrismaClient({
-  adapter: new PrismaNeon({ connectionString }),
+  adapter: createDbAdapter(connectionString),
 });
+
+// Demo size / colour options for apparel products.
+const APPAREL_VARIANTS: Record<string, { size: string; color: string; stock: number }[]> = {
+  "minimalist-tee": ["S", "M", "L", "XL"].flatMap((size) =>
+    ["White", "Black"].map((color) => ({ size, color, stock: 15 })),
+  ),
+  "classic-hoodie": ["M", "L", "XL"].map((size) => ({ size, color: "", stock: 20 })),
+};
 
 const CATEGORIES = [
   { name: "Apparel", slug: "apparel", description: "Clothing and wearables." },
@@ -115,14 +129,15 @@ const PRODUCTS = [
 ];
 
 async function main() {
-  const adminEmail = "admin@eidbazar.com";
-  const adminPassword = "admin1234";
-  const userEmail = "user@eidbazar.com";
-  const userPassword = "user1234";
+  // Override these in .env for any shared / deployed database.
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@eidbazar.com";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin1234";
+  const userEmail = process.env.SEED_USER_EMAIL ?? "user@eidbazar.com";
+  const userPassword = process.env.SEED_USER_PASSWORD ?? "user1234";
 
   await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { role: Role.ADMIN },
+    update: {},
     create: {
       email: adminEmail,
       name: "Nova Admin",
@@ -164,16 +179,54 @@ async function main() {
       images: p.images,
       categoryId: categoryBySlug.get(p.categorySlug) ?? null,
     };
-    await prisma.product.upsert({
+    const product = await prisma.product.upsert({
       where: { slug: p.slug },
       update: data,
       create: data,
     });
+
+    const variants = APPAREL_VARIANTS[p.slug];
+    if (variants) {
+      for (const [position, v] of variants.entries()) {
+        await prisma.productVariant.upsert({
+          where: {
+            productId_size_color: {
+              productId: product.id,
+              size: v.size,
+              color: v.color,
+            },
+          },
+          update: {},
+          create: { productId: product.id, ...v, position },
+        });
+      }
+      const agg = await prisma.productVariant.aggregate({
+        where: { productId: product.id },
+        _sum: { stock: true },
+      });
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { stock: agg._sum.stock ?? 0 },
+      });
+    }
   }
+
+  await prisma.coupon.upsert({
+    where: { code: "EID10" },
+    update: {},
+    create: {
+      code: "EID10",
+      description: "10% off your order (max ৳500)",
+      type: "PERCENT",
+      value: 10,
+      maxDiscount: 500,
+    },
+  });
 
   console.log("Seed complete.");
   console.log(`  Admin: ${adminEmail} / ${adminPassword}`);
   console.log(`  User:  ${userEmail} / ${userPassword}`);
+  console.log("  Coupon: EID10");
 }
 
 main()

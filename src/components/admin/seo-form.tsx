@@ -194,7 +194,7 @@ export function SeoForm({ initial }: { initial: SeoSettingsValues }) {
 
       <section className="grid gap-3">
         <h3 className="text-sm font-semibold">Structured data</h3>
-        <div className="flex items-center justify-between rounded-lg border bg-card p-4">
+        <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-4">
           <div>
             <Label className="text-sm font-medium">
               JSON-LD on all pages

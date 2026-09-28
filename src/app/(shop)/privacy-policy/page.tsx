@@ -64,7 +64,7 @@ export default async function PrivacyPolicyPage() {
               amount.
             </li>
             <li>
-              Payment information is processed by Stripe; we never store your
+              Payments are processed by our payment partners (such as bKash); we never store your
               full card number.
             </li>
             <li>
@@ -122,7 +122,7 @@ export default async function PrivacyPolicyPage() {
               অর্ডারের তথ্য: ঠিকানা, ফোন নম্বর, কেনা পণ্য ও মোট পরিমাণ।
             </li>
             <li>
-              পেমেন্ট তথ্য Stripe-এর মাধ্যমে প্রক্রিয়াজাত হয়; আমরা কখনো আপনার
+              পেমেন্ট তথ্য আমাদের পেমেন্ট পার্টনারদের (যেমন বিকাশ) মাধ্যমে প্রক্রিয়াজাত হয়; আমরা কখনো আপনার
               সম্পূর্ণ কার্ড নম্বর সংরক্ষণ করি না।
             </li>
             <li>

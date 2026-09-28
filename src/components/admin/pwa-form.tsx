@@ -54,7 +54,7 @@ export function PwaForm({ initial }: { initial: PwaSettingsValues }) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-6 sm:max-w-3xl">
-      <div className="flex items-center justify-between rounded-lg border bg-card p-4">
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-4">
         <div>
           <Label className="text-base font-semibold">
             <Smartphone className="-mt-0.5 mr-1 inline size-4" />

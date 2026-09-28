@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Truck, Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck, Truck, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product-card";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +14,9 @@ import { SpeciallyForYou } from "@/components/site/specially-for-you";
 import { Testimonials } from "@/components/site/testimonials";
 import { TrustStrip } from "@/components/site/trust-strip";
 import { Newsletter } from "@/components/site/newsletter";
+import { CARD_INCLUDE, toCardProduct } from "@/lib/product-view";
+import { getShippingConfig } from "@/lib/checkout";
+import { formatPrice } from "@/lib/utils";
 
 export const revalidate = 60;
 
@@ -41,15 +44,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [featured, latest, categories, banners, dealsRaw, speciallyRaw] = await Promise.all([
+  const [featured, latest, categories, banners, dealsRaw, speciallyRaw, shipping] = await Promise.all([
     prisma.product.findMany({
       where: { published: true, featured: true },
-      include: { category: { select: { name: true } } },
+      include: { category: { select: { name: true } }, ...CARD_INCLUDE },
       take: 8,
       orderBy: { createdAt: "desc" },
     }),
     prisma.product.findMany({
       where: { published: true },
+      include: CARD_INCLUDE,
       take: 8,
       orderBy: { createdAt: "desc" },
     }),
@@ -69,20 +73,26 @@ export default async function HomePage() {
     }),
     prisma.product.findMany({
       where: { published: true },
+      include: CARD_INCLUDE,
       take: 12,
       orderBy: [{ createdAt: "desc" }],
     }),
+    getShippingConfig(),
   ]);
 
-  const speciallyForYou = speciallyRaw.map((p) => ({
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    price: Number(p.price),
-    compareAt: p.compareAt != null ? Number(p.compareAt) : null,
-    stock: p.stock,
-    images: p.images,
-  }));
+  const speciallyForYou = speciallyRaw.map((p) => {
+    const c = toCardProduct(p);
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      price: c.price,
+      compareAt: c.compareAt ?? null,
+      stock: p.stock,
+      images: c.images,
+      hasVariants: c.hasVariants ?? false,
+    };
+  });
 
   const flashDeals = dealsRaw
     .filter((p) => p.flashDealDiscount != null && p.flashDealDiscount > 0)
@@ -100,8 +110,8 @@ export default async function HomePage() {
     id: p.id,
     name: p.name,
     slug: p.slug,
-    price: Number(p.price),
-    compareAt: p.compareAt != null ? Number(p.compareAt) : null,
+    price: toCardProduct(p).price,
+    compareAt: toCardProduct(p).compareAt ?? null,
     images: p.images,
     description: p.description,
     category: p.category ? { name: p.category.name } : null,
@@ -115,29 +125,32 @@ export default async function HomePage() {
         <HomeHero banners={banners} />
       )}
 
-      <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           {[
             {
               icon: Truck,
-              title: "Free shipping",
-              text: "On orders over ৳1,000 across Bangladesh",
+              title: shipping.freeThreshold > 0 ? "Free delivery" : "Nationwide delivery",
+              text:
+                shipping.freeThreshold > 0
+                  ? `On orders over ${formatPrice(shipping.freeThreshold)} across Bangladesh`
+                  : "Cash on delivery across all 64 districts",
               bg: "from-emerald-50 to-teal-100/60 dark:from-emerald-950/40 dark:to-teal-900/30",
               ring: "ring-emerald-200/70 dark:ring-emerald-800/50",
               iconBg: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
             },
             {
               icon: ShieldCheck,
-              title: "Secure checkout",
-              text: "256-bit SSL + Stripe payments",
+              title: "Secure payments",
+              text: "bKash, Nagad, Rocket, Upay or cash on delivery",
               bg: "from-sky-50 to-indigo-100/60 dark:from-sky-950/40 dark:to-indigo-900/30",
               ring: "ring-sky-200/70 dark:ring-sky-800/50",
               iconBg: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
             },
             {
-              icon: Sparkles,
-              title: "30-day returns",
-              text: "No questions asked",
+              icon: RotateCcw,
+              title: "Easy returns",
+              text: "See our refund policy for details",
               bg: "from-rose-50 to-amber-100/60 dark:from-rose-950/40 dark:to-amber-900/30",
               ring: "ring-rose-200/70 dark:ring-rose-800/50",
               iconBg: "bg-rose-500/15 text-rose-600 dark:text-rose-300",
@@ -192,21 +205,9 @@ export default async function HomePage() {
               </Link>
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {featured.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={{
-                  id: p.id,
-                  name: p.name,
-                  slug: p.slug,
-                  price: Number(p.price),
-                  compareAt: p.compareAt != null ? Number(p.compareAt) : null,
-                  images: p.images,
-                  featured: p.featured,
-                  stock: p.stock,
-                }}
-              />
+              <ProductCard key={p.id} product={toCardProduct(p)} />
             ))}
           </div>
         </section>
@@ -222,21 +223,9 @@ export default async function HomePage() {
               </Link>
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {latest.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={{
-                  id: p.id,
-                  name: p.name,
-                  slug: p.slug,
-                  price: Number(p.price),
-                  compareAt: p.compareAt != null ? Number(p.compareAt) : null,
-                  images: p.images,
-                  featured: p.featured,
-                  stock: p.stock,
-                }}
-              />
+              <ProductCard key={p.id} product={toCardProduct(p)} />
             ))}
           </div>
         </section>

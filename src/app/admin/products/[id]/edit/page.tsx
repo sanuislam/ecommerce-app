@@ -7,13 +7,16 @@ type Props = { params: Promise<{ id: string }> };
 export default async function EditProductPage({ params }: Props) {
   const { id } = await params;
   const [product, categories] = await Promise.all([
-    prisma.product.findUnique({ where: { id } }),
+    prisma.product.findUnique({
+      where: { id },
+      include: { variants: { orderBy: { position: "asc" } } },
+    }),
     prisma.category.findMany({ orderBy: { name: "asc" } }),
   ]);
   if (!product) notFound();
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="text-2xl font-semibold tracking-tight">Edit product</h1>
       <div className="mt-6 max-w-3xl">
         <ProductForm
@@ -32,6 +35,14 @@ export default async function EditProductPage({ params }: Props) {
             flashDealDiscount: product.flashDealDiscount,
             published: product.published,
             categoryId: product.categoryId,
+            variants: product.variants.map((v) => ({
+              id: v.id,
+              size: v.size,
+              color: v.color,
+              price: v.price != null ? Number(v.price) : null,
+              stock: v.stock,
+              sku: v.sku,
+            })),
           }}
         />
       </div>

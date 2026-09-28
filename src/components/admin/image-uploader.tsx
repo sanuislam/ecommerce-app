@@ -213,33 +213,35 @@ export function ImageUploader({
                   sizes="200px"
                 />
               </div>
-              <div className="absolute inset-x-1 top-1 flex items-center justify-between text-[10px] text-white">
+              <div className="absolute inset-x-1 top-1 flex items-center justify-between text-xs text-white">
                 <span className="rounded bg-black/60 px-1.5 py-0.5">
                   {i === 0 ? "Cover" : `#${i + 1}`}
                 </span>
                 <button
                   type="button"
                   onClick={() => remove(i)}
-                  className="rounded-full bg-black/60 p-1 opacity-0 transition group-hover:opacity-100"
+                  className="inline-flex size-8 items-center justify-center rounded-full bg-black/60 opacity-100 transition hover:bg-black/80 focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
                   aria-label="Remove image"
                 >
-                  <X className="size-3" />
+                  <X className="size-4" />
                 </button>
               </div>
-              <div className="absolute inset-x-1 bottom-1 flex justify-between text-[10px] text-white opacity-0 transition group-hover:opacity-100">
+              <div className="absolute inset-x-1 bottom-1 flex justify-between text-sm text-white opacity-100 transition focus-within:opacity-100 md:opacity-0 md:group-hover:opacity-100">
                 <button
                   type="button"
-                  className="rounded bg-black/60 px-1.5 py-0.5 disabled:opacity-30"
+                  className="inline-flex size-8 items-center justify-center rounded bg-black/60 hover:bg-black/80 disabled:opacity-30"
                   disabled={i === 0}
                   onClick={() => move(i, -1)}
+                  aria-label="Move image left"
                 >
                   ←
                 </button>
                 <button
                   type="button"
-                  className="rounded bg-black/60 px-1.5 py-0.5 disabled:opacity-30"
+                  className="inline-flex size-8 items-center justify-center rounded bg-black/60 hover:bg-black/80 disabled:opacity-30"
                   disabled={i === value.length - 1}
                   onClick={() => move(i, 1)}
+                  aria-label="Move image right"
                 >
                   →
                 </button>
@@ -249,9 +251,10 @@ export function ImageUploader({
         </ul>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
         <Input
           type="url"
+          className="min-w-0 flex-1"
           placeholder="…or paste an image URL"
           value={manual}
           onChange={(e) => setManual(e.target.value)}

@@ -4,7 +4,8 @@ import imageUrlBuilder from "@sanity/image-url";
 type SanityImageSource = Parameters<ReturnType<typeof imageUrlBuilder>["image"]>[0];
 
 export const sanityConfig: ClientConfig = {
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? "placeholder",
+  // `||` (not `??`) so an empty value from .env.example still builds.
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || "placeholder",
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET ?? "production",
   apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION ?? "2024-10-01",
   useCdn: true,

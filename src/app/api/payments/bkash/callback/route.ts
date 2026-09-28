@@ -1,121 +1,106 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { executeBkashPayment, queryBkashPayment } from "@/lib/bkash";
+import {
+  executeBkashPayment,
+  queryBkashPayment,
+  type BkashExecuteResponse,
+} from "@/lib/bkash";
+import { transitionOrder } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
 /**
- * bKash redirects the customer here after the Tokenized Checkout flow with:
+ * bKash redirects the customer here after Tokenized Checkout with
  *   ?paymentID=<id>&status=success|failure|cancel
- * On success we must call execute (idempotent: only succeeds once per paymentID).
+ *
+ * The order is looked up ONLY by the paymentID we stored when creating the
+ * payment, and the executed payment must match the order's invoice number
+ * and total before the order is marked paid. The query string is
+ * attacker-controlled, so `status` is only trusted for cancel/failure after
+ * bKash itself confirms the payment did not complete.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const paymentID = url.searchParams.get("paymentID");
   const status = (url.searchParams.get("status") ?? "").toLowerCase();
-  const orderId = url.searchParams.get("orderId");
-
   const base = process.env.NEXT_PUBLIC_APP_URL ?? url.origin;
+  const go = (path: string) => NextResponse.redirect(`${base}${path}`, { status: 303 });
 
-  if (!paymentID) {
-    return NextResponse.redirect(
-      `${base}/cart?bkash=missing-id`,
-      { status: 303 },
+  if (!paymentID) return go("/cart?bkash=missing-id");
+
+  const order = await prisma.order.findUnique({ where: { bkashPaymentId: paymentID } });
+  if (!order || order.paymentMethod !== "BKASH") return go("/cart?bkash=order-not-found");
+
+  if (order.status !== "PENDING") {
+    return go(
+      order.status === "CANCELLED" || order.status === "REFUNDED"
+        ? `/orders/${order.id}?bkash=${order.status.toLowerCase()}`
+        : `/orders/${order.id}?success=1`,
     );
   }
 
-  // Find order — prefer orderId param (we set it on callbackURL), fall back to paymentID.
-  const order = orderId
-    ? await prisma.order.findUnique({ where: { id: orderId } })
-    : await prisma.order.findUnique({ where: { bkashPaymentId: paymentID } });
-
-  if (!order) {
-    return NextResponse.redirect(
-      `${base}/cart?bkash=order-not-found`,
-      { status: 303 },
-    );
-  }
-
-  // Idempotency: bKash callback can be hit twice (user refresh, browser back).
-  // If the order is already settled, skip the execute call and route accordingly.
-  if (order.status === "PAID") {
-    return NextResponse.redirect(
-      `${base}/orders/${order.id}?success=1`,
-      { status: 303 },
-    );
-  }
-  if (order.status === "CANCELLED" || order.status === "REFUNDED") {
-    return NextResponse.redirect(
-      `${base}/orders/${order.id}?bkash=${order.status.toLowerCase()}`,
-      { status: 303 },
-    );
-  }
-
-  // User cancelled or bKash reported failure — restock and mark cancelled.
-  if (status === "cancel" || status === "failure") {
-    await markFailed(order.id, status === "cancel" ? "CANCELLED" : "FAILED");
-    return NextResponse.redirect(
-      `${base}/orders/${order.id}?bkash=${status}`,
-      { status: 303 },
-    );
-  }
-
-  // Success: execute the payment to capture funds.
-  let executed;
-  try {
-    executed = await executeBkashPayment(paymentID);
-  } catch (err) {
-    console.error("bKash execute failed, querying status", err);
+  let result: BkashExecuteResponse | undefined;
+  if (status === "success") {
     try {
-      executed = await queryBkashPayment(paymentID);
-    } catch (queryErr) {
-      console.error("bKash query also failed", queryErr);
+      result = await executeBkashPayment(paymentID);
+    } catch (err) {
+      console.error("bKash execute failed", err);
+    }
+  }
+  // Execute can fail if it already ran (double redirect) — ask bKash directly.
+  if (result?.transactionStatus?.toLowerCase() !== "completed") {
+    try {
+      result = await queryBkashPayment(paymentID);
+    } catch (err) {
+      console.error("bKash query failed", err);
     }
   }
 
-  const txStatus = executed?.transactionStatus?.toLowerCase();
-  if (txStatus === "completed") {
-    await prisma.order.update({
-      where: { id: order.id },
+  const completed = result?.transactionStatus?.toLowerCase() === "completed";
+  if (completed && result) {
+    const amountOk = Math.abs(Number(result.amount) - Number(order.total)) < 0.01;
+    const invoiceOk =
+      !result.merchantInvoiceNumber || result.merchantInvoiceNumber === order.id;
+    if (!amountOk || !invoiceOk) {
+      console.error("bKash payment mismatch", {
+        orderId: order.id,
+        paid: result.amount,
+        expected: order.total.toString(),
+        invoice: result.merchantInvoiceNumber,
+      });
+      // Money moved but doesn't match — leave PENDING for an admin to review.
+      await prisma.orderEvent.create({
+        data: {
+          orderId: order.id,
+          status: "PENDING",
+          note: `bKash payment ${result.trxID ?? ""} needs review (amount ${result.amount ?? "?"})`,
+        },
+      });
+      return go(`/orders/${order.id}?bkash=review`);
+    }
+    await transitionOrder({
+      orderId: order.id,
+      from: "PENDING",
+      to: "PAID",
+      note: `Paid with bKash (TrxID ${result.trxID ?? "-"})`,
       data: {
-        status: "PAID",
-        paymentTransactionId: executed?.trxID ?? null,
-        paymentSenderNumber: executed?.customerMsisdn ?? order.paymentSenderNumber,
+        paymentTransactionId: result.trxID ?? null,
+        paymentSenderNumber: result.customerMsisdn ?? order.paymentSenderNumber,
       },
     });
-    return NextResponse.redirect(
-      `${base}/orders/${order.id}?success=1`,
-      { status: 303 },
-    );
+    return go(`/orders/${order.id}?success=1`);
   }
 
-  await markFailed(order.id, "FAILED");
-  return NextResponse.redirect(
-    `${base}/orders/${order.id}?bkash=failed`,
-    { status: 303 },
-  );
-}
-
-async function markFailed(orderId: string, reason: "CANCELLED" | "FAILED") {
-  // Roll back stock and mark the order CANCELLED so the customer can retry.
-  try {
-    await prisma.$transaction(async (tx) => {
-      const items = await tx.orderItem.findMany({
-        where: { orderId },
-        select: { productId: true, quantity: true },
-      });
-      for (const i of items) {
-        await tx.product.update({
-          where: { id: i.productId },
-          data: { stock: { increment: i.quantity } },
-        });
-      }
-      await tx.order.update({
-        where: { id: orderId },
-        data: { status: "CANCELLED", notes: `bKash ${reason.toLowerCase()}` },
-      });
+  // bKash reports the payment is not completed. Only cancel if bKash gave us
+  // a definite answer; otherwise leave it for the expiry job / admin.
+  const definite = Boolean(result?.transactionStatus) || status === "cancel" || status === "failure";
+  if (definite) {
+    await transitionOrder({
+      orderId: order.id,
+      from: "PENDING",
+      to: "CANCELLED",
+      note: status === "cancel" ? "bKash payment cancelled" : "bKash payment failed",
     });
-  } catch (err) {
-    console.error(`Failed to mark order ${orderId} as ${reason}`, err);
   }
+  return go(`/orders/${order.id}?bkash=${status === "cancel" ? "cancel" : "failed"}`);
 }

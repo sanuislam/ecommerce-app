@@ -1,5 +1,5 @@
-import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@/generated/prisma";
+import { createDbAdapter } from "@/lib/db-adapter";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -10,9 +10,8 @@ function createClient() {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
   }
-  const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({
-    adapter,
+    adapter: createDbAdapter(connectionString),
     log:
       process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });

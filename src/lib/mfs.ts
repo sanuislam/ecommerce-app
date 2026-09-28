@@ -16,15 +16,23 @@ export const MFS_INSTRUCTIONS: Record<MfsMethod, string> = {
   UPAY: "Open Upay app → Send Money → enter the number below → enter the order total → after sending, paste the Transaction ID.",
 };
 
+// NEXT_PUBLIC_* values must be read with literal names so Next.js can inline them.
+const RECEIVING_NUMBERS: Record<MfsMethod, string> = {
+  BKASH: process.env.NEXT_PUBLIC_BKASH_NUMBER ?? "",
+  NAGAD: process.env.NEXT_PUBLIC_NAGAD_NUMBER ?? "",
+  ROCKET: process.env.NEXT_PUBLIC_ROCKET_NUMBER ?? "",
+  UPAY: process.env.NEXT_PUBLIC_UPAY_NUMBER ?? "",
+};
+
+/** The shop's personal/merchant number customers send money to. */
 export function getReceivingNumber(method: MfsMethod): string {
-  switch (method) {
-    case "BKASH":
-      return process.env.NEXT_PUBLIC_BKASH_NUMBER || "01700000000";
-    case "NAGAD":
-      return process.env.NEXT_PUBLIC_NAGAD_NUMBER || "01700000000";
-    case "ROCKET":
-      return process.env.NEXT_PUBLIC_ROCKET_NUMBER || "01700000000-0";
-    case "UPAY":
-      return process.env.NEXT_PUBLIC_UPAY_NUMBER || "01700000000";
-  }
+  return RECEIVING_NUMBERS[method].trim();
+}
+
+/**
+ * A manual "send money" method is only offered when its receiving number is
+ * set — otherwise customers could send money to a placeholder number.
+ */
+export function manualMfsAvailable(method: MfsMethod): boolean {
+  return getReceivingNumber(method).length >= 11;
 }

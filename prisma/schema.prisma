@@ -53,6 +53,7 @@ model User {
   reviews   Review[]
   addresses Address[]
   cart      Cart?
+  wishlist  WishlistItem[]
 }
 
 model Account {
@@ -129,10 +130,71 @@ model Product {
   orderItems OrderItem[]
   cartItems  CartItem[]
   reviews    Review[]
+  variants   ProductVariant[]
+  wishlistedBy WishlistItem[]
 
   @@index([slug])
   @@index([featured])
   @@index([flashDeal])
+}
+
+/// A purchasable option of a product (e.g. size M / colour Red).
+/// When a product has variants, stock and (optionally) price live here and
+/// Product.stock is kept as the sum of variant stock.
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  size      String   @default("")
+  color     String   @default("")
+  sku       String?
+  price     Decimal? @db.Decimal(10, 2)
+  stock     Int      @default(0)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@unique([productId, size, color])
+  @@index([productId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+model Coupon {
+  id           String     @id @default(cuid())
+  code         String     @unique
+  description  String     @default("")
+  type         CouponType @default(PERCENT)
+  value        Decimal    @db.Decimal(10, 2)
+  minSubtotal  Decimal    @default(0) @db.Decimal(10, 2)
+  maxDiscount  Decimal?   @db.Decimal(10, 2)
+  usageLimit   Int?
+  perUserLimit Int?
+  usedCount    Int        @default(0)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  orders Order[]
 }
 
 model Cart {
@@ -165,9 +227,12 @@ model Address {
   line2      String?
   city       String
   state      String?
-  postalCode String
-  country    String  @default("US")
+  postalCode String?
+  country    String  @default("BD")
   isDefault  Boolean @default(false)
+  /// Hidden from the address book but kept for past orders.
+  archived   Boolean @default(false)
+  createdAt  DateTime @default(now())
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders     Order[]
 }
@@ -177,10 +242,16 @@ model Order {
   userId       String
   status       OrderStatus @default(PENDING)
   subtotal     Decimal     @db.Decimal(10, 2)
+  discount     Decimal     @default(0) @db.Decimal(10, 2)
   tax          Decimal     @default(0) @db.Decimal(10, 2)
   shipping     Decimal     @default(0) @db.Decimal(10, 2)
   total        Decimal     @db.Decimal(10, 2)
-  currency     String      @default("USD")
+  currency     String      @default("BDT")
+  couponId     String?
+  couponCode   String?
+  shippingZone String?
+  courier        String?
+  trackingNumber String?
   stripeId     String?     @unique
   bkashPaymentId String?   @unique
   addressId    String?
@@ -194,23 +265,43 @@ model Order {
 
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   address Address?    @relation(fields: [addressId], references: [id])
+  coupon  Coupon?     @relation(fields: [couponId], references: [id], onDelete: SetNull)
   items   OrderItem[]
+  events  OrderEvent[]
 
+  @@index([paymentTransactionId])
   @@index([userId])
   @@index([status])
+  @@index([createdAt])
+}
+
+/// Timeline entry shown to the customer on the order tracking page.
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  productId String
-  name      String
-  price     Decimal @db.Decimal(10, 2)
-  quantity  Int
-  image     String?
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  variantId   String?
+  variantName String?
+  name        String
+  price       Decimal @db.Decimal(10, 2)
+  quantity    Int
+  image       String?
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 }
 
 model Review {
@@ -236,7 +327,18 @@ model SiteSettings {
   supportEmail  String   @default("")
   supportPhone  String   @default("")
   address       String   @default("")
+  shippingInsideDhaka   Int @default(80)
+  shippingOutsideDhaka  Int @default(120)
+  freeShippingThreshold Int @default(1000)
   updatedAt     DateTime @updatedAt
+}
+
+/// Fixed-window counters used to rate-limit sign-in, sign-up and other
+/// abuse-prone endpoints. Works across serverless instances.
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
 }
 
 model PaymentSettings {

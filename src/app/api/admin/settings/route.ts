@@ -5,6 +5,14 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
 
+const shippingInt = (label: string) =>
+  z
+    .number(`${label} must be a number`)
+    .int(`${label} must be a whole number`)
+    .min(0, `${label} cannot be negative`)
+    .max(1_000_000, `${label} is too large`)
+    .optional();
+
 const schema = z.object({
   facebookUrl: z.string().trim().max(500).default(""),
   whatsappUrl: z.string().trim().max(500).default(""),
@@ -12,6 +20,9 @@ const schema = z.object({
   supportEmail: z.string().trim().max(200).default(""),
   supportPhone: z.string().trim().max(50).default(""),
   address: z.string().trim().max(500).default(""),
+  shippingInsideDhaka: shippingInt("Inside-Dhaka delivery charge"),
+  shippingOutsideDhaka: shippingInt("Outside-Dhaka delivery charge"),
+  freeShippingThreshold: shippingInt("Free-shipping threshold"),
 });
 
 export async function PUT(req: Request) {
@@ -23,7 +34,7 @@ export async function PUT(req: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid input", issues: parsed.error.issues },
+      { error: parsed.error.issues[0]?.message ?? "Invalid input", issues: parsed.error.issues },
       { status: 400 },
     );
   }
@@ -43,5 +54,6 @@ export async function PUT(req: Request) {
     update: data,
   });
   revalidatePath("/", "layout");
+  revalidatePath("/admin/settings");
   return NextResponse.json(row);
 }

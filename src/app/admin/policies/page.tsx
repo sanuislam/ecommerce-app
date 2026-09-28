@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPoliciesPage() {
   const docs = await listPolicyDocs();
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="text-2xl font-semibold tracking-tight">Legal pages</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Edit the Privacy Policy, Terms & Conditions, and Refund Policy. Each
@@ -26,11 +26,11 @@ export default async function AdminPoliciesPage() {
             <Link
               key={slug}
               href={`/admin/policies/${slug}`}
-              className="group flex items-center justify-between rounded-lg border bg-card p-4 transition hover:bg-muted/50"
+              className="group flex items-center justify-between gap-3 rounded-lg border bg-card p-4 transition hover:bg-muted/50"
             >
-              <div className="flex items-center gap-3">
-                <FileText className="size-5 text-muted-foreground" />
-                <div>
+              <div className="flex min-w-0 items-center gap-3">
+                <FileText className="size-5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
                   <div className="font-medium">{meta.title}</div>
                   <div className="text-xs text-muted-foreground">
                     {meta.titleBn} ·{" "}
@@ -40,7 +40,7 @@ export default async function AdminPoliciesPage() {
                   </div>
                 </div>
               </div>
-              <ArrowRight className="size-4 text-muted-foreground transition group-hover:translate-x-0.5" />
+              <ArrowRight className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />
             </Link>
           );
         })}

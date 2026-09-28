@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 declare module "next-auth" {
   interface Session {
@@ -23,13 +24,18 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     role?: Role;
+    roleCheckedAt?: number;
   }
 }
 
 const credentialsSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(1),
 });
+
+// How often the JWT re-reads the user's role from the database, so a
+// demoted or deleted admin loses access quickly.
+const ROLE_REFRESH_MS = 60_000;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -47,10 +53,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(raw) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
-        const { email, password } = parsed.data;
+        const email = parsed.data.email.toLowerCase();
+        const { password } = parsed.data;
+
+        const ip = await clientIp().catch(() => "unknown");
+        const allowed =
+          (await rateLimit(`login:ip:${ip}`, 20, 900)) &&
+          (await rateLimit(`login:email:${email}`, 8, 900));
+        if (!allowed) return null;
 
         const user = await prisma.user.findUnique({
-          where: { email: email.toLowerCase() },
+          where: { email },
         });
         if (!user || !user.passwordHash) return null;
 
@@ -72,6 +85,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: Role }).role ?? Role.USER;
+        token.roleCheckedAt = Date.now();
+        return token;
+      }
+      if (token.id && Date.now() - (token.roleCheckedAt ?? 0) > ROLE_REFRESH_MS) {
+        try {
+          const fresh = await prisma.user.findUnique({
+            where: { id: token.id },
+            select: { role: true, name: true },
+          });
+          if (!fresh) return null; // account deleted → sign out
+          token.role = fresh.role;
+          token.name = fresh.name;
+          token.roleCheckedAt = Date.now();
+        } catch {
+          // Keep the existing token if the database is briefly unreachable.
+        }
       }
       return token;
     },

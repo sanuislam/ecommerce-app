@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const ADMIN_PATHS = ["/admin", "/studio"];
-const USER_PATHS = ["/account", "/orders", "/checkout"];
+const USER_PATHS = ["/account", "/orders", "/checkout", "/wishlist"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -47,5 +47,6 @@ export const config = {
     "/account/:path*",
     "/orders/:path*",
     "/checkout/:path*",
+    "/wishlist/:path*",
   ],
 };

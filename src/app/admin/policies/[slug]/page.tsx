@@ -113,9 +113,9 @@ export default async function EditPolicyPage({
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <Link
             href="/admin/policies"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FaShopify } from "react-icons/fa";
 import Link from "next/link";
 import { SignUpForm } from "@/components/sign-up-form";
 
@@ -11,8 +12,14 @@ export const metadata: Metadata = {
 
 export default function SignUpPage() {
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
+      <Link
+        href="/"
+        className="mb-6 flex items-center justify-center gap-2 text-lg font-semibold tracking-tight"
+      >
+        <FaShopify className="size-6 text-primary" /> Eid Bazar
+      </Link>
+      <div className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
         <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Join Eid Bazar in a few seconds.

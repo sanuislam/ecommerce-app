@@ -130,7 +130,7 @@ export function PaymentSettingsForm({
           value={values.bkashMode}
           onValueChange={(v) => set("bkashMode", v as "sandbox" | "live")}
         >
-          <SelectTrigger id="bkashMode" className="w-60">
+          <SelectTrigger id="bkashMode" className="w-full sm:w-60">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

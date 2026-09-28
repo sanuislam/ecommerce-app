@@ -85,6 +85,10 @@ export async function generateViewport(): Promise<Viewport> {
   const pwa = await getPwaSettings();
   return {
     themeColor: pwa.themeColor,
+    width: "device-width",
+    initialScale: 1,
+    // Lets content use the full screen on notched phones (paired with safe-area insets).
+    viewportFit: "cover",
   };
 }
 
@@ -113,7 +117,7 @@ export default async function RootLayout({
         potentialAction: {
           "@type": "SearchAction",
           target:
-            "https://eidbazar.com/products?search={search_term_string}",
+            "https://eidbazar.com/products?q={search_term_string}",
           "query-input": "required name=search_term_string",
         },
       }

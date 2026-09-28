@@ -7,6 +7,8 @@ export function TawkChat() {
     <Script id="tawk-to" strategy="afterInteractive">
       {`
         var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
+        // Lift the chat bubble above the phone bottom bar / sticky buy bar.
+        Tawk_API.customStyle = { visibility: { mobile: { position: "br", xOffset: 12, yOffset: 84 } } };
         (function(){
           var s1 = document.createElement("script"),
               s0 = document.getElementsByTagName("script")[0];

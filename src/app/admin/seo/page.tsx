@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminSeoPage() {
   const [seo, pwa] = await Promise.all([getSeoSettings(), getPwaSettings()]);
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="text-2xl font-semibold tracking-tight">SEO & PWA</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Search engine metadata, social cards, analytics tags, and the

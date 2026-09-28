@@ -17,12 +17,12 @@ import { DeleteProductButton } from "@/components/admin/delete-product-button";
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
-    include: { category: true },
+    include: { category: true, _count: { select: { variants: true } } },
   });
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
         <Button asChild>
           <Link href="/admin/products/new">
@@ -53,21 +53,30 @@ export default async function AdminProductsPage() {
             ) : (
               products.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell className="max-w-64 truncate font-medium" title={p.name}>{p.name}</TableCell>
                   <TableCell>{p.category?.name ?? "—"}</TableCell>
                   <TableCell>{formatPrice(Number(p.price))}</TableCell>
-                  <TableCell>{p.stock}</TableCell>
+                  <TableCell>
+                    {p.stock}
+                    {p._count.variants > 0 && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        ({p._count.variants} options)
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={p.published ? "default" : "secondary"}>
                       {p.published ? "Published" : "Draft"}
                     </Badge>
                     {p.featured && <Badge className="ml-1" variant="outline">Featured</Badge>}
                   </TableCell>
-                  <TableCell className="flex items-center justify-end gap-1">
-                    <Button asChild variant="ghost" size="sm">
-                      <Link href={`/admin/products/${p.id}/edit`}>Edit</Link>
-                    </Button>
-                    <DeleteProductButton id={p.id} />
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={`/admin/products/${p.id}/edit`}>Edit</Link>
+                      </Button>
+                      <DeleteProductButton id={p.id} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

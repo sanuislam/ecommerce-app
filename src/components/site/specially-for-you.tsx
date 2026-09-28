@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ShoppingCart } from "lucide-react";
@@ -17,12 +18,13 @@ export type SpeciallyProduct = {
   compareAt: number | null;
   stock: number;
   images: string[];
+  hasVariants?: boolean;
 };
 
 function StockPill({ stock }: { stock: number }) {
   if (stock <= 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
         <span className="size-1.5 rounded-full bg-white/90" />
         0 left
       </span>
@@ -30,14 +32,14 @@ function StockPill({ stock }: { stock: number }) {
   }
   if (stock <= 2) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
         <span className="size-1.5 rounded-full bg-white/90" />
         {stock} left
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
       <span className="size-1.5 rounded-full bg-white/90" />
       In Stock
     </span>
@@ -46,6 +48,7 @@ function StockPill({ stock }: { stock: number }) {
 
 function SpeciallyCard({ product, index }: { product: SpeciallyProduct; index: number }) {
   const add = useCart((s) => s.add);
+  const router = useRouter();
   const hasDiscount = product.compareAt != null && product.compareAt > product.price;
   const discountPct = hasDiscount
     ? Math.round(((product.compareAt! - product.price) / product.compareAt!) * 100)
@@ -55,6 +58,10 @@ function SpeciallyCard({ product, index }: { product: SpeciallyProduct; index: n
   function handleAdd(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (product.hasVariants) {
+      router.push(`/products/${product.slug}#product-options`);
+      return;
+    }
     if (product.stock <= 0) {
       toast.error("Out of stock");
       return;
@@ -94,9 +101,11 @@ function SpeciallyCard({ product, index }: { product: SpeciallyProduct; index: n
             No image
           </div>
         )}
-        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-          {discountPct}% OFF
-        </span>
+        {hasDiscount && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
+            {discountPct}% OFF
+          </span>
+        )}
         <span className="absolute bottom-2 left-2">
           <StockPill stock={product.stock} />
         </span>
@@ -131,7 +140,7 @@ function SpeciallyCard({ product, index }: { product: SpeciallyProduct; index: n
           className="mt-auto w-full bg-blue-600 text-white shadow-sm hover:bg-blue-700"
         >
           <ShoppingCart className="size-4" />
-          Add to Order
+          {product.stock <= 0 ? "Sold out" : product.hasVariants ? "Choose options" : "Add to cart"}
         </Button>
       </div>
     </motion.div>

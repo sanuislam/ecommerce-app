@@ -97,6 +97,8 @@ export function ProductBannerCarousel({
                 key={p.id}
                 className="relative min-w-0 flex-[0_0_100%]"
                 aria-hidden={!active}
+                // Keep links in off-screen slides out of the tab order.
+                inert={!active}
               >
                 {/* Mobile: premium image-on-top + frosted content card below */}
                 <div className="relative w-full md:hidden">
@@ -274,9 +276,9 @@ export function ProductBannerCarousel({
                             </span>
                           </div>
 
-                          <h1 className="text-balance line-clamp-2 font-semibold leading-[1.02] tracking-tight text-neutral-900 text-[clamp(2.2rem,4vw,4rem)]">
+                          <SlideHeading first={idx === 0} className="text-balance line-clamp-2 font-semibold leading-[1.02] tracking-tight text-neutral-900 text-[clamp(2.2rem,4vw,4rem)]">
                             {p.name}
-                          </h1>
+                          </SlideHeading>
 
                           {p.description && (
                             <p className="line-clamp-3 max-w-md text-base leading-relaxed text-neutral-600 lg:text-lg">
@@ -483,4 +485,17 @@ export function ProductBannerCarousel({
       </div>
     </section>
   );
+}
+
+/** Only the first slide gets the page's <h1>; the rest are <h2>. */
+function SlideHeading({
+  first,
+  className,
+  children,
+}: {
+  first: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return first ? <h1 className={className}>{children}</h1> : <h2 className={className}>{children}</h2>;
 }

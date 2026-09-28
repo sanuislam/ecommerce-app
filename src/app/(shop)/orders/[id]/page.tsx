@@ -1,15 +1,27 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { formatDate, formatPrice } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2 } from "lucide-react";
-import { Role } from "@/generated/prisma";
+import { Button } from "@/components/ui/button";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Circle,
+  PackageCheck,
+  Truck,
+  XCircle,
+} from "lucide-react";
+import { Role, type OrderStatus } from "@/generated/prisma";
 import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
+import { OrderStatusBadge } from "@/components/site/order-status-badge";
+import { CancelOrderButton } from "@/components/site/cancel-order-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
+import { STATUS_LABEL } from "@/lib/orders";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -21,17 +33,38 @@ export const metadata: Metadata = {
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ success?: string }>;
+  searchParams: Promise<{ success?: string; bkash?: string; payment?: string }>;
 };
 
+const dhakaDateTime = (d: Date) =>
+  d.toLocaleString("en-GB", {
+    timeZone: "Asia/Dhaka",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+const STEPS: { status: OrderStatus; label: string }[] = [
+  { status: "PENDING", label: "Placed" },
+  { status: "PAID", label: "Confirmed" },
+  { status: "SHIPPED", label: "Shipped" },
+  { status: "DELIVERED", label: "Delivered" },
+];
+
 export default async function OrderDetailPage({ params, searchParams }: Props) {
-  const [{ id }, { success }] = await Promise.all([params, searchParams]);
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const session = await auth();
   if (!session?.user) redirect(`/sign-in?callbackUrl=/orders/${id}`);
 
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: true, address: true, user: true },
+    include: {
+      items: { include: { product: { select: { slug: true } } } },
+      address: true,
+      events: { orderBy: { createdAt: "asc" } },
+    },
   });
   if (!order) notFound();
 
@@ -39,60 +72,157 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const isAdmin = session.user.role === Role.ADMIN;
   if (!isOwner && !isAdmin) notFound();
 
+  const site = await getSiteSettings();
+  const cancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
+  const reached = new Set(order.events.map((e) => e.status));
+  // COD orders skip "Confirmed" until delivery; treat later steps as reaching it.
+  const stepIndex = Math.max(
+    0,
+    ...STEPS.map((s, i) => (reached.has(s.status) || order.status === s.status ? i : 0)),
+  );
+  const canCancel = isOwner && order.status === "PENDING" && !order.paymentTransactionId;
+
+  const notice =
+    sp.bkash === "cancel"
+      ? { tone: "warn", text: "bKash payment was cancelled, so this order was not placed." }
+      : sp.bkash === "failed"
+        ? { tone: "warn", text: "bKash payment did not go through. No money was taken for this order." }
+        : sp.bkash === "review"
+          ? { tone: "warn", text: "We received your bKash payment and are checking it. We will confirm shortly." }
+          : sp.payment === "cancelled"
+            ? { tone: "warn", text: "Card payment was not completed. The order will be cancelled automatically." }
+            : null;
+
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-      {success && <ClearCartOnSuccess />}
-      {success && (
+    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      {sp.success && order.status !== "CANCELLED" && <ClearCartOnSuccess />}
+      {sp.success && order.status !== "CANCELLED" && (
         <div className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-          <CheckCircle2 className="mt-0.5 size-5 text-emerald-600" />
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
           <div>
             <div className="font-semibold">Thanks for your order!</div>
             <div className="text-sm text-muted-foreground">
-              A confirmation has been sent to {order.user.email}.
+              We&apos;ll call you on {order.address?.phone ?? "your phone"} if we need to confirm
+              anything. You can follow the status on this page.
             </div>
           </div>
         </div>
       )}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+      {notice && (
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-400/40 bg-amber-500/10 p-4 text-sm">
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <div>{notice.text}</div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Order #{order.id.slice(0, 8)}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Placed {formatDate(order.createdAt)}
-          </p>
+          <p className="text-sm text-muted-foreground">Placed {dhakaDateTime(order.createdAt)}</p>
         </div>
-        <Badge
-          variant={
-            order.status === "PAID" || order.status === "DELIVERED"
-              ? "default"
-              : order.status === "CANCELLED"
-                ? "destructive"
-                : "secondary"
-          }
-        >
-          {order.status}
-        </Badge>
+        <OrderStatusBadge status={order.status} />
       </div>
 
+      {/* ---- Progress tracker ---- */}
+      <section className="mt-6 rounded-lg border bg-card p-4 sm:p-5" aria-label="Order progress">
+        {cancelled ? (
+          <div className="flex items-center gap-3 text-sm">
+            <XCircle className="size-5 text-destructive" />
+            <span>
+              This order was {order.status === "REFUNDED" ? "refunded" : "cancelled"}.
+            </span>
+          </div>
+        ) : (
+          <ol className="grid grid-cols-4 gap-1">
+            {STEPS.map((s, i) => {
+              const done = i <= stepIndex;
+              return (
+                <li key={s.status} className="flex flex-col items-center text-center">
+                  <div className="flex w-full items-center">
+                    <span className={`h-0.5 flex-1 ${i === 0 ? "invisible" : done ? "bg-primary" : "bg-border"}`} />
+                    {done ? (
+                      <CheckCircle2 className="size-6 shrink-0 text-primary" />
+                    ) : (
+                      <Circle className="size-6 shrink-0 text-muted-foreground/40" />
+                    )}
+                    <span
+                      className={`h-0.5 flex-1 ${i === STEPS.length - 1 ? "invisible" : i < stepIndex ? "bg-primary" : "bg-border"}`}
+                    />
+                  </div>
+                  <span className={`mt-1.5 text-xs sm:text-sm ${done ? "font-medium" : "text-muted-foreground"}`}>
+                    {s.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        {(order.courier || order.trackingNumber) && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-3 text-sm">
+            <Truck className="size-4 shrink-0" />
+            <span>
+              {order.courier ?? "Courier"}
+              {order.trackingNumber && (
+                <>
+                  {" "}· Tracking no. <span className="font-mono font-medium">{order.trackingNumber}</span>
+                </>
+              )}
+            </span>
+          </div>
+        )}
+        {order.events.length > 0 && (
+          <details className="mt-4 text-sm">
+            <summary className="cursor-pointer font-medium">Order history</summary>
+            <ul className="mt-3 space-y-3 border-l pl-4">
+              {[...order.events].reverse().map((e) => (
+                <li key={e.id} className="relative">
+                  <span className="absolute top-1.5 -left-[21px] size-2 rounded-full bg-primary" />
+                  <div className="font-medium">{STATUS_LABEL[e.status]}</div>
+                  {e.note && e.note !== "Order placed" && e.note !== "Imported" && (
+                    <div className="text-muted-foreground">{e.note}</div>
+                  )}
+                  <div className="text-xs text-muted-foreground">{dhakaDateTime(e.createdAt)}</div>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
+
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-lg border bg-card p-4">
+        <div className="min-w-0 rounded-lg border bg-card p-4">
           <h2 className="text-lg font-semibold">Items</h2>
           <div className="mt-3 divide-y">
             {order.items.map((item) => (
               <div key={item.id} className="flex gap-3 py-3">
-                {item.image && (
-                  <div className="relative size-16 overflow-hidden rounded-md bg-muted">
+                <div className="relative size-16 shrink-0 overflow-hidden rounded-md bg-muted">
+                  {item.image && (
                     <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
-                  </div>
-                )}
-                <div className="flex-1">
-                  <div className="font-medium">{item.name}</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/products/${item.product.slug}`} className="line-clamp-2 font-medium hover:underline">
+                    {item.name}
+                  </Link>
+                  {item.variantName && (
+                    <div className="text-xs text-muted-foreground">{item.variantName}</div>
+                  )}
                   <div className="text-sm text-muted-foreground">
                     Qty {item.quantity} · {formatPrice(Number(item.price))} each
                   </div>
+                  {order.status === "DELIVERED" && isOwner && (
+                    <Link
+                      href={`/products/${item.product.slug}#reviews`}
+                      className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                    >
+                      <PackageCheck className="mr-1 inline size-3.5" />
+                      Write a review
+                    </Link>
+                  )}
                 </div>
-                <div className="font-semibold">
+                <div className="shrink-0 font-semibold">
                   {formatPrice(Number(item.price) * item.quantity)}
                 </div>
               </div>
@@ -103,17 +233,27 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         <aside className="space-y-4">
           <div className="rounded-lg border bg-card p-4 text-sm">
             <h3 className="font-semibold">Summary</h3>
-            <div className="mt-2 flex justify-between">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span>{formatPrice(Number(order.subtotal))}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Shipping</span>
-              <span>{formatPrice(Number(order.shipping))}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Tax</span>
-              <span>{formatPrice(Number(order.tax))}</span>
+            <div className="mt-2 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>{formatPrice(Number(order.subtotal))}</span>
+              </div>
+              {Number(order.discount) > 0 && (
+                <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                  <span>Discount{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+                  <span>−{formatPrice(Number(order.discount))}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Delivery</span>
+                <span>{Number(order.shipping) === 0 ? "Free" : formatPrice(Number(order.shipping))}</span>
+              </div>
+              {Number(order.tax) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span>{formatPrice(Number(order.tax))}</span>
+                </div>
+              )}
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-semibold">
@@ -123,44 +263,60 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
           </div>
           <div className="rounded-lg border bg-card p-4 text-sm">
             <h3 className="font-semibold">Payment</h3>
-            <div className="mt-2 flex justify-between">
+            <div className="mt-2 flex justify-between gap-2">
               <span className="text-muted-foreground">Method</span>
-              <span className="font-medium">
+              <span className="text-right font-medium">
                 {order.paymentMethod === "STRIPE"
-                  ? "Card (Stripe)"
+                  ? "Card"
                   : order.paymentMethod === "COD"
-                    ? "Cash on Delivery"
+                    ? "Cash on delivery"
                     : MFS_LABELS[order.paymentMethod as MfsMethod]}
               </span>
             </div>
             {order.paymentTransactionId && (
               <div className="mt-1 flex justify-between gap-2">
                 <span className="text-muted-foreground">TrxID</span>
-                <span className="break-all font-mono">{order.paymentTransactionId}</span>
+                <span className="font-mono break-all">{order.paymentTransactionId}</span>
               </div>
             )}
-            {order.status === "PENDING" &&
-              order.paymentMethod !== "STRIPE" &&
-              order.paymentMethod !== "COD" && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Awaiting payment verification. You&apos;ll be notified once confirmed.
-                </p>
-              )}
+            {order.status === "PENDING" && order.paymentTransactionId && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                We&apos;re verifying your payment. This usually takes under 30 minutes.
+              </p>
+            )}
+            {order.status === "PENDING" && order.paymentMethod === "COD" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Please keep {formatPrice(Number(order.total))} ready for the delivery person.
+              </p>
+            )}
           </div>
           {order.address && (
             <div className="rounded-lg border bg-card p-4 text-sm">
-              <h3 className="font-semibold">Shipping address</h3>
-              <div className="mt-2 text-muted-foreground">
-                <div>{order.address.fullName}</div>
+              <h3 className="font-semibold">Delivery address</h3>
+              <div className="mt-2 space-y-0.5 break-words text-muted-foreground">
+                <div className="text-foreground">{order.address.fullName}</div>
+                {order.address.phone && <div>{order.address.phone}</div>}
                 <div>{order.address.line1}</div>
                 {order.address.line2 && <div>{order.address.line2}</div>}
                 <div>
-                  {order.address.city}
-                  {order.address.state ? `, ${order.address.state}` : ""} {order.address.postalCode}
+                  {[order.address.city, order.address.state, order.address.postalCode]
+                    .filter(Boolean)
+                    .join(", ")}
                 </div>
-                <div>{order.address.country}</div>
               </div>
             </div>
+          )}
+          {canCancel && <CancelOrderButton orderId={order.id} />}
+          {(site.whatsappUrl || site.supportPhone) && (
+            <Button asChild variant="ghost" className="w-full">
+              <a
+                href={site.whatsappUrl || `tel:${site.supportPhone.replace(/\s/g, "")}`}
+                target={site.whatsappUrl ? "_blank" : undefined}
+                rel="noopener noreferrer"
+              >
+                Need help with this order?
+              </a>
+            </Button>
           )}
         </aside>
       </div>

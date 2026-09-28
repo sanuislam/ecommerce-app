@@ -13,31 +13,44 @@ and Stripe (test mode).
 | UI | [shadcn/ui](https://ui.shadcn.com) (Nova), Tailwind CSS v4, Framer Motion |
 | Icons | lucide-react, react-icons |
 | Auth | [NextAuth v5](https://authjs.dev) credentials provider + role-based proxy |
-| Data | [Prisma v6](https://www.prisma.io) + PostgreSQL |
+| Data | [Prisma 7](https://www.prisma.io) + PostgreSQL (Neon or any Postgres) |
 | CMS | [Sanity](https://www.sanity.io) (Studio embedded at `/studio`) |
 | State | [Zustand](https://zustand.docs.pmnd.rs) with `persist` middleware |
 | HTTP | axios |
-| Payments | Stripe Checkout (test mode), webhook at `/api/stripe/webhook` |
+| Payments | bKash Tokenized Checkout, manual MFS (TrxID), cash on delivery, optional Stripe |
 
 ## Features
 
-**Storefront**
+**Storefront** (fully responsive: 320px phones → large desktops)
 
-- Home with animated hero, category grid, featured and new-arrival rails
-- Catalog with search, category filter, and sort
-- Product detail with gallery, reviews, trust badges, add-to-cart
-- Cart with Zustand + localStorage, quantity controls, totals
-- Stripe checkout (or demo mode when Stripe keys are placeholders)
-- Orders list and order detail pages
-- Sign-in / sign-up with NextAuth credentials
+- Home with hero/banner carousel, flash deals (discount is really charged), category grid, featured and new-arrival rails
+- Catalog with search, category chips, price range, in-stock / on-sale filters, sort and pagination; filter sheet on phones
+- Product page: swipeable gallery, **size / colour options** with per-option stock and price, stock-capped quantity,
+  **Buy now**, **Order on WhatsApp**, wishlist, sticky buy bar on phones, verified-buyer reviews, related products
+- Cart that re-checks prices and stock with the server
+- Checkout for Bangladesh: saved addresses, 64-district picker (delivery zone and fee come from the district),
+  required 01XXXXXXXXX phone, **coupon codes**, order note; bKash gateway, manual bKash/Nagad/Rocket/Upay (TrxID),
+  cash on delivery, optional card (Stripe). Prices are VAT-inclusive.
+- Order tracking page with progress steps, courier + tracking number, history timeline, customer self-cancel while pending
+- My account: profile, address book, change password; wishlist page
+- Phone bottom tab bar, safe-area aware layout, 40px+ touch targets on touch screens
 
-**Admin dashboard** (`/admin`, requires `ADMIN` role)
+**Admin dashboard** (`/admin`, requires `ADMIN` role, works on phones)
 
-- Overview with revenue, orders, product, and user stats
-- Products CRUD (create / edit / delete, featured + published flags)
-- Categories CRUD
-- Orders list and detail with status updates
-- Users list with role switcher
+- Products CRUD with size/colour option editor (stock per option)
+- Orders: status filter + search, allowed-transition status changes (cancel restocks automatically),
+  courier + tracking number, timeline, bKash refunds
+- Coupons: percent / fixed, minimum spend, max discount, usage limits, validity window
+- Categories, users (role switcher), legal pages, payments (bKash), SEO & PWA, site settings incl. delivery charges
+
+**Safety**
+
+- Every price, discount and delivery fee is calculated on the server; stock and coupon usage change atomically
+- bKash callback verifies the payment belongs to the order and the paid amount matches before marking it paid
+- Status changes are guarded so double callbacks / double clicks can't restock or refund twice
+- Rate limits on sign-in, sign-up, checkout, reviews and password changes (stored in Postgres)
+- Admin role is re-read from the database every minute, so demoted admins lose access quickly
+- Abandoned online-payment orders are cancelled after 60 minutes (cron + lazy cleanup)
 
 **Content**
 
@@ -72,18 +85,30 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_replace_me"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-> Checkout works in a **demo mode** when `STRIPE_SECRET_KEY` is still a
-> placeholder — orders are created without a payment redirect. Set real
-> `sk_test_...` keys to enable Stripe Checkout.
+> **Payment methods shown at checkout**
+> - Cash on delivery is always available.
+> - bKash gateway appears when credentials are saved in **Admin → Payments** (or `BKASH_*` env vars).
+> - Manual "Send Money" methods (bKash/Nagad/Rocket/Upay) appear only when their
+>   `NEXT_PUBLIC_*_NUMBER` receiving number is set — so customers never pay a placeholder number.
+> - Card payment appears only with real Stripe keys.
+>
+> Set `CRON_SECRET` so `/api/cron/expire-orders` (scheduled in `vercel.json`) can release stock
+> from abandoned online payments.
 
 ## Getting started
 
 ```bash
 npm install
 npm run db:migrate   # runs prisma migrate dev and generates client
-npm run db:seed      # seeds categories, products, admin + user accounts
+npm run db:seed      # seeds categories, products (with size/colour options), admin + user, coupon EID10
 npm run dev
 ```
+
+The database driver is picked from `DATABASE_URL`: Neon URLs use the Neon
+serverless driver, anything else (e.g. a local Postgres) uses `pg`. Override
+with `DATABASE_DRIVER=neon|pg`.
+
+For production deploys run `npm run db:deploy` to apply migrations.
 
 Then open [http://localhost:3000](http://localhost:3000).
 
@@ -94,7 +119,8 @@ Then open [http://localhost:3000](http://localhost:3000).
 | Admin | admin@eidbazar.com    | admin1234  |
 | User  | user@eidbazar.com     | user1234   |
 
-Sign in as the admin to reach `/admin`.
+Sign in as the admin to reach `/admin`. The seed refuses to run with
+`NODE_ENV=production`; set `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` for any shared database.
 
 ## Scripts
 

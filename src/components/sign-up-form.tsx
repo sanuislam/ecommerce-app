@@ -244,11 +244,15 @@ export function SignUpForm() {
           id="password"
           type="password"
           required
-          minLength={6}
+          minLength={8}
           autoComplete="new-password"
+          aria-describedby="password-hint"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        <p id="password-hint" className="mt-1 text-xs text-muted-foreground">
+          At least 8 characters.
+        </p>
       </div>
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>

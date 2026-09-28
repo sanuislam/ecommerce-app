@@ -4,294 +4,333 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured, createBkashPayment } from "@/lib/bkash";
-import type { OrderStatus, PaymentMethod } from "@/generated/prisma";
-import { calculateShipping, calculateTax } from "@/lib/utils";
+import { buildQuote, MAX_LINES, MAX_QTY_PER_LINE } from "@/lib/checkout";
+import { isDistrict, normalizeBdPhone } from "@/lib/districts";
+import { transitionOrder } from "@/lib/orders";
+import { rateLimit } from "@/lib/rate-limit";
+import { manualMfsAvailable, type MfsMethod } from "@/lib/mfs";
+import { Prisma } from "@/generated/prisma";
 
-const paymentMethodSchema = z.enum([
-  "STRIPE",
-  "BKASH",
-  "NAGAD",
-  "ROCKET",
-  "UPAY",
-  "COD",
-]);
+const addressSchema = z.object({
+  fullName: z.string().trim().min(2, "Please enter your full name").max(80),
+  phone: z.string().trim().min(1, "Phone number is required"),
+  line1: z.string().trim().min(5, "Please enter your full address").max(200),
+  line2: z.string().trim().max(200).optional().default(""),
+  city: z.string().trim().min(2, "Please enter your area / thana").max(80),
+  state: z.string().trim().refine(isDistrict, "Please choose your district"),
+  postalCode: z.string().trim().max(10).optional().default(""),
+});
 
-const schema = z
-  .object({
-    address: z.object({
-      fullName: z.string().min(1),
-      phone: z.string().optional().default(""),
-      line1: z.string().min(1),
-      line2: z.string().optional().default(""),
-      city: z.string().min(1),
-      state: z.string().optional().default(""),
-      postalCode: z.string().min(1),
-      country: z.string().min(1),
-    }),
-    items: z
-      .array(
-        z.object({
-          productId: z.string().min(1),
-          quantity: z.number().int().positive(),
-        }),
-      )
-      .min(1),
-    paymentMethod: paymentMethodSchema.default("STRIPE"),
-    paymentSenderNumber: z.string().optional().default(""),
-    paymentTransactionId: z.string().optional().default(""),
-    shippingRegion: z.enum(["DHAKA", "OUTSIDE_DHAKA"]).default("OUTSIDE_DHAKA"),
-  });
+const schema = z.object({
+  addressId: z.string().optional(),
+  address: addressSchema.optional(),
+  saveAsDefault: z.boolean().optional().default(false),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        variantId: z.string().min(1).nullable().optional(),
+        quantity: z.number().int().positive().max(MAX_QTY_PER_LINE),
+      }),
+    )
+    .min(1, "Your cart is empty")
+    .max(MAX_LINES),
+  paymentMethod: z.enum(["STRIPE", "BKASH", "NAGAD", "ROCKET", "UPAY", "COD"]),
+  paymentSenderNumber: z.string().optional().default(""),
+  paymentTransactionId: z.string().optional().default(""),
+  couponCode: z.string().trim().max(40).optional().default(""),
+  notes: z.string().trim().max(500).optional().default(""),
+});
 
-class StockError extends Error {
-  constructor(public productName: string) {
-    super(`Insufficient stock for ${productName}`);
-  }
-}
+class CheckoutError extends Error {}
+
+const appBase = () => process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Please sign in to check out" }, { status: 401 });
+  }
+  const userId = session.user.id;
+
+  if (!(await rateLimit(`checkout:${userId}`, 10, 600))) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please wait a few minutes." },
+      { status: 429 },
+    );
   }
 
-  const body = await req.json().catch(() => null);
-  const parsed = schema.safeParse(body);
+  const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
     return NextResponse.json(
-      { error: first?.message ?? "Invalid input" },
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
       { status: 400 },
     );
   }
+  const input = parsed.data;
 
-  const {
-    address,
-    items,
-    paymentMethod,
-    paymentSenderNumber,
-    paymentTransactionId,
-    shippingRegion,
-  } = parsed.data;
-
-  const products = await prisma.product.findMany({
-    where: {
-      id: { in: items.map((i) => i.productId) },
-      published: true,
-    },
-  });
-  const byId = new Map(products.map((p) => [p.id, p]));
-
-  const missing = items.find((i) => !byId.has(i.productId));
-  if (missing) {
-    return NextResponse.json(
-      { error: "One or more products are no longer available" },
-      { status: 400 },
-    );
-  }
-
-  for (const i of items) {
-    const p = byId.get(i.productId)!;
-    if (p.stock < i.quantity) {
-      return NextResponse.json(
-        {
-          error: `Only ${p.stock} of "${p.name}" left in stock`,
-        },
-        { status: 400 },
-      );
+  // ---- Address: a saved one, or a new one typed at checkout ----
+  let savedAddressId: string | null = null;
+  let district: string;
+  let phone: string;
+  if (input.addressId) {
+    const saved = await prisma.address.findFirst({
+      where: { id: input.addressId, userId, archived: false },
+    });
+    if (!saved) {
+      return NextResponse.json({ error: "Saved address not found" }, { status: 400 });
     }
+    savedAddressId = saved.id;
+    district = saved.state ?? "";
+    phone = saved.phone ?? "";
+  } else if (input.address) {
+    district = input.address.state;
+    phone = input.address.phone;
+  } else {
+    return NextResponse.json({ error: "Please enter a delivery address" }, { status: 400 });
+  }
+  const normalizedPhone = normalizeBdPhone(phone);
+  if (!normalizedPhone) {
+    return NextResponse.json(
+      { error: "Enter a valid Bangladeshi mobile number (01XXXXXXXXX)" },
+      { status: 400 },
+    );
   }
 
-  let subtotal = 0;
-  const orderItems = items.map((i) => {
-    const p = byId.get(i.productId)!;
-    const price = Number(p.price);
-    subtotal += price * i.quantity;
-    return {
-      productId: p.id,
-      name: p.name,
-      price,
-      quantity: i.quantity,
-      image: p.images[0] ?? null,
-    };
-  });
-
-  const shipping = calculateShipping(subtotal, shippingRegion);
-  const tax = calculateTax(subtotal);
-  const total = Math.round((subtotal + shipping + tax) * 100) / 100;
-
+  // ---- Payment method checks ----
+  const method = input.paymentMethod;
   const stripeOn = stripeConfigured();
-  const bkashOn = await bkashConfigured();
-  const useStripe = paymentMethod === "STRIPE" && stripeOn;
-  const useBkash = paymentMethod === "BKASH" && bkashOn;
-
-  // Manual MFS flow validation (Nagad/Rocket/Upay always; bKash only when
-  // live gateway is not configured). Done after we know if bKash is live.
-  const manualMfs: string[] = ["NAGAD", "ROCKET", "UPAY"];
-  if (paymentMethod === "BKASH" && !bkashOn) manualMfs.push("BKASH");
-  if (manualMfs.includes(paymentMethod)) {
-    if (!paymentSenderNumber.trim()) {
+  const bkashLive = await bkashConfigured();
+  if (method === "STRIPE" && !stripeOn) {
+    return NextResponse.json({ error: "Card payment is not available" }, { status: 400 });
+  }
+  const isManualMfs =
+    method === "NAGAD" || method === "ROCKET" || method === "UPAY" ||
+    (method === "BKASH" && !bkashLive);
+  let senderNumber: string | null = null;
+  let trxId: string | null = null;
+  if (isManualMfs && !manualMfsAvailable(method as MfsMethod)) {
+    return NextResponse.json(
+      { error: "This payment method is not available right now" },
+      { status: 400 },
+    );
+  }
+  if (isManualMfs) {
+    senderNumber = normalizeBdPhone(input.paymentSenderNumber);
+    if (!senderNumber) {
       return NextResponse.json(
-        { error: "Sender mobile number is required" },
+        { error: "Enter the mobile number you sent the money from" },
         { status: 400 },
       );
     }
-    if (!paymentTransactionId.trim()) {
+    trxId = input.paymentTransactionId.trim().toUpperCase();
+    if (!/^[A-Z0-9]{6,20}$/.test(trxId)) {
+      return NextResponse.json({ error: "Enter a valid Transaction ID" }, { status: 400 });
+    }
+    const reused = await prisma.order.findFirst({
+      where: {
+        paymentMethod: method,
+        paymentTransactionId: trxId,
+        status: { not: "CANCELLED" },
+      },
+      select: { id: true },
+    });
+    if (reused) {
       return NextResponse.json(
-        { error: "Transaction ID is required" },
-        { status: 400 },
+        { error: "This Transaction ID has already been used for another order" },
+        { status: 409 },
       );
     }
   }
 
-  const initialStatus: OrderStatus =
-    paymentMethod === "STRIPE"
-      ? stripeOn
-        ? "PENDING"
-        : "PAID"
-      : "PENDING";
+  // ---- Price everything on the server ----
+  const quote = await buildQuote({
+    items: input.items,
+    district,
+    couponCode: input.couponCode,
+    userId,
+  });
+  if (quote.errors.length) {
+    return NextResponse.json({ error: quote.errors[0], quote }, { status: 409 });
+  }
+  if (input.couponCode && quote.couponError) {
+    return NextResponse.json({ error: quote.couponError, quote }, { status: 400 });
+  }
 
-  const resolvedMethod: PaymentMethod =
-    paymentMethod === "STRIPE" && !stripeOn ? "STRIPE" : paymentMethod;
-
+  // ---- Create the order atomically (stock, coupon, address) ----
   let order;
   try {
     order = await prisma.$transaction(async (tx) => {
-      for (const i of items) {
-        const res = await tx.product.updateMany({
-          where: { id: i.productId, stock: { gte: i.quantity } },
-          data: { stock: { decrement: i.quantity } },
-        });
-        if (res.count !== 1) {
-          throw new StockError(byId.get(i.productId)!.name);
+      for (const l of quote.lines) {
+        if (l.variantId) {
+          const v = await tx.productVariant.updateMany({
+            where: { id: l.variantId, stock: { gte: l.quantity } },
+            data: { stock: { decrement: l.quantity } },
+          });
+          if (v.count !== 1) throw new CheckoutError(`"${l.name}" just sold out`);
+          await tx.product.update({
+            where: { id: l.productId },
+            data: { stock: { decrement: l.quantity } },
+          });
+        } else {
+          const p = await tx.product.updateMany({
+            where: { id: l.productId, stock: { gte: l.quantity } },
+            data: { stock: { decrement: l.quantity } },
+          });
+          if (p.count !== 1) throw new CheckoutError(`"${l.name}" just sold out`);
         }
       }
 
-      const addressRecord = await tx.address.create({
-        data: {
-          userId: session.user.id,
-          fullName: address.fullName,
-          phone: address.phone || null,
-          line1: address.line1,
-          line2: address.line2 || null,
-          city: address.city,
-          state: address.state || null,
-          postalCode: address.postalCode,
-          country: address.country,
-        },
-      });
+      if (quote.coupon) {
+        const used = await tx.$executeRaw`
+          UPDATE "Coupon" SET "usedCount" = "usedCount" + 1
+          WHERE "id" = ${quote.coupon.id}
+            AND ("usageLimit" IS NULL OR "usedCount" < "usageLimit")`;
+        if (used !== 1) throw new CheckoutError("This coupon has been fully used");
+      }
+
+      let addressId = savedAddressId;
+      if (!addressId && input.address) {
+        const a = input.address;
+        // Re-use an identical saved address instead of piling up duplicates.
+        const same = await tx.address.findFirst({
+          where: {
+            userId,
+            archived: false,
+            fullName: a.fullName,
+            phone: normalizedPhone,
+            line1: a.line1,
+            city: a.city,
+            state: a.state,
+          },
+          select: { id: true },
+        });
+        if (same) {
+          addressId = same.id;
+          if (input.saveAsDefault) {
+            await tx.address.updateMany({ where: { userId }, data: { isDefault: false } });
+            await tx.address.update({ where: { id: same.id }, data: { isDefault: true } });
+          }
+        }
+      }
+      if (!addressId && input.address) {
+        const a = input.address;
+        const hasDefault = await tx.address.count({
+          where: { userId, isDefault: true, archived: false },
+        });
+        const makeDefault = input.saveAsDefault || hasDefault === 0;
+        if (makeDefault) {
+          await tx.address.updateMany({ where: { userId }, data: { isDefault: false } });
+        }
+        const created = await tx.address.create({
+          data: {
+            userId,
+            fullName: a.fullName,
+            phone: normalizedPhone,
+            line1: a.line1,
+            line2: a.line2 || null,
+            city: a.city,
+            state: a.state,
+            postalCode: a.postalCode || null,
+            country: "BD",
+            isDefault: makeDefault,
+          },
+        });
+        addressId = created.id;
+      }
 
       return tx.order.create({
         data: {
-          userId: session.user.id,
-          status: initialStatus,
-          subtotal,
-          tax,
-          shipping,
-          total,
+          userId,
+          status: "PENDING",
+          subtotal: quote.subtotal,
+          discount: quote.discount,
+          tax: 0,
+          shipping: quote.shipping,
+          total: quote.total,
           currency: "BDT",
+          couponId: quote.coupon?.id ?? null,
+          couponCode: quote.coupon?.code ?? null,
+          shippingZone: quote.zone,
           paymentEmail: session.user.email,
-          paymentMethod: resolvedMethod,
-          paymentSenderNumber: paymentSenderNumber.trim() || null,
-          paymentTransactionId: paymentTransactionId.trim() || null,
-          addressId: addressRecord.id,
-          items: { create: orderItems },
+          paymentMethod: method,
+          paymentSenderNumber: senderNumber,
+          paymentTransactionId: trxId,
+          notes: input.notes || null,
+          addressId,
+          items: {
+            create: quote.lines.map((l) => ({
+              productId: l.productId,
+              variantId: l.variantId,
+              variantName: l.variantName,
+              name: l.name,
+              price: l.unitPrice,
+              quantity: l.quantity,
+              image: l.image,
+            })),
+          },
+          events: { create: { status: "PENDING", note: "Order placed" } },
         },
       });
     });
   } catch (err) {
-    if (err instanceof StockError) {
-      return NextResponse.json(
-        { error: `Ran out of stock for "${err.productName}". Try again.` },
-        { status: 409 },
-      );
+    if (err instanceof CheckoutError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error("Checkout failed", err.code, err.message);
+      return NextResponse.json({ error: "Could not place order. Please try again." }, { status: 500 });
     }
     throw err;
   }
 
-  if (useStripe) {
-    const stripe = getStripe();
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    let checkoutSession;
+  const cancelUnpaid = (note: string) =>
+    transitionOrder({ orderId: order.id, from: "PENDING", to: "CANCELLED", note });
+
+  // ---- Online payments: hand off to the gateway ----
+  if (method === "STRIPE") {
     try {
-      checkoutSession = await stripe.checkout.sessions.create({
+      const stripe = getStripe();
+      const checkoutSession = await stripe.checkout.sessions.create({
         mode: "payment",
-        success_url: `${base}/orders/${order.id}?success=1`,
-        cancel_url: `${base}/cart`,
+        success_url: `${appBase()}/orders/${order.id}?success=1`,
+        cancel_url: `${appBase()}/orders/${order.id}?payment=cancelled`,
         customer_email: session.user.email ?? undefined,
+        expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
         line_items: [
-          ...orderItems.map((i) => ({
-            quantity: i.quantity,
+          {
+            quantity: 1,
             price_data: {
               currency: "bdt",
-              unit_amount: Math.round(i.price * 100),
-              product_data: { name: i.name },
+              unit_amount: Math.round(quote.total * 100),
+              product_data: { name: `Order ${order.id.slice(-8).toUpperCase()}` },
             },
-          })),
-          ...(shipping > 0
-            ? [
-                {
-                  quantity: 1,
-                  price_data: {
-                    currency: "bdt",
-                    unit_amount: Math.round(shipping * 100),
-                    product_data: { name: "Shipping" },
-                  },
-                },
-              ]
-            : []),
-          ...(tax > 0
-            ? [
-                {
-                  quantity: 1,
-                  price_data: {
-                    currency: "bdt",
-                    unit_amount: Math.round(tax * 100),
-                    product_data: { name: "Tax" },
-                  },
-                },
-              ]
-            : []),
+          },
         ],
         metadata: { orderId: order.id },
       });
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { stripeId: checkoutSession.id },
+      });
+      return NextResponse.json({ id: order.id, checkoutUrl: checkoutSession.url });
     } catch (err) {
-      console.error("Stripe checkout session failed, rolling back order", err);
-      try {
-        await prisma.$transaction(async (tx) => {
-          for (const i of items) {
-            await tx.product.update({
-              where: { id: i.productId },
-              data: { stock: { increment: i.quantity } },
-            });
-          }
-          await tx.order.delete({ where: { id: order.id } });
-          if (order.addressId) {
-            await tx.address.delete({ where: { id: order.addressId } });
-          }
-        });
-      } catch (rollbackErr) {
-        console.error("Failed to rollback order after Stripe error", rollbackErr);
-      }
+      console.error("Stripe checkout session failed", err);
+      await cancelUnpaid("Card payment could not be started");
       return NextResponse.json(
-        { error: "Payment provider is unavailable. Please try again." },
+        { error: "Card payment is unavailable. Please try another method." },
         { status: 502 },
       );
     }
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { stripeId: checkoutSession.id },
-    });
-    return NextResponse.json({ id: order.id, checkoutUrl: checkoutSession.url });
   }
 
-  if (useBkash) {
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  if (method === "BKASH" && bkashLive) {
     try {
       const created = await createBkashPayment({
-        amount: total,
+        amount: quote.total,
         invoiceNumber: order.id,
-        payerReference: address.phone || session.user.email || order.id,
-        callbackURL: `${base}/api/payments/bkash/callback?orderId=${order.id}`,
+        payerReference: normalizedPhone,
+        callbackURL: `${appBase()}/api/payments/bkash/callback`,
       });
       await prisma.order.update({
         where: { id: order.id },
@@ -299,23 +338,8 @@ export async function POST(req: Request) {
       });
       return NextResponse.json({ id: order.id, checkoutUrl: created.bkashURL });
     } catch (err) {
-      console.error("bKash create_payment failed, rolling back order", err);
-      try {
-        await prisma.$transaction(async (tx) => {
-          for (const i of items) {
-            await tx.product.update({
-              where: { id: i.productId },
-              data: { stock: { increment: i.quantity } },
-            });
-          }
-          await tx.order.delete({ where: { id: order.id } });
-          if (order.addressId) {
-            await tx.address.delete({ where: { id: order.addressId } });
-          }
-        });
-      } catch (rollbackErr) {
-        console.error("Failed to rollback order after bKash error", rollbackErr);
-      }
+      console.error("bKash create_payment failed", err);
+      await cancelUnpaid("bKash payment could not be started");
       return NextResponse.json(
         { error: "bKash payment is unavailable right now. Please try again." },
         { status: 502 },

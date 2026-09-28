@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
 import { bkashConfigured, refundBkashPayment } from "@/lib/bkash";
+import { transitionOrder } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -43,9 +44,10 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (order.status !== "PAID") {
+  const refundable = ["PAID", "SHIPPED", "DELIVERED"] as const;
+  if (!(refundable as readonly string[]).includes(order.status)) {
     return NextResponse.json(
-      { error: `Order is ${order.status}, only PAID orders can be refunded` },
+      { error: `Order is ${order.status} and cannot be refunded` },
       { status: 400 },
     );
   }
@@ -90,14 +92,13 @@ export async function POST(req: Request) {
     );
   }
 
-  await prisma.order.update({
-    where: { id: order.id },
+  await transitionOrder({
+    orderId: order.id,
+    from: order.status,
+    to: "REFUNDED",
+    note: `Refunded via bKash (${result.refundTrxID ?? "-"})`,
     data: {
-      status: "REFUNDED",
-      notes: [
-        order.notes,
-        `bKash refund ${result.refundTrxID ?? ""} on ${new Date().toISOString()}`,
-      ]
+      notes: [order.notes, `bKash refund ${result.refundTrxID ?? ""} on ${new Date().toISOString()}`]
         .filter(Boolean)
         .join("\n"),
     },

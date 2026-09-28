@@ -6,7 +6,7 @@ export default async function NewProductPage() {
     orderBy: { name: "asc" },
   });
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="text-2xl font-semibold tracking-tight">New product</h1>
       <div className="mt-6 max-w-3xl">
         <ProductForm categories={categories} />

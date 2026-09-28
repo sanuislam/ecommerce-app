@@ -227,7 +227,7 @@ export function PwaInstallBanner() {
 
   return (
     <>
-      <div className="fixed inset-x-3 bottom-3 z-[70] mx-auto flex max-w-md items-center gap-3 rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:bottom-4 sm:right-4 sm:left-auto sm:mx-0">
+      <div className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[70] mx-auto flex max-w-md items-center gap-3 rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80 md:bottom-4 md:right-4 md:left-auto md:mx-0">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-amber-400 text-white">
           <Download className="size-5" />
         </div>
@@ -246,7 +246,7 @@ export function PwaInstallBanner() {
           <button
             type="button"
             onClick={close}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+            className="rounded-md p-2.5 text-muted-foreground hover:bg-muted"
             aria-label="Dismiss install prompt"
           >
             <X className="size-4" />

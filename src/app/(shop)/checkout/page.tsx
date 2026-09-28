@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/checkout-form";
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured } from "@/lib/bkash";
+import { manualMfsAvailable, MFS_METHODS, getReceivingNumber } from "@/lib/mfs";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +19,44 @@ export const metadata: Metadata = {
 export default async function CheckoutPage() {
   const session = await auth();
   if (!session?.user) redirect("/sign-in?callbackUrl=/checkout");
+
+  const [user, addresses, bkashLive] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, phone: true },
+    }),
+    prisma.address.findMany({
+      where: { userId: session.user.id, archived: false },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+      take: 10,
+    }),
+    bkashConfigured(),
+  ]);
+
+  const manualMethods = MFS_METHODS.filter(
+    (m) => manualMfsAvailable(m) && !(m === "BKASH" && bkashLive),
+  ).map((m) => ({ method: m, number: getReceivingNumber(m) }));
+
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Checkout</h1>
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Checkout</h1>
       <CheckoutForm
         userEmail={session.user.email ?? ""}
+        defaultName={user?.name ?? ""}
+        defaultPhone={user?.phone?.startsWith("01") ? user.phone : ""}
+        savedAddresses={addresses.map((a) => ({
+          id: a.id,
+          fullName: a.fullName,
+          phone: a.phone ?? "",
+          line1: a.line1,
+          line2: a.line2 ?? "",
+          city: a.city,
+          state: a.state ?? "",
+          isDefault: a.isDefault,
+        }))}
         stripeEnabled={stripeConfigured()}
-        bkashLiveEnabled={await bkashConfigured()}
+        bkashLiveEnabled={bkashLive}
+        manualMethods={manualMethods}
       />
     </div>
   );

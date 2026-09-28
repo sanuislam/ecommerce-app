@@ -52,16 +52,16 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-lg border bg-card p-4">
+          <div key={s.label} className="min-w-0 rounded-lg border bg-card p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">{s.label}</span>
               <s.icon className="size-4 text-muted-foreground" />
             </div>
-            <div className="mt-2 text-2xl font-semibold">{s.value}</div>
+            <div className="mt-2 truncate text-xl font-semibold sm:text-2xl" title={s.value}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -86,16 +86,16 @@ export default async function AdminDashboardPage() {
               <Link
                 key={o.id}
                 href={`/admin/orders/${o.id}`}
-                className="flex items-center justify-between px-4 py-3 transition hover:bg-muted/50"
+                className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-muted/50"
               >
-                <div>
+                <div className="min-w-0">
                   <div className="font-medium">#{o.id.slice(0, 8)}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="truncate text-xs text-muted-foreground">
                     {o.user.email}
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">
+                <div className="flex shrink-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-4">
+                  <span className="text-xs text-muted-foreground sm:text-sm">
                     {o.status}
                   </span>
                   <span className="font-semibold">

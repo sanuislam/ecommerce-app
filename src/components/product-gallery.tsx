@@ -1,62 +1,82 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 import { cn } from "@/lib/utils";
 
-export function ProductGallery({
-  images,
-  name,
-}: {
-  images: string[];
-  name: string;
-}) {
+/** Swipeable product image gallery with thumbnails. */
+export function ProductGallery({ images, name }: { images: string[]; name: string }) {
+  const [emblaRef, embla] = useEmblaCarousel({ loop: false });
   const [active, setActive] = useState(0);
-  const main = images[active];
+
+  const onSelect = useCallback(() => {
+    if (embla) setActive(embla.selectedScrollSnap());
+  }, [embla]);
+
+  useEffect(() => {
+    if (!embla) return;
+    embla.on("select", onSelect);
+    return () => {
+      embla.off("select", onSelect);
+    };
+  }, [embla, onSelect]);
+
+  if (images.length === 0) {
+    return (
+      <div className="flex aspect-square w-full items-center justify-center rounded-xl border bg-muted text-sm text-muted-foreground">
+        No image
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-3">
-      <motion.div
-        key={main}
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="relative aspect-square w-full overflow-hidden rounded-xl border bg-muted"
-      >
-        {main ? (
-          <Image
-            src={main}
-            alt={name}
-            fill
-            priority
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            No image
-          </div>
-        )}
-      </motion.div>
-      {images.length > 1 && (
-        <div className="grid grid-cols-5 gap-2">
-          {images.slice(0, 5).map((img, i) => (
-            <button
-              key={img}
-              onClick={() => setActive(i)}
-              className={cn(
-                "relative aspect-square overflow-hidden rounded-md border bg-muted transition",
-                i === active ? "ring-2 ring-primary" : "hover:opacity-90",
-              )}
-            >
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="relative overflow-hidden rounded-xl border bg-muted" ref={emblaRef}>
+        <div className="flex touch-pan-y">
+          {images.map((src, i) => (
+            <div key={src + i} className="relative aspect-square min-w-0 flex-[0_0_100%]">
               <Image
-                src={img}
-                alt={`${name} thumbnail ${i + 1}`}
+                src={src}
+                alt={i === 0 ? name : `${name} — image ${i + 1}`}
                 fill
-                sizes="96px"
+                priority={i === 0}
+                sizes="(min-width: 1024px) 50vw, 100vw"
                 className="object-cover"
               />
+            </div>
+          ))}
+        </div>
+        {images.length > 1 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5 lg:hidden">
+            {images.map((_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "h-1.5 rounded-full bg-white/70 shadow transition-all",
+                  i === active ? "w-5 bg-white" : "w-1.5",
+                )}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="grid grid-cols-5 gap-2" role="tablist" aria-label="Product images">
+          {images.slice(0, 10).map((img, i) => (
+            <button
+              key={img + i}
+              type="button"
+              role="tab"
+              aria-selected={i === active}
+              aria-label={`Show image ${i + 1}`}
+              onClick={() => embla?.scrollTo(i)}
+              className={cn(
+                "relative aspect-square overflow-hidden rounded-md border bg-muted transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                i === active ? "ring-2 ring-primary" : "opacity-80 hover:opacity-100",
+              )}
+            >
+              <Image src={img} alt="" fill sizes="96px" className="object-cover" />
             </button>
           ))}
         </div>

@@ -2,35 +2,9 @@ import { NextResponse } from "next/server";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
+import { transitionOrder } from "@/lib/orders";
 
 export const runtime = "nodejs";
-
-async function cancelOrderAndRestoreStock(orderId: string) {
-  try {
-    await prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({
-        where: { id: orderId },
-        include: { items: true },
-      });
-      if (!order || order.status !== "PENDING") return;
-      for (const item of order.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
-        });
-      }
-      await tx.order.update({
-        where: { id: orderId },
-        data: { status: "CANCELLED" },
-      });
-    });
-  } catch (err) {
-    console.warn(
-      `Stripe webhook: failed to cancel/restore stock for order ${orderId}`,
-      err,
-    );
-  }
-}
 
 export async function POST(req: Request) {
   if (!stripeConfigured() || !process.env.STRIPE_WEBHOOK_SECRET) {
@@ -56,29 +30,46 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.orderId;
-    if (orderId) {
-      try {
-        await prisma.order.update({
-          where: { id: orderId },
-          data: { status: "PAID" },
+  if (
+    event.type === "checkout.session.completed" ||
+    event.type === "checkout.session.async_payment_succeeded"
+  ) {
+    const cs = event.data.object as Stripe.Checkout.Session;
+    const orderId = cs.metadata?.orderId;
+    if (orderId && cs.payment_status === "paid") {
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      const paid = (cs.amount_total ?? 0) / 100;
+      if (!order) {
+        console.warn(`Stripe webhook: order ${orderId} not found`);
+      } else if (order.stripeId !== cs.id || Math.abs(paid - Number(order.total)) > 0.01) {
+        console.error("Stripe webhook: session does not match order", {
+          orderId,
+          session: cs.id,
+          paid,
+          expected: order.total.toString(),
         });
-      } catch {
-        console.warn(
-          `Stripe webhook: order ${orderId} not found, skipping PAID update`,
-        );
+      } else {
+        await transitionOrder({
+          orderId,
+          from: "PENDING",
+          to: "PAID",
+          note: "Paid by card",
+        });
       }
     }
   } else if (
     event.type === "checkout.session.expired" ||
     event.type === "checkout.session.async_payment_failed"
   ) {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.orderId;
+    const cs = event.data.object as Stripe.Checkout.Session;
+    const orderId = cs.metadata?.orderId;
     if (orderId) {
-      await cancelOrderAndRestoreStock(orderId);
+      await transitionOrder({
+        orderId,
+        from: "PENDING",
+        to: "CANCELLED",
+        note: "Card payment not completed",
+      });
     }
   }
 

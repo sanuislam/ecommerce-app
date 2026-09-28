@@ -1,15 +1,22 @@
 import Link from "next/link";
 import Script from "next/script";
 import { notFound } from "next/navigation";
-import { Star, Truck, ShieldCheck, Tag } from "lucide-react";
+import { Star, Truck, ShieldCheck, Tag, RotateCcw, Banknote } from "lucide-react";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { formatPrice } from "@/lib/utils";
+import { absoluteUrl, formatDate, formatPrice } from "@/lib/utils";
 import { getSeoSettings } from "@/lib/seo-settings";
+import { getSiteSettings } from "@/lib/site-settings";
+import { getShippingConfig } from "@/lib/checkout";
+import { unitPrice } from "@/lib/pricing";
+import { CARD_INCLUDE, toCardProduct } from "@/lib/product-view";
+import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AddToCart } from "@/components/add-to-cart";
 import { ProductGallery } from "@/components/product-gallery";
+import { ProductCard } from "@/components/product-card";
+import { ReviewForm } from "@/components/review-form";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -22,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const seo = await getSeoSettings();
   const desc =
     p.description?.slice(0, 160) ?? seo.defaultDescription;
-  const url = `https://eidbazar.com/products/${p.slug}`;
+  const url = absoluteUrl(`/products/${p.slug}`);
   const image = p.images[0] ?? seo.defaultOgImage ?? undefined;
   return {
     title: p.name,
@@ -50,24 +57,53 @@ export default async function ProductDetailPage({ params }: Props) {
     where: { slug },
     include: {
       category: true,
+      variants: { orderBy: { position: "asc" } },
       reviews: {
         orderBy: { createdAt: "desc" },
-        take: 10,
-        include: { user: { select: { name: true, image: true } } },
+        take: 20,
+        include: { user: { select: { name: true } } },
       },
     },
   });
 
   if (!product || !product.published) notFound();
 
-  const seo = await getSeoSettings();
-  const avg =
-    product.reviews.length > 0
-      ? product.reviews.reduce((s, r) => s + r.rating, 0) / product.reviews.length
-      : null;
-
-  const hasDiscount =
-    product.compareAt != null && Number(product.compareAt) > Number(product.price);
+  const session = await auth();
+  const [seo, site, shipping, ratingAgg, related, delivered] = await Promise.all([
+    getSeoSettings(),
+    getSiteSettings(),
+    getShippingConfig(),
+    prisma.review.aggregate({
+      where: { productId: product.id },
+      _avg: { rating: true },
+      _count: true,
+    }),
+    prisma.product.findMany({
+      where: {
+        published: true,
+        id: { not: product.id },
+        ...(product.categoryId ? { categoryId: product.categoryId } : {}),
+      },
+      include: CARD_INCLUDE,
+      orderBy: { createdAt: "desc" },
+      take: 4,
+    }),
+    session?.user
+      ? prisma.orderItem.findFirst({
+          where: {
+            productId: product.id,
+            order: { userId: session.user.id, status: "DELIVERED" },
+          },
+          select: { id: true },
+        })
+      : null,
+  ]);
+  const avg = ratingAgg._avg.rating;
+  const reviewCount = ratingAgg._count;
+  const myReview = session?.user
+    ? product.reviews.find((r) => r.userId === session.user.id)
+    : undefined;
+  const productUrl = absoluteUrl(`/products/${product.slug}`);
 
   const productJsonLd = seo.jsonLdEnabled
     ? {
@@ -80,20 +116,20 @@ export default async function ProductDetailPage({ params }: Props) {
         brand: { "@type": "Brand", name: seo.siteName },
         offers: {
           "@type": "Offer",
-          url: `https://eidbazar.com/products/${product.slug}`,
+          url: productUrl,
           priceCurrency: "BDT",
-          price: Number(product.price).toFixed(2),
+          price: unitPrice(product).toFixed(2),
           availability:
             product.stock > 0
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
         },
-        ...(avg && product.reviews.length > 0
+        ...(avg && reviewCount > 0
           ? {
               aggregateRating: {
                 "@type": "AggregateRating",
                 ratingValue: avg.toFixed(1),
-                reviewCount: product.reviews.length,
+                reviewCount,
               },
             }
           : {}),
@@ -108,13 +144,13 @@ export default async function ProductDetailPage({ params }: Props) {
             "@type": "ListItem",
             position: 1,
             name: "Home",
-            item: "https://eidbazar.com/",
+            item: absoluteUrl("/"),
           },
           {
             "@type": "ListItem",
             position: 2,
             name: "Products",
-            item: "https://eidbazar.com/products",
+            item: absoluteUrl("/products"),
           },
           ...(product.category
             ? [
@@ -122,7 +158,7 @@ export default async function ProductDetailPage({ params }: Props) {
                   "@type": "ListItem",
                   position: 3,
                   name: product.category.name,
-                  item: `https://eidbazar.com/products?category=${product.category.slug}`,
+                  item: absoluteUrl(`/products?category=${product.category.slug}`),
                 },
               ]
             : []),
@@ -130,14 +166,14 @@ export default async function ProductDetailPage({ params }: Props) {
             "@type": "ListItem",
             position: product.category ? 4 : 3,
             name: product.name,
-            item: `https://eidbazar.com/products/${product.slug}`,
+            item: productUrl,
           },
         ],
       }
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-28 sm:px-6 sm:pt-10 lg:px-8 lg:pb-12">
       {productJsonLd && (
         <Script id="ld-product" type="application/ld+json">
           {JSON.stringify(productJsonLd)}
@@ -148,36 +184,38 @@ export default async function ProductDetailPage({ params }: Props) {
           {JSON.stringify(breadcrumbJsonLd)}
         </Script>
       )}
-      <div className="mb-6 text-sm text-muted-foreground">
-        <Link href="/" className="hover:text-foreground">Home</Link>
+      <nav aria-label="Breadcrumb" className="mb-4 flex min-w-0 items-center text-sm text-muted-foreground sm:mb-6">
+        <Link href="/" className="shrink-0 hover:text-foreground">Home</Link>
         <span className="mx-1">/</span>
-        <Link href="/products" className="hover:text-foreground">Products</Link>
+        <Link href="/products" className="shrink-0 hover:text-foreground">Products</Link>
         {product.category && (
           <>
             <span className="mx-1">/</span>
             <Link
               href={`/products?category=${product.category.slug}`}
-              className="hover:text-foreground"
+              className="truncate hover:text-foreground"
             >
               {product.category.name}
             </Link>
           </>
         )}
-      </div>
+      </nav>
 
-      <div className="grid gap-10 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:gap-10">
         <ProductGallery images={product.images} name={product.name} />
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {product.category && (
             <Badge variant="secondary">
               <Tag className="size-3" />
               {product.category.name}
             </Badge>
           )}
-          <h1 className="text-3xl font-semibold tracking-tight">{product.name}</h1>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-amber-500">
+          <h1 className="text-2xl font-semibold tracking-tight break-words sm:text-3xl">
+            {product.name}
+          </h1>
+          <a href="#reviews" className="flex w-fit items-center gap-2">
+            <div className="flex items-center gap-0.5 text-amber-500" aria-hidden>
               {[1, 2, 3, 4, 5].map((i) => (
                 <Star
                   key={i}
@@ -190,83 +228,136 @@ export default async function ProductDetailPage({ params }: Props) {
               ))}
             </div>
             <span className="text-sm text-muted-foreground">
-              {avg ? avg.toFixed(1) : "No reviews"}
-              {product.reviews.length > 0 && ` · ${product.reviews.length} reviews`}
+              {avg ? `${avg.toFixed(1)} · ${reviewCount} review${reviewCount === 1 ? "" : "s"}` : "No reviews yet"}
             </span>
-          </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-semibold">
-              {formatPrice(Number(product.price))}
-            </span>
-            {hasDiscount && (
-              <span className="text-lg text-muted-foreground line-through">
-                {formatPrice(Number(product.compareAt))}
-              </span>
-            )}
-            {product.stock > 0 ? (
-              <Badge variant="secondary">In stock</Badge>
-            ) : (
-              <Badge variant="destructive">Out of stock</Badge>
-            )}
-          </div>
-          <p className="text-sm leading-6 text-muted-foreground">
-            {product.description}
-          </p>
+          </a>
 
           <AddToCart
             product={{
-              productId: product.id,
+              id: product.id,
               name: product.name,
               slug: product.slug,
-              price: Number(product.price),
               image: product.images[0],
-              quantity: 1,
+              price: Number(product.price),
+              compareAt: product.compareAt != null ? Number(product.compareAt) : null,
+              flashDeal: product.flashDeal,
+              flashDealDiscount: product.flashDealDiscount,
               stock: product.stock,
             }}
+            variants={product.variants.map((v) => ({
+              id: v.id,
+              size: v.size,
+              color: v.color,
+              price: v.price != null ? Number(v.price) : null,
+              stock: v.stock,
+            }))}
+            whatsappUrl={site.whatsappUrl}
+            productUrl={productUrl}
           />
 
-          <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+          <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2 rounded-md border bg-card p-3">
-              <Truck className="size-4" />
-              Free shipping over ৳1,000
+              <Truck className="size-4 shrink-0" />
+              {shipping.freeThreshold > 0
+                ? `Free delivery over ${formatPrice(shipping.freeThreshold)}`
+                : `Delivery from ${formatPrice(Math.min(shipping.insideDhaka, shipping.outsideDhaka))}`}
             </div>
             <div className="flex items-center gap-2 rounded-md border bg-card p-3">
-              <ShieldCheck className="size-4" />
-              Secure Stripe checkout
+              <Banknote className="size-4 shrink-0" />
+              Cash on delivery available
             </div>
+            <div className="flex items-center gap-2 rounded-md border bg-card p-3">
+              <ShieldCheck className="size-4 shrink-0" />
+              bKash, Nagad, Rocket &amp; Upay
+            </div>
+            <Link
+              href="/refund-policy"
+              className="flex items-center gap-2 rounded-md border bg-card p-3 hover:text-foreground"
+            >
+              <RotateCcw className="size-4 shrink-0" />
+              Easy returns
+            </Link>
+          </div>
+
+          <div className="pt-2">
+            <h2 className="mb-2 text-sm font-semibold">Description</h2>
+            <p className="text-sm leading-6 whitespace-pre-line text-muted-foreground">
+              {product.description}
+            </p>
           </div>
         </div>
       </div>
 
-      {product.reviews.length > 0 && (
-        <section className="mt-14">
-          <Separator />
-          <h2 className="mt-10 text-2xl font-semibold tracking-tight">Reviews</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <section id="reviews" className="mt-12 scroll-mt-20 sm:mt-14">
+        <Separator />
+        <h2 className="mt-8 text-xl font-semibold tracking-tight sm:mt-10 sm:text-2xl">
+          Reviews {reviewCount > 0 && <span className="text-muted-foreground">({reviewCount})</span>}
+        </h2>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div className="grid content-start gap-4 sm:grid-cols-2">
+            {product.reviews.length === 0 && (
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                No reviews yet. Customers can review a product once it has been delivered.
+              </p>
+            )}
             {product.reviews.map((r) => (
-              <div key={r.id} className="rounded-lg border bg-card p-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex text-amber-500">
+              <article key={r.id} className="rounded-lg border bg-card p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex text-amber-500" aria-label={`${r.rating} out of 5 stars`}>
                     {[1, 2, 3, 4, 5].map((i) => (
                       <Star
                         key={i}
-                        className={
-                          i <= r.rating
-                            ? "size-4 fill-current"
-                            : "size-4 text-muted-foreground/40"
-                        }
+                        className={i <= r.rating ? "size-4 fill-current" : "size-4 text-muted-foreground/40"}
                       />
                     ))}
                   </div>
-                  <span className="text-sm font-medium">
-                    {r.user.name ?? "Anonymous"}
-                  </span>
+                  <span className="text-sm font-medium">{r.user.name ?? "Customer"}</span>
+                  <span className="text-xs text-muted-foreground">· {formatDate(r.createdAt)}</span>
                 </div>
                 {r.title && <div className="mt-2 text-sm font-medium">{r.title}</div>}
                 {r.comment && (
-                  <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>
+                  <p className="mt-1 text-sm break-words whitespace-pre-line text-muted-foreground">
+                    {r.comment}
+                  </p>
+                )}
+                <div className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">Verified purchase</div>
+              </article>
+            ))}
+          </div>
+          <div>
+            {delivered ? (
+              <ReviewForm
+                slug={product.slug}
+                initial={
+                  myReview
+                    ? { rating: myReview.rating, title: myReview.title ?? "", comment: myReview.comment ?? "" }
+                    : undefined
+                }
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                {session?.user ? (
+                  "You can write a review after this product is delivered to you."
+                ) : (
+                  <>
+                    <Link href={`/sign-in?callbackUrl=/products/${product.slug}`} className="font-medium text-foreground underline">
+                      Sign in
+                    </Link>{" "}
+                    to review products you have bought.
+                  </>
                 )}
               </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {related.length > 0 && (
+        <section className="mt-12 sm:mt-14">
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">You may also like</h2>
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+            {related.map((p) => (
+              <ProductCard key={p.id} product={toCardProduct(p)} />
             ))}
           </div>
         </section>

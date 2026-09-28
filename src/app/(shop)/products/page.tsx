@@ -2,20 +2,23 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { DesktopFilters, MobileFilterButton } from "@/components/site/product-filters";
+import { buildQuery, type FilterState } from "@/lib/product-filters";
 import { getSeoSettings } from "@/lib/seo-settings";
+import { CARD_INCLUDE, toCardProduct } from "@/lib/product-view";
+import { absoluteUrl, cn } from "@/lib/utils";
 import type { Prisma } from "@/generated/prisma";
+
+const PAGE_SIZE = 24;
 
 export const revalidate = 30;
 
 type Props = {
-  searchParams: Promise<{
-    q?: string;
-    category?: string;
-    featured?: string;
-    sort?: string;
-  }>;
+  searchParams: Promise<FilterState & { page?: string }>;
 };
 
 async function resolveCategoryName(slug: string | undefined) {
@@ -74,36 +77,73 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function ProductsPage({ searchParams }: Props) {
-  const { q, category, featured, sort } = await searchParams;
+  const sp = await searchParams;
+  const state: FilterState = {
+    q: sp.q?.trim() || undefined,
+    category: sp.category || undefined,
+    featured: sp.featured === "1" ? "1" : undefined,
+    sale: sp.sale === "1" ? "1" : undefined,
+    instock: sp.instock === "1" ? "1" : undefined,
+    min: sp.min && Number(sp.min) > 0 ? String(Number(sp.min)) : undefined,
+    max: sp.max && Number(sp.max) > 0 ? String(Number(sp.max)) : undefined,
+    sort: sp.sort || undefined,
+  };
+  const { q, category, featured, sort } = state;
+  const page = Math.max(1, Math.floor(Number(sp.page) || 1));
   const seo = await getSeoSettings();
 
-  const where: Prisma.ProductWhereInput = { published: true };
-  if (featured === "1") where.featured = true;
+  const and: Prisma.ProductWhereInput[] = [{ published: true }];
+  if (featured) and.push({ featured: true });
   if (q) {
-    where.OR = [
-      { name: { contains: q, mode: "insensitive" } },
-      { description: { contains: q, mode: "insensitive" } },
-    ];
+    and.push({
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { category: { name: { contains: q, mode: "insensitive" } } },
+      ],
+    });
   }
-  if (category) {
-    where.category = { slug: category };
+  if (category) and.push({ category: { slug: category } });
+  if (state.sale) {
+    and.push({ OR: [{ flashDeal: true, flashDealDiscount: { gt: 0 } }, { compareAt: { not: null } }] });
   }
+  if (state.instock) and.push({ stock: { gt: 0 } });
+  if (state.min || state.max) {
+    and.push({
+      price: {
+        ...(state.min ? { gte: Number(state.min) } : {}),
+        ...(state.max ? { lte: Number(state.max) } : {}),
+      },
+    });
+  }
+  const where: Prisma.ProductWhereInput = { AND: and };
 
-  const orderBy: Prisma.ProductOrderByWithRelationInput =
+  const orderBy: Prisma.ProductOrderByWithRelationInput[] =
     sort === "price-asc"
-      ? { price: "asc" }
+      ? [{ price: "asc" }]
       : sort === "price-desc"
-        ? { price: "desc" }
-        : { createdAt: "desc" };
+        ? [{ price: "desc" }]
+        : sort === "name"
+          ? [{ name: "asc" }]
+          : [{ createdAt: "desc" }];
 
-  const [products, categories] = await Promise.all([
-    prisma.product.findMany({ where, orderBy, take: 60 }),
+  const [total, products, categories] = await Promise.all([
+    prisma.product.count({ where }),
+    prisma.product.findMany({
+      where,
+      orderBy: [...orderBy, { id: "asc" }],
+      include: CARD_INCLUDE,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
     prisma.category.findMany({ orderBy: { name: "asc" } }),
   ]);
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const categoryName = category
     ? categories.find((c) => c.slug === category)?.name ?? null
     : null;
+  const activeFilters = [state.sale, state.instock, state.min, state.max, state.sort].filter(Boolean).length;
 
   const itemListJsonLd = seo.jsonLdEnabled && products.length > 0
     ? {
@@ -117,8 +157,8 @@ export default async function ProductsPage({ searchParams }: Props) {
         numberOfItems: products.length,
         itemListElement: products.map((p, i) => ({
           "@type": "ListItem",
-          position: i + 1,
-          url: `https://eidbazar.com/products/${p.slug}`,
+          position: (page - 1) * PAGE_SIZE + i + 1,
+          url: absoluteUrl(`/products/${p.slug}`),
           name: p.name,
           image: p.images[0] ?? undefined,
         })),
@@ -130,25 +170,15 @@ export default async function ProductsPage({ searchParams }: Props) {
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
         itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Home",
-            item: "https://eidbazar.com/",
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "Products",
-            item: "https://eidbazar.com/products",
-          },
+          { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+          { "@type": "ListItem", position: 2, name: "Products", item: absoluteUrl("/products") },
           ...(categoryName
             ? [
                 {
                   "@type": "ListItem",
                   position: 3,
                   name: categoryName,
-                  item: `https://eidbazar.com/products?category=${category}`,
+                  item: absoluteUrl(`/products?category=${category}`),
                 },
               ]
             : []),
@@ -156,8 +186,14 @@ export default async function ProductsPage({ searchParams }: Props) {
       }
     : null;
 
+  const chip = (active: boolean) =>
+    cn(
+      "inline-flex h-9 shrink-0 items-center rounded-full border px-4 text-sm whitespace-nowrap transition-colors",
+      active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-foreground/40",
+    );
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       {itemListJsonLd && (
         <Script id="ld-itemlist" type="application/ld+json">
           {JSON.stringify(itemListJsonLd)}
@@ -168,37 +204,60 @@ export default async function ProductsPage({ searchParams }: Props) {
           {JSON.stringify(breadcrumbJsonLd)}
         </Script>
       )}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight break-words sm:text-3xl">
             {categoryName
               ? categoryName
               : q
-                ? `Search results for “${q}”`
-                : "All products"}
+                ? `Results for “${q}”`
+                : state.sale
+                  ? "Deals"
+                  : featured
+                    ? "Featured"
+                    : "All products"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {products.length} {products.length === 1 ? "item" : "items"}
+            {total} {total === 1 ? "item" : "items"}
           </p>
         </div>
-        <form action="/products" className="flex w-full max-w-sm gap-2">
+        <form action="/products" className="flex w-full gap-2 sm:max-w-sm" role="search">
+          {category && <input type="hidden" name="category" value={category} />}
           <Input
             type="search"
             name="q"
             defaultValue={q}
             placeholder="Search products..."
+            aria-label="Search products"
           />
         </form>
       </div>
 
+      {/* Mobile / tablet: category chips + filter sheet */}
+      <div className="-mx-4 mb-5 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:hidden">
+        <MobileFilterButton state={state} active={activeFilters} />
+        <Link href={buildQuery({ ...state, category: undefined })} className={chip(!category)}>
+          All
+        </Link>
+        {categories.map((c) => (
+          <Link
+            key={c.id}
+            href={buildQuery({ ...state, category: c.slug })}
+            className={chip(category === c.slug)}
+          >
+            {c.name}
+          </Link>
+        ))}
+      </div>
+
       <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
-        <aside className="space-y-6">
-          <div>
-            <h3 className="mb-3 text-sm font-semibold">Categories</h3>
+        <aside className="hidden space-y-8 lg:block">
+          <nav aria-label="Categories">
+            <h2 className="mb-3 text-sm font-semibold">Categories</h2>
             <ul className="space-y-1 text-sm">
               <li>
                 <Link
-                  href="/products"
+                  href={buildQuery({ ...state, category: undefined })}
                   className={!category ? "font-medium" : "text-muted-foreground hover:text-foreground"}
                 >
                   All
@@ -207,7 +266,7 @@ export default async function ProductsPage({ searchParams }: Props) {
               {categories.map((c) => (
                 <li key={c.id}>
                   <Link
-                    href={`/products?category=${c.slug}`}
+                    href={buildQuery({ ...state, category: c.slug })}
                     className={
                       category === c.slug
                         ? "font-medium"
@@ -219,60 +278,50 @@ export default async function ProductsPage({ searchParams }: Props) {
                 </li>
               ))}
             </ul>
-          </div>
-          <div>
-            <h3 className="mb-3 text-sm font-semibold">Sort</h3>
-            <ul className="space-y-1 text-sm">
-              {[
-                { k: "", label: "Newest" },
-                { k: "price-asc", label: "Price: low to high" },
-                { k: "price-desc", label: "Price: high to low" },
-              ].map((opt) => (
-                <li key={opt.k}>
-                  <Link
-                    href={`/products?${new URLSearchParams({
-                      ...(category ? { category } : {}),
-                      ...(q ? { q } : {}),
-                      ...(featured ? { featured } : {}),
-                      ...(opt.k ? { sort: opt.k } : {}),
-                    }).toString()}`}
-                    className={
-                      (sort ?? "") === opt.k
-                        ? "font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }
-                  >
-                    {opt.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          </nav>
+          <DesktopFilters state={state} />
         </aside>
 
-        <div>
+        <div className="min-w-0">
           {products.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-              No products found.
+            <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground sm:p-12">
+              <p>No products match your filters.</p>
+              <Button asChild variant="outline" className="mt-4">
+                <Link href="/products">Clear filters</Link>
+              </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
               {products.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  product={{
-                    id: p.id,
-                    name: p.name,
-                    slug: p.slug,
-                    price: Number(p.price),
-                    compareAt: p.compareAt != null ? Number(p.compareAt) : null,
-                    images: p.images,
-                    featured: p.featured,
-                    stock: p.stock,
-                  }}
-                />
+                <ProductCard key={p.id} product={toCardProduct(p)} />
               ))}
             </div>
+          )}
+
+          {pages > 1 && (
+            <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2">
+              <Button asChild variant="outline" disabled={page <= 1}>
+                <Link
+                  href={`${buildQuery(state)}${buildQuery(state).includes("?") ? "&" : "?"}page=${page - 1}`}
+                  aria-disabled={page <= 1}
+                  className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                >
+                  <ChevronLeft className="size-4" /> Prev
+                </Link>
+              </Button>
+              <span className="px-2 text-sm text-muted-foreground tabular-nums">
+                Page {page} of {pages}
+              </span>
+              <Button asChild variant="outline">
+                <Link
+                  href={`${buildQuery(state)}${buildQuery(state).includes("?") ? "&" : "?"}page=${page + 1}`}
+                  aria-disabled={page >= pages}
+                  className={page >= pages ? "pointer-events-none opacity-50" : undefined}
+                >
+                  Next <ChevronRight className="size-4" />
+                </Link>
+              </Button>
+            </nav>
           )}
         </div>
       </div>

@@ -4,23 +4,30 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { WishlistButton } from "@/components/wishlist-button";
 import { formatPrice } from "@/lib/utils";
 
 export type ProductCardData = {
   id: string;
   name: string;
   slug: string;
+  /** Final price the customer pays (flash deals already applied). */
   price: number;
+  /** Strike-through price, when there is a discount. */
   compareAt?: number | null;
   images: string[];
   featured?: boolean;
   stock?: number;
+  hasVariants?: boolean;
 };
 
 export function ProductCard({ product }: { product: ProductCardData }) {
   const image = product.images[0];
-  const hasDiscount =
-    product.compareAt != null && product.compareAt > product.price;
+  const hasDiscount = product.compareAt != null && product.compareAt > product.price;
+  const pct = hasDiscount
+    ? Math.round(((product.compareAt! - product.price) / product.compareAt!) * 100)
+    : 0;
+  const soldOut = product.stock != null && product.stock <= 0;
 
   return (
     <motion.div
@@ -28,10 +35,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
+      className="group relative"
     >
       <Link
         href={`/products/${product.slug}`}
-        className="group block overflow-hidden rounded-xl border bg-card transition-all hover:shadow-md"
+        className="block overflow-hidden rounded-xl border bg-card transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         <div className="relative aspect-square overflow-hidden bg-muted">
           {image ? (
@@ -39,29 +47,26 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               src={image}
               alt={product.name}
               fill
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${soldOut ? "opacity-60" : ""}`}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
               No image
             </div>
           )}
-          {product.featured && (
-            <Badge className="absolute left-2 top-2" variant="default">
-              Featured
-            </Badge>
-          )}
-          {hasDiscount && (
-            <Badge className="absolute right-2 top-2" variant="destructive">
-              Sale
-            </Badge>
-          )}
+          <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
+            {hasDiscount && <Badge variant="destructive">-{pct}%</Badge>}
+            {product.featured && !hasDiscount && <Badge>Featured</Badge>}
+            {soldOut && <Badge variant="secondary">Sold out</Badge>}
+          </div>
         </div>
         <div className="space-y-1 p-3">
-          <div className="line-clamp-1 text-sm font-medium">{product.name}</div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold">
+          <div className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-tight">
+            {product.name}
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-sm font-semibold sm:text-base">
               {formatPrice(product.price)}
             </span>
             {hasDiscount && (
@@ -70,8 +75,15 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               </span>
             )}
           </div>
+          {product.hasVariants && (
+            <div className="text-xs text-muted-foreground">More options available</div>
+          )}
         </div>
       </Link>
+      <WishlistButton
+        productId={product.id}
+        className="absolute right-2 top-2 bg-background/80 backdrop-blur"
+      />
     </motion.div>
   );
 }

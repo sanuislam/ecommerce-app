@@ -7,15 +7,15 @@ import { getSiteSettings } from "@/lib/site-settings";
 export async function SiteFooter() {
   const settings = await getSiteSettings();
   return (
-    <footer className="mt-24 border-t bg-muted/30">
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-5 lg:px-8">
-        <div className="lg:col-span-2">
+    <footer className="mt-16 border-t bg-muted/30 sm:mt-24">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-8 px-4 py-10 sm:px-6 md:grid-cols-4 lg:grid-cols-5 lg:gap-10 lg:px-8 lg:py-12">
+        <div className="col-span-2 md:col-span-4 lg:col-span-2">
           <h3 className="text-lg font-semibold">{SITE_CONFIG.name}</h3>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground">
             Your trusted Eid shopping destination — curated finds, fair prices,
             and fast delivery across Bangladesh.
           </p>
-          <div className="mt-4 flex items-center gap-3 text-muted-foreground">
+          <div className="mt-3 -ml-2 flex items-center gap-1 text-muted-foreground [&_a]:rounded-md [&_a]:p-2 [&_a:hover]:bg-muted">
             {settings.facebookUrl && (
               <a
                 href={settings.facebookUrl}
@@ -88,8 +88,18 @@ export async function SiteFooter() {
               </Link>
             </li>
             <li>
+              <Link href="/products?sale=1" className="hover:text-foreground">
+                Deals
+              </Link>
+            </li>
+            <li>
               <Link href="/orders" className="hover:text-foreground">
-                My orders
+                Track my order
+              </Link>
+            </li>
+            <li>
+              <Link href="/account" className="hover:text-foreground">
+                My account
               </Link>
             </li>
           </ul>
@@ -108,11 +118,7 @@ export async function SiteFooter() {
                 Contact
               </Link>
             </li>
-            <li>
-              <Link href="/studio" className="hover:text-foreground">
-                Content studio
-              </Link>
-            </li>
+
           </ul>
         </div>
 
@@ -138,7 +144,7 @@ export async function SiteFooter() {
         </div>
       </div>
       <div className="border-t py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} {SITE_CONFIG.name}. All Right Reserved.
+        © {new Date().getFullYear()} {SITE_CONFIG.name}. All rights reserved.
       </div>
     </footer>
   );

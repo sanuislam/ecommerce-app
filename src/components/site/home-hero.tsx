@@ -11,7 +11,7 @@ export function HomeHero({ banners }: { banners: SanityBanner[] }) {
   const title = primary?.title ?? "Design-forward gear, delivered fast.";
   const subtitle =
     primary?.subtitle ??
-    "Shop curated essentials with free shipping, easy returns, and secure Stripe checkout.";
+    "Shop curated essentials with fast delivery across Bangladesh, cash on delivery, and bKash, Nagad & Rocket payments.";
   const ctaLabel = primary?.ctaLabel ?? "Shop the collection";
   const ctaHref = primary?.ctaHref ?? "/products";
 
