@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/product-card";
 import { prisma } from "@/lib/prisma";
 import { getBanners } from "@/lib/sanity";
 import { HomeHero } from "@/components/site/home-hero";
+import { ProductBannerCarousel } from "@/components/site/product-banner-carousel";
 
 export const revalidate = 60;
 
@@ -12,6 +13,7 @@ export default async function HomePage() {
   const [featured, latest, categories, banners] = await Promise.all([
     prisma.product.findMany({
       where: { published: true, featured: true },
+      include: { category: { select: { name: true } } },
       take: 8,
       orderBy: { createdAt: "desc" },
     }),
@@ -27,9 +29,24 @@ export default async function HomePage() {
     getBanners(),
   ]);
 
+  const bannerProducts = featured.map((p) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    price: Number(p.price),
+    compareAt: p.compareAt != null ? Number(p.compareAt) : null,
+    images: p.images,
+    description: p.description,
+    category: p.category ? { name: p.category.name } : null,
+  }));
+
   return (
     <div className="w-full">
-      <HomeHero banners={banners} />
+      {bannerProducts.length > 0 ? (
+        <ProductBannerCarousel products={bannerProducts} />
+      ) : (
+        <HomeHero banners={banners} />
+      )}
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
