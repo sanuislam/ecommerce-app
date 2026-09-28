@@ -108,7 +108,12 @@ The database driver is picked from `DATABASE_URL`: Neon URLs use the Neon
 serverless driver, anything else (e.g. a local Postgres) uses `pg`. Override
 with `DATABASE_DRIVER=neon|pg`.
 
-For production deploys run `npm run db:deploy` to apply migrations.
+**Deploying on Vercel:** Vercel runs the `vercel-build` script, which applies
+database migrations (`prisma migrate deploy`) before building — but only for
+production deployments, so preview branches never touch the live database.
+If a migration fails, the build fails and the previous deployment stays live.
+On Neon, migrations use `DATABASE_URL_UNPOOLED` (or `DIRECT_URL`) when set.
+Outside Vercel, run `npm run db:deploy` yourself before starting the new build.
 
 Then open [http://localhost:3000](http://localhost:3000).
 
