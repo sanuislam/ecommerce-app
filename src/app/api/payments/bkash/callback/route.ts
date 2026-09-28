@@ -78,7 +78,7 @@ export async function GET(req: Request) {
       });
       return go(`/orders/${order.id}?bkash=review`);
     }
-    await transitionOrder({
+    const paid = await transitionOrder({
       orderId: order.id,
       from: "PENDING",
       to: "PAID",
@@ -88,6 +88,25 @@ export async function GET(req: Request) {
         paymentSenderNumber: result.customerMsisdn ?? order.paymentSenderNumber,
       },
     });
+    if (!paid) {
+      // The order was cancelled/expired while the customer was paying.
+      const now = await prisma.order.findUnique({ where: { id: order.id }, select: { status: true } });
+      if (now?.status !== "PAID") {
+        console.error("bKash payment completed for a non-pending order", order.id, result.trxID);
+        await prisma.orderEvent.create({
+          data: {
+            orderId: order.id,
+            status: now?.status ?? "CANCELLED",
+            note: `bKash payment ${result.trxID ?? ""} received after the order was closed — refund needed`,
+          },
+        });
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { paymentTransactionId: result.trxID ?? null },
+        });
+        return go(`/orders/${order.id}?bkash=review`);
+      }
+    }
     return go(`/orders/${order.id}?success=1`);
   }
 

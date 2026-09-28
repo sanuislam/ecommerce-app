@@ -49,12 +49,22 @@ export async function POST(req: Request) {
           expected: order.total.toString(),
         });
       } else {
-        await transitionOrder({
+        const ok = await transitionOrder({
           orderId,
           from: "PENDING",
           to: "PAID",
           note: "Paid by card",
         });
+        if (!ok && order.status !== "PAID") {
+          console.error("Stripe payment completed for a non-pending order", orderId);
+          await prisma.orderEvent.create({
+            data: {
+              orderId,
+              status: order.status,
+              note: `Card payment ${cs.payment_intent ?? cs.id} received after the order was closed — refund needed`,
+            },
+          });
+        }
       }
     }
   } else if (

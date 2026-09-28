@@ -80,7 +80,12 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     0,
     ...STEPS.map((s, i) => (reached.has(s.status) || order.status === s.status ? i : 0)),
   );
-  const canCancel = isOwner && order.status === "PENDING" && !order.paymentTransactionId;
+  const canCancel =
+    isOwner &&
+    order.status === "PENDING" &&
+    !order.paymentTransactionId &&
+    !order.bkashPaymentId &&
+    !order.stripeId;
 
   const notice =
     sp.bkash === "cancel"

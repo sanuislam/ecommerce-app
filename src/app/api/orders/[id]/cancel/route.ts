@@ -32,7 +32,18 @@ export async function POST(_req: Request, ctx: Ctx) {
   return NextResponse.json({ ok: true });
 }
 
-function customerCanCancel(o: { status: string; paymentTransactionId: string | null }) {
+function customerCanCancel(o: {
+  status: string;
+  paymentMethod: string;
+  paymentTransactionId: string | null;
+  bkashPaymentId: string | null;
+  stripeId: string | null;
+}) {
+  if (o.status !== "PENDING") return false;
   // Once money has been sent (manual MFS TrxID) a person must handle the refund.
-  return o.status === "PENDING" && !o.paymentTransactionId;
+  if (o.paymentTransactionId) return false;
+  // An online payment may still complete in another tab; those orders expire
+  // on their own if unpaid, so cancelling here could strand a real payment.
+  if (o.bkashPaymentId || o.stripeId) return false;
+  return true;
 }

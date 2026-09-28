@@ -35,12 +35,17 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   REFUNDED: "Refunded",
 };
 
-/** Puts an order's items back into stock (variant-aware). */
+/**
+ * Puts an order's items back into stock. For products with options the
+ * product total is recomputed from the options, so an option deleted (or
+ * added) since the order was placed can't leave the two out of sync.
+ */
 export async function restockOrder(tx: Tx, orderId: string) {
   const items = await tx.orderItem.findMany({
     where: { orderId },
     select: { productId: true, variantId: true, quantity: true },
   });
+  const touched = new Set<string>();
   for (const i of items) {
     if (i.variantId) {
       await tx.productVariant.updateMany({
@@ -48,10 +53,27 @@ export async function restockOrder(tx: Tx, orderId: string) {
         data: { stock: { increment: i.quantity } },
       });
     }
-    await tx.product.update({
-      where: { id: i.productId },
-      data: { stock: { increment: i.quantity } },
+    touched.add(i.productId);
+    const hasVariants = await tx.productVariant.count({ where: { productId: i.productId } });
+    if (!hasVariants) {
+      await tx.product.update({
+        where: { id: i.productId },
+        data: { stock: { increment: i.quantity } },
+      });
+    }
+  }
+  for (const productId of touched) {
+    const agg = await tx.productVariant.aggregate({
+      where: { productId },
+      _sum: { stock: true },
+      _count: true,
     });
+    if (agg._count > 0) {
+      await tx.product.update({
+        where: { id: productId },
+        data: { stock: agg._sum.stock ?? 0 },
+      });
+    }
   }
 }
 
@@ -94,6 +116,9 @@ export async function transitionOrder(opts: {
     if (opts.to === "CANCELLED") {
       await restockOrder(tx, opts.orderId);
       await releaseCoupon(tx, current.couponId);
+    } else if (opts.to === "REFUNDED" && current.status === "PAID") {
+      // Refunded before it shipped: the goods never left the shop.
+      await restockOrder(tx, opts.orderId);
     }
     await tx.orderEvent.create({
       data: { orderId: opts.orderId, status: opts.to, note: opts.note ?? null },

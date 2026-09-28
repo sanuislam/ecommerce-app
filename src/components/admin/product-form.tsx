@@ -44,12 +44,15 @@ export type VariantInput = {
   color: string;
   price: number | null;
   stock: number;
+  stockBase?: number;
   sku?: string | null;
 };
 
 type VariantRow = {
   key: string;
   id?: string;
+  /** Stock when the form loaded — the server applies the change as a delta. */
+  stockBase?: number;
   size: string;
   color: string;
   price: string;
@@ -64,6 +67,7 @@ function toRow(v: VariantInput): VariantRow {
   return {
     key: v.id ?? newKey(),
     id: v.id,
+    stockBase: v.id ? v.stock : undefined,
     size: v.size,
     color: v.color,
     price: v.price == null ? "" : String(v.price),
@@ -182,7 +186,7 @@ export function ProductForm({
         if (!Number.isFinite(price) || price < 0)
           return `${label}: price must be a number ≥ 0`;
       }
-      out.push({ id: r.id, size, color, price, stock, sku: r.sku.trim() || null });
+      out.push({ id: r.id, size, color, price, stock, stockBase: r.stockBase, sku: r.sku.trim() || null });
     }
     return out;
   }
@@ -210,6 +214,7 @@ export function ProductForm({
       const payload = {
         ...data,
         stock: variants.length ? variantStock : data.stock,
+        stockBase: initial?.id && !variants.length ? initial.stock : undefined,
         variants,
         flashDealDiscount: data.flashDeal ? data.flashDealDiscount : null,
         slug: data.slug || slugify(data.name),

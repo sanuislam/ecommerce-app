@@ -40,17 +40,25 @@ export async function PATCH(req: Request, ctx: Ctx) {
         { status: 400 },
       );
     }
-    if (status === "REFUNDED" && order.paymentMethod === "BKASH" && order.bkashPaymentId) {
+    const bkashGatewayPaid =
+      order.paymentMethod === "BKASH" &&
+      !!order.bkashPaymentId &&
+      ["PAID", "SHIPPED", "DELIVERED"].includes(order.status);
+    if (bkashGatewayPaid && (status === "REFUNDED" || status === "CANCELLED")) {
       return NextResponse.json(
-        { error: "Use the bKash refund button so the money is actually returned" },
+        { error: "This order was paid through bKash. Use the bKash refund button so the money is returned." },
         { status: 400 },
       );
     }
+    const manualRefund = status === "REFUNDED" || (status === "CANCELLED" && order.status !== "PENDING" && order.paymentMethod !== "COD");
     const ok = await transitionOrder({
       orderId: id,
       from: order.status,
       to: status,
-      note: note || undefined,
+      note:
+        [note, manualRefund ? "Money must be returned to the customer outside the app" : ""]
+          .filter(Boolean)
+          .join(" · ") || undefined,
       data: shipping,
     });
     if (!ok) {

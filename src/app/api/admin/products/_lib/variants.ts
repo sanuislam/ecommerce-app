@@ -17,6 +17,8 @@ export const variantSchema = z
       .int("Option stock must be a whole number")
       .nonnegative("Option stock cannot be negative"),
     sku: z.string().trim().max(64, "SKU is too long").nullish(),
+    /** Stock shown when the form was opened; lets the save apply a delta. */
+    stockBase: z.number().int().nonnegative().optional(),
   })
   .refine((v) => v.size !== "" || v.color !== "", {
     message: "Each option needs a size or a colour",
@@ -56,6 +58,10 @@ export function firstIssue(error: z.ZodError): string {
 /**
  * Replaces a product's variants with `rows` (update by id, create new,
  * delete removed) and returns the total stock across them.
+ *
+ * For existing options the admin's edit is applied as a delta against the
+ * stock the form loaded (`stockBase`), so orders placed or cancelled while the
+ * form was open are not overwritten.
  * Must run inside a transaction.
  */
 export async function syncVariants(
@@ -102,22 +108,33 @@ export async function syncVariants(
     });
   }
 
-  let total = 0;
   for (const [position, r] of resolved.entries()) {
     const data = {
       size: r.size,
       color: r.color,
       price: r.price,
-      stock: r.stock,
       sku: r.sku || null,
       position,
     };
-    total += r.stock;
-    if (r.id) {
-      await tx.productVariant.update({ where: { id: r.id }, data });
+    const submittedId = r.id && r.id === rows[position]?.id;
+    if (r.id && submittedId && r.stockBase !== undefined) {
+      const delta = r.stock - r.stockBase;
+      const updated = await tx.productVariant.update({
+        where: { id: r.id },
+        data: { ...data, ...(delta ? { stock: { increment: delta } } : {}) },
+      });
+      if (updated.stock < 0) {
+        await tx.productVariant.update({ where: { id: r.id }, data: { stock: 0 } });
+      }
+    } else if (r.id) {
+      await tx.productVariant.update({ where: { id: r.id }, data: { ...data, stock: r.stock } });
     } else {
-      await tx.productVariant.create({ data: { ...data, productId } });
+      await tx.productVariant.create({ data: { ...data, stock: r.stock, productId } });
     }
   }
-  return total;
+  const agg = await tx.productVariant.aggregate({
+    where: { productId },
+    _sum: { stock: true },
+  });
+  return agg._sum.stock ?? 0;
 }

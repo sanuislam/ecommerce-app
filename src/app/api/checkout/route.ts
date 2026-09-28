@@ -182,6 +182,18 @@ export async function POST(req: Request) {
       }
 
       if (quote.coupon) {
+        // Lock the coupon row so parallel checkouts can't all pass the
+        // per-customer limit.
+        const [locked] = await tx.$queryRaw<{ perUserLimit: number | null }[]>`
+          SELECT "perUserLimit" FROM "Coupon" WHERE "id" = ${quote.coupon.id} FOR UPDATE`;
+        if (locked?.perUserLimit != null) {
+          const mine = await tx.order.count({
+            where: { userId, couponId: quote.coupon.id, status: { not: "CANCELLED" } },
+          });
+          if (mine >= locked.perUserLimit) {
+            throw new CheckoutError("You have already used this coupon");
+          }
+        }
         const used = await tx.$executeRaw`
           UPDATE "Coupon" SET "usedCount" = "usedCount" + 1
           WHERE "id" = ${quote.coupon.id}

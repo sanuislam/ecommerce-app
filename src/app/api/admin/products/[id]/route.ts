@@ -13,6 +13,8 @@ const patchSchema = z.object({
   price: z.number().nonnegative("Price cannot be negative").optional(),
   compareAt: z.number().nonnegative().nullable().optional(),
   stock: z.number().int().nonnegative("Stock cannot be negative").optional(),
+  /** Stock shown when the form was opened (see syncVariants). */
+  stockBase: z.number().int().nonnegative().optional(),
   images: z.array(z.string().url("Each image must be a valid URL")).optional(),
   featured: z.boolean().optional(),
   flashDeal: z.boolean().optional(),
@@ -46,7 +48,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: firstIssue(parsed.error) }, { status: 400 });
   }
 
-  const { variants, ...data } = parsed.data;
+  const { variants, stockBase, ...data } = parsed.data;
   if (data.slug !== undefined) {
     data.slug = slugify(data.slug);
     if (!data.slug) {
@@ -68,10 +70,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
         } else {
           await tx.productVariant.deleteMany({ where: { productId: id } });
         }
-      } else if (data.stock !== undefined) {
-        // Variants weren't sent: stock is owned by the variants if there are any.
-        const count = await tx.productVariant.count({ where: { productId: id } });
-        if (count > 0) delete data.stock;
+      }
+      const variantCount = await tx.productVariant.count({ where: { productId: id } });
+      if (variantCount === 0 && data.stock !== undefined && stockBase !== undefined) {
+        // Apply the admin's change as a delta so concurrent orders aren't overwritten.
+        const delta = data.stock - stockBase;
+        delete data.stock;
+        const p = await tx.product.update({
+          where: { id },
+          data: { ...data, ...(delta ? { stock: { increment: delta } } : {}) },
+        });
+        return p.stock < 0 ? tx.product.update({ where: { id }, data: { stock: 0 } }) : p;
+      }
+      if (variantCount > 0 && variants === undefined) {
+        // Variants weren't sent: stock is owned by the variants.
+        delete data.stock;
       }
 
       return tx.product.update({ where: { id }, data });
