@@ -9,7 +9,6 @@ import { buildQuote, MAX_LINES, MAX_QTY_PER_LINE } from "@/lib/checkout";
 import { isDistrict, normalizeBdPhone } from "@/lib/districts";
 import { transitionOrder } from "@/lib/orders";
 import { rateLimit } from "@/lib/rate-limit";
-import { manualMfsAvailable, type MfsMethod } from "@/lib/mfs";
 import { Prisma } from "@/generated/prisma";
 import { siteUrl } from "@/lib/site-url";
 
@@ -37,9 +36,9 @@ const schema = z.object({
     )
     .min(1, "Your cart is empty")
     .max(MAX_LINES),
-  paymentMethod: z.enum(["STRIPE", "BKASH", "NAGAD", "ROCKET", "UPAY", "COD"]),
-  paymentSenderNumber: z.string().optional().default(""),
-  paymentTransactionId: z.string().optional().default(""),
+  paymentMethod: z.enum(["STRIPE", "BKASH", "UPAY", "COD"], {
+    message: "Please choose a payment method",
+  }),
   couponCode: z.string().trim().max(40).optional().default(""),
   notes: z.string().trim().max(500).optional().default(""),
 });
@@ -106,44 +105,12 @@ export async function POST(req: Request) {
   if (method === "STRIPE" && !stripeOn) {
     return NextResponse.json({ error: "Card payment is not available" }, { status: 400 });
   }
-  const isManualMfs =
-    method === "NAGAD" || method === "ROCKET" ||
-    (method === "UPAY" && !upayLive) ||
-    (method === "BKASH" && !bkashLive);
-  let senderNumber: string | null = null;
-  let trxId: string | null = null;
-  if (isManualMfs && !manualMfsAvailable(method as MfsMethod)) {
-    return NextResponse.json(
-      { error: "This payment method is not available right now" },
-      { status: 400 },
-    );
+  // Only online gateways and cash on delivery: no manual "Send Money" + TrxID.
+  if (method === "BKASH" && !bkashLive) {
+    return NextResponse.json({ error: "bKash payment is not available right now" }, { status: 400 });
   }
-  if (isManualMfs) {
-    senderNumber = normalizeBdPhone(input.paymentSenderNumber);
-    if (!senderNumber) {
-      return NextResponse.json(
-        { error: "Enter the mobile number you sent the money from" },
-        { status: 400 },
-      );
-    }
-    trxId = input.paymentTransactionId.trim().toUpperCase();
-    if (!/^[A-Z0-9]{6,20}$/.test(trxId)) {
-      return NextResponse.json({ error: "Enter a valid Transaction ID" }, { status: 400 });
-    }
-    const reused = await prisma.order.findFirst({
-      where: {
-        paymentMethod: method,
-        paymentTransactionId: trxId,
-        status: { not: "CANCELLED" },
-      },
-      select: { id: true },
-    });
-    if (reused) {
-      return NextResponse.json(
-        { error: "This Transaction ID has already been used for another order" },
-        { status: 409 },
-      );
-    }
+  if (method === "UPAY" && !upayLive) {
+    return NextResponse.json({ error: "Mobile banking payment is not available right now" }, { status: 400 });
   }
 
   // ---- Price everything on the server ----
@@ -269,8 +236,6 @@ export async function POST(req: Request) {
           shippingZone: quote.zone,
           paymentEmail: session.user.email,
           paymentMethod: method,
-          paymentSenderNumber: senderNumber,
-          paymentTransactionId: trxId,
           notes: input.notes || null,
           addressId,
           items: {
@@ -339,7 +304,7 @@ export async function POST(req: Request) {
     }
   }
 
-  if (method === "BKASH" && bkashLive) {
+  if (method === "BKASH") {
     try {
       const created = await createBkashPayment({
         amount: quote.total,
@@ -362,7 +327,7 @@ export async function POST(req: Request) {
     }
   }
 
-  if (method === "UPAY" && upayLive) {
+  if (method === "UPAY") {
     try {
       // The order id is unique and alphanumeric: it is both Upay's txn_id and
       // the invoice id. Stored first, so the expiry job can always ask Upay

@@ -129,8 +129,8 @@ export async function transitionOrder(opts: {
 
 /**
  * Cancels unpaid online-payment orders (bKash / Upay gateway, Stripe) that
- * were abandoned, returning their stock. Manual MFS and COD orders wait for
- * an admin instead. Upay orders are first checked with Upay: a payment that
+ * were abandoned, returning their stock. COD orders (and older manual
+ * "Send Money" orders) wait for an admin instead. Upay orders are first checked with Upay: a payment that
  * did go through marks the order paid instead.
  */
 export async function expireStaleOrders(olderThanMinutes = 60) {

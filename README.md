@@ -17,7 +17,7 @@ and Stripe (test mode).
 | CMS | [Sanity](https://www.sanity.io) (Studio embedded at `/studio`) |
 | State | [Zustand](https://zustand.docs.pmnd.rs) with `persist` middleware |
 | HTTP | axios |
-| Payments | bKash Tokenized Checkout, Upay merchant gateway, manual MFS (TrxID), cash on delivery, optional Stripe |
+| Payments | bKash Tokenized Checkout, Upay merchant gateway (bKash / Nagad / Upay), cash on delivery, optional Stripe |
 
 ## Features
 
@@ -29,7 +29,7 @@ and Stripe (test mode).
   **Buy now**, **Order on WhatsApp**, wishlist, sticky buy bar on phones, verified-buyer reviews, related products
 - Cart that re-checks prices and stock with the server
 - Checkout for Bangladesh: saved addresses, 64-district picker (delivery zone and fee come from the district),
-  required 01XXXXXXXXX phone, **coupon codes**, order note; bKash and Upay gateways, manual bKash/Nagad/Rocket/Upay (TrxID),
+  required 01XXXXXXXXX phone, **coupon codes**, order note; bKash and Upay gateways (no manual "Send Money"),
   cash on delivery, optional card (Stripe). Prices are VAT-inclusive.
 - Order tracking page with progress steps, courier + tracking number, history timeline, customer self-cancel while pending
 - My account: profile, address book, change password; wishlist page
@@ -106,9 +106,8 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 > - Cash on delivery is always available.
 > - bKash gateway appears when credentials are saved in **Admin → Payments** (or `BKASH_*` env vars).
 > - Upay gateway appears when it is enabled with merchant ID, key, name, code and mobile in
->   **Admin → Payments** (test base URL `https://uat-pg.upay.systems`); it replaces manual Upay.
-> - Manual "Send Money" methods (bKash/Nagad/Rocket/Upay) appear only when their
->   `NEXT_PUBLIC_*_NUMBER` receiving number is set — so customers never pay a placeholder number.
+>   **Admin → Payments** (test base URL `https://uat-pg.upay.systems`); checkout shows it as
+>   "Mobile banking" with bKash, Nagad and Upay icons. Manual "Send Money" + TrxID was removed.
 > - Card payment appears only with real Stripe keys.
 >
 > Set `CRON_SECRET` so `/api/cron/expire-orders` (scheduled in `vercel.json`) can release stock

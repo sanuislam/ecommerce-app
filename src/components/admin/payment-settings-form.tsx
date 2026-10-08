@@ -113,8 +113,8 @@ export function PaymentSettingsForm({
               Enable bKash live gateway
             </Label>
             <p className="mt-1 text-xs text-muted-foreground">
-              When off, bKash falls back to the manual Sender + TrxID entry flow
-              regardless of the credentials below.
+              When off, bKash is not offered at checkout, regardless of the
+              credentials below.
             </p>
           </div>
           <Switch

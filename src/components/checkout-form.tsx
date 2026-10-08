@@ -32,9 +32,7 @@ import {
   Plus,
   Tag,
   X,
-  Copy,
 } from "lucide-react";
-import { MFS_LABELS, MFS_INSTRUCTIONS, type MfsMethod } from "@/lib/mfs";
 
 type FormState = {
   fullName: string;
@@ -57,12 +55,11 @@ export type SavedAddress = {
   isDefault: boolean;
 };
 
-type PaymentMethod = "STRIPE" | MfsMethod | "COD";
+type PaymentMethod = "STRIPE" | "BKASH" | "UPAY" | "COD";
 
-const MFS_LOGOS: Record<MfsMethod, string> = {
+const LOGOS = {
   BKASH: "/payments/bkash.png",
   NAGAD: "/payments/nagad.png",
-  ROCKET: "/payments/rocket.png",
   UPAY: "/payments/upay.png",
 };
 
@@ -76,7 +73,6 @@ export function CheckoutForm({
   stripeEnabled,
   bkashLiveEnabled = false,
   upayLiveEnabled = false,
-  manualMethods,
 }: {
   userEmail: string;
   defaultName: string;
@@ -85,7 +81,6 @@ export function CheckoutForm({
   stripeEnabled: boolean;
   bkashLiveEnabled?: boolean;
   upayLiveEnabled?: boolean;
-  manualMethods: { method: MfsMethod; number: string }[];
 }) {
   const router = useRouter();
   const mounted = useSyncExternalStore(noop, () => true, () => false);
@@ -107,28 +102,26 @@ export function CheckoutForm({
   });
   const [saveAsDefault, setSaveAsDefault] = useState(savedAddresses.length === 0);
 
-  const payOptions: { key: PaymentMethod; label: string; hint: string; logo?: string }[] = [
-    ...(bkashLiveEnabled
-      ? [{ key: "BKASH" as const, label: "bKash", hint: "Pay instantly with bKash", logo: MFS_LOGOS.BKASH }]
-      : []),
+  const payOptions: { key: PaymentMethod; label: string; hint: string; logos?: string[] }[] = [
+    // Upay's merchant gateway: the customer pays from bKash, Nagad or Upay.
     ...(upayLiveEnabled
-      ? [{ key: "UPAY" as const, label: "Upay", hint: "Pay instantly with Upay", logo: MFS_LOGOS.UPAY }]
+      ? [{
+          key: "UPAY" as const,
+          label: "Mobile banking",
+          hint: "bKash, Nagad or Upay",
+          logos: [LOGOS.BKASH, LOGOS.NAGAD, LOGOS.UPAY],
+        }]
+      : []),
+    ...(bkashLiveEnabled
+      ? [{ key: "BKASH" as const, label: "bKash", hint: "Pay instantly with bKash", logos: [LOGOS.BKASH] }]
       : []),
     { key: "COD", label: "Cash on Delivery", hint: "Pay when you receive" },
-    ...manualMethods.map((m) => ({
-      key: m.method as PaymentMethod,
-      label: `${MFS_LABELS[m.method]} (Send Money)`,
-      hint: "Send money, then enter TrxID",
-      logo: MFS_LOGOS[m.method],
-    })),
     ...(stripeEnabled
       ? [{ key: "STRIPE" as const, label: "Card", hint: "Visa, Mastercard, Amex" }]
       : []),
   ];
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(payOptions[0].key);
-  const [senderNumber, setSenderNumber] = useState("");
-  const [trxId, setTrxId] = useState("");
   const [notes, setNotes] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -140,7 +133,6 @@ export function CheckoutForm({
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
-  const manual = manualMethods.find((m) => m.method === paymentMethod);
   const isBkashLive = paymentMethod === "BKASH" && bkashLiveEnabled;
   const isUpayLive = paymentMethod === "UPAY" && upayLiveEnabled;
   const total = quote?.total ?? 0;
@@ -168,10 +160,6 @@ export function CheckoutForm({
         return;
       }
     }
-    if (manual && (!normalizeBdPhone(senderNumber) || !trxId.trim())) {
-      toast.error("Please enter the number you paid from and the Transaction ID");
-      return;
-    }
     if (quote?.errors.length) {
       toast.error(quote.errors[0]);
       return;
@@ -189,8 +177,6 @@ export function CheckoutForm({
             quantity: i.quantity,
           })),
           paymentMethod,
-          paymentSenderNumber: senderNumber,
-          paymentTransactionId: trxId,
           couponCode,
           notes,
         }),
@@ -221,8 +207,8 @@ export function CheckoutForm({
         : isBkashLive
           ? "Pay with bKash"
           : isUpayLive
-            ? "Pay with Upay"
-            : "Submit order";
+            ? "Pay now"
+            : "Place order";
 
   if (mounted && items.length === 0) {
     return (
@@ -400,14 +386,23 @@ export function CheckoutForm({
                   onClick={() => setPaymentMethod(o.key)}
                   className={cn(
                     "relative flex items-center gap-3 rounded-lg border p-3 text-left transition-all",
+                    // Several logos need the full row.
+                    (o.logos?.length ?? 0) > 1 && "sm:col-span-2",
                     selected
                       ? "border-primary bg-primary/5 ring-2 ring-primary/30"
                       : "hover:border-foreground/30",
                   )}
                 >
-                  {o.logo ? (
-                    <span className="flex h-9 w-16 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-1.5">
-                      <Image src={o.logo} alt="" width={64} height={32} className="h-7 w-auto object-contain" />
+                  {o.logos ? (
+                    <span className="flex shrink-0 gap-1">
+                      {o.logos.map((src) => (
+                        <span
+                          key={src}
+                          className="flex h-9 w-12 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-1 sm:w-14"
+                        >
+                          <Image src={src} alt="" width={56} height={28} className="h-6 w-auto object-contain" />
+                        </span>
+                      ))}
                     </span>
                   ) : (
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -439,67 +434,12 @@ export function CheckoutForm({
           {isUpayLive && (
             <div className="rounded-lg border border-dashed bg-sky-50 p-4 text-sm dark:bg-sky-950/30">
               <div className="flex items-center gap-2 font-medium text-sky-700 dark:text-sky-300">
-                <Banknote className="size-4" /> Upay checkout
+                <Banknote className="size-4" /> Pay with bKash, Nagad or Upay
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                You’ll be taken to the secure Upay page to complete the payment.
+                You’ll be taken to the secure Upay payment page, where you can pay from your
+                bKash, Nagad or Upay account.
                 Your order is confirmed automatically once the payment completes.
-              </p>
-            </div>
-          )}
-
-          {manual && (
-            <div className="space-y-3 rounded-lg border border-dashed bg-muted/30 p-4">
-              <div>
-                <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  Send {quote ? formatPrice(total) : "the total"} to this {MFS_LABELS[manual.method]} number
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span className="rounded-md bg-primary/10 px-3 py-1.5 text-base font-semibold tracking-wide text-primary tabular-nums">
-                    {manual.number}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(manual.number);
-                      toast.success("Number copied");
-                    }}
-                  >
-                    <Copy className="size-3.5" /> Copy
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">{MFS_INSTRUCTIONS[manual.method]}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="senderNumber">Number you sent from</Label>
-                  <Input
-                    id="senderNumber"
-                    type="tel"
-                    inputMode="tel"
-                    required
-                    placeholder="01XXXXXXXXX"
-                    value={senderNumber}
-                    onChange={(e) => setSenderNumber(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="trxId">Transaction ID</Label>
-                  <Input
-                    id="trxId"
-                    required
-                    autoCapitalize="characters"
-                    placeholder="e.g. 9F7A2B1C3D"
-                    value={trxId}
-                    onChange={(e) => setTrxId(e.target.value.toUpperCase())}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Your order stays <span className="font-medium">pending</span> until we verify the
-                payment (usually within 30 minutes).
               </p>
             </div>
           )}

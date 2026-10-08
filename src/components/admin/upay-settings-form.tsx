@@ -122,9 +122,9 @@ export function UpaySettingsForm({ initial }: { initial: PaymentSettingsClient }
           <div>
             <Label className="text-base font-semibold">Enable Upay gateway</Label>
             <p className="mt-1 text-xs text-muted-foreground">
-              When on, customers who choose Upay are sent to the Upay payment page and
-              the order is confirmed automatically. When off, Upay falls back to the
-              manual Send Money + TrxID flow (if a receiving number is set).
+              When on, checkout shows “Mobile banking” (bKash, Nagad, Upay): customers
+              are sent to the Upay payment page and the order is confirmed
+              automatically. When off, it is not offered at checkout.
             </p>
           </div>
           <Switch checked={values.upayEnabled} onCheckedChange={(v) => set("upayEnabled", v)} />

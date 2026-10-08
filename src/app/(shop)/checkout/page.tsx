@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured } from "@/lib/bkash";
 import { upayConfigured } from "@/lib/upay";
-import { manualMfsAvailable, MFS_METHODS, getReceivingNumber } from "@/lib/mfs";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +34,6 @@ export default async function CheckoutPage() {
     upayConfigured(),
   ]);
 
-  const manualMethods = MFS_METHODS.filter(
-    (m) =>
-      manualMfsAvailable(m) &&
-      !(m === "BKASH" && bkashLive) &&
-      !(m === "UPAY" && upayLive),
-  ).map((m) => ({ method: m, number: getReceivingNumber(m) }));
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
@@ -62,7 +55,6 @@ export default async function CheckoutPage() {
         stripeEnabled={stripeConfigured()}
         bkashLiveEnabled={bkashLive}
         upayLiveEnabled={upayLive}
-        manualMethods={manualMethods}
       />
     </div>
   );
