@@ -17,7 +17,7 @@ and Stripe (test mode).
 | CMS | [Sanity](https://www.sanity.io) (Studio embedded at `/studio`) |
 | State | [Zustand](https://zustand.docs.pmnd.rs) with `persist` middleware |
 | HTTP | axios |
-| Payments | bKash Tokenized Checkout, Upay merchant gateway (bKash / Nagad / Upay), cash on delivery, optional Stripe |
+| Payments | bKash Tokenized Checkout, mobile banking (bKash gateway, Upay merchant gateway; Nagad / Rocket shown as coming soon), cash on delivery |
 
 ## Features
 

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/checkout-form";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured } from "@/lib/bkash";
 import { upayConfigured } from "@/lib/upay";
 
@@ -38,6 +37,9 @@ export default async function CheckoutPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Checkout</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Two steps: where to deliver, then how to pay.
+      </p>
       <CheckoutForm
         userEmail={session.user.email ?? ""}
         defaultName={user?.name ?? ""}
@@ -52,9 +54,7 @@ export default async function CheckoutPage() {
           state: a.state ?? "",
           isDefault: a.isDefault,
         }))}
-        stripeEnabled={stripeConfigured()}
-        bkashLiveEnabled={bkashLive}
-        upayLiveEnabled={upayLive}
+        wallets={{ BKASH: bkashLive, NAGAD: false, ROCKET: false, UPAY: upayLive }}
       />
     </div>
   );

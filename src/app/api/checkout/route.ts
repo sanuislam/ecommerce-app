@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured, createBkashPayment } from "@/lib/bkash";
 import { createUpayPayment, upayConfigured } from "@/lib/upay";
 import { buildQuote, MAX_LINES, MAX_QTY_PER_LINE } from "@/lib/checkout";
@@ -36,7 +35,7 @@ const schema = z.object({
     )
     .min(1, "Your cart is empty")
     .max(MAX_LINES),
-  paymentMethod: z.enum(["STRIPE", "BKASH", "UPAY", "COD"], {
+  paymentMethod: z.enum(["BKASH", "UPAY", "COD"], {
     message: "Please choose a payment method",
   }),
   couponCode: z.string().trim().max(40).optional().default(""),
@@ -100,17 +99,13 @@ export async function POST(req: Request) {
 
   // ---- Payment method checks ----
   const method = input.paymentMethod;
-  const stripeOn = stripeConfigured();
   const [bkashLive, upayLive] = await Promise.all([bkashConfigured(), upayConfigured()]);
-  if (method === "STRIPE" && !stripeOn) {
-    return NextResponse.json({ error: "Card payment is not available" }, { status: 400 });
-  }
-  // Only online gateways and cash on delivery: no manual "Send Money" + TrxID.
+  // Mobile-banking gateways (bKash, Upay) and cash on delivery only.
   if (method === "BKASH" && !bkashLive) {
     return NextResponse.json({ error: "bKash payment is not available right now" }, { status: 400 });
   }
   if (method === "UPAY" && !upayLive) {
-    return NextResponse.json({ error: "Mobile banking payment is not available right now" }, { status: 400 });
+    return NextResponse.json({ error: "Upay payment is not available right now" }, { status: 400 });
   }
 
   // ---- Price everything on the server ----
@@ -268,42 +263,6 @@ export async function POST(req: Request) {
     transitionOrder({ orderId: order.id, from: "PENDING", to: "CANCELLED", note });
 
   // ---- Online payments: hand off to the gateway ----
-  if (method === "STRIPE") {
-    try {
-      const stripe = getStripe();
-      const checkoutSession = await stripe.checkout.sessions.create({
-        mode: "payment",
-        success_url: `${appBase()}/orders/${order.id}?success=1`,
-        cancel_url: `${appBase()}/orders/${order.id}?payment=cancelled`,
-        customer_email: session.user.email ?? undefined,
-        expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: "bdt",
-              unit_amount: Math.round(quote.total * 100),
-              product_data: { name: `Order ${order.id.slice(-8).toUpperCase()}` },
-            },
-          },
-        ],
-        metadata: { orderId: order.id },
-      });
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { stripeId: checkoutSession.id },
-      });
-      return NextResponse.json({ id: order.id, checkoutUrl: checkoutSession.url });
-    } catch (err) {
-      console.error("Stripe checkout session failed", err);
-      await cancelUnpaid("Card payment could not be started");
-      return NextResponse.json(
-        { error: "Card payment is unavailable. Please try another method." },
-        { status: 502 },
-      );
-    }
-  }
-
   if (method === "BKASH") {
     try {
       const created = await createBkashPayment({

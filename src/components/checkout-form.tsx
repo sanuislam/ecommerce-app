@@ -10,7 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -23,14 +30,15 @@ import { useQuote } from "@/hooks/use-quote";
 import { BD_DISTRICTS, normalizeBdPhone } from "@/lib/districts";
 import { cn, formatPrice } from "@/lib/utils";
 import {
-  ShieldCheck,
-  CreditCard,
-  Banknote,
-  Truck,
   Check,
+  Loader2,
+  Lock,
   MapPin,
   Plus,
+  ShieldCheck,
+  Smartphone,
   Tag,
+  Truck,
   X,
 } from "lucide-react";
 
@@ -55,13 +63,18 @@ export type SavedAddress = {
   isDefault: boolean;
 };
 
-type PaymentMethod = "STRIPE" | "BKASH" | "UPAY" | "COD";
+/** A wallet in the "Mobile banking" picker. */
+export type Wallet = "BKASH" | "NAGAD" | "ROCKET" | "UPAY";
 
-const LOGOS = {
-  BKASH: "/payments/bkash.png",
-  NAGAD: "/payments/nagad.png",
-  UPAY: "/payments/upay.png",
-};
+// Vector logos from react-bangla-pay-icons (MIT), saved in /public/payments.
+const WALLETS: { id: Wallet; name: string; logo: string; ratio: string }[] = [
+  { id: "BKASH", name: "bKash", logo: "/payments/bkash.svg", ratio: "h-9" },
+  { id: "NAGAD", name: "Nagad", logo: "/payments/nagad.svg", ratio: "h-14" },
+  { id: "ROCKET", name: "Rocket", logo: "/payments/rocket.svg", ratio: "h-10" },
+  { id: "UPAY", name: "Upay", logo: "/payments/upay.svg", ratio: "h-12" },
+];
+
+type Choice = "MOBILE" | "COD";
 
 const noop = () => () => {};
 
@@ -70,17 +83,14 @@ export function CheckoutForm({
   defaultName,
   defaultPhone,
   savedAddresses,
-  stripeEnabled,
-  bkashLiveEnabled = false,
-  upayLiveEnabled = false,
+  wallets,
 }: {
   userEmail: string;
   defaultName: string;
   defaultPhone: string;
   savedAddresses: SavedAddress[];
-  stripeEnabled: boolean;
-  bkashLiveEnabled?: boolean;
-  upayLiveEnabled?: boolean;
+  /** Which wallets can be paid with right now (their gateway is set up). */
+  wallets: Record<Wallet, boolean>;
 }) {
   const router = useRouter();
   const mounted = useSyncExternalStore(noop, () => true, () => false);
@@ -102,27 +112,15 @@ export function CheckoutForm({
   });
   const [saveAsDefault, setSaveAsDefault] = useState(savedAddresses.length === 0);
 
-  const payOptions: { key: PaymentMethod; label: string; hint: string; logos?: string[] }[] = [
-    // Upay's merchant gateway: the customer pays from bKash, Nagad or Upay.
-    ...(upayLiveEnabled
-      ? [{
-          key: "UPAY" as const,
-          label: "Mobile banking",
-          hint: "bKash, Nagad or Upay",
-          logos: [LOGOS.BKASH, LOGOS.NAGAD, LOGOS.UPAY],
-        }]
-      : []),
-    ...(bkashLiveEnabled
-      ? [{ key: "BKASH" as const, label: "bKash", hint: "Pay instantly with bKash", logos: [LOGOS.BKASH] }]
-      : []),
-    { key: "COD", label: "Cash on Delivery", hint: "Pay when you receive" },
-    ...(stripeEnabled
-      ? [{ key: "STRIPE" as const, label: "Card", hint: "Visa, Mastercard, Amex" }]
-      : []),
-  ];
+  const mobileAvailable = WALLETS.some((w) => wallets[w.id]);
+  const [choice, setChoice] = useState<Choice>(mobileAvailable ? "MOBILE" : "COD");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [wallet, setWallet] = useState<Wallet | null>(
+    WALLETS.find((w) => wallets[w.id])?.id ?? null,
+  );
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(payOptions[0].key);
   const [notes, setNotes] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [couponCode, setCouponCode] = useState("");
 
@@ -133,9 +131,8 @@ export function CheckoutForm({
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
-  const isBkashLive = paymentMethod === "BKASH" && bkashLiveEnabled;
-  const isUpayLive = paymentMethod === "UPAY" && upayLiveEnabled;
   const total = quote?.total ?? 0;
+  const walletName = WALLETS.find((w) => w.id === wallet)?.name;
 
   function applyCoupon() {
     const code = couponInput.trim().toUpperCase();
@@ -143,27 +140,42 @@ export function CheckoutForm({
     setCouponCode(code);
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  /** Checks the form; true when the order can be placed. */
+  function validate(): boolean {
     if (items.length === 0) {
       toast.error("Your cart is empty");
-      return;
+      return false;
     }
     if (addressId === "new") {
+      if (!form.fullName.trim() || !form.line1.trim() || !form.city.trim()) {
+        toast.error("Please complete your delivery address");
+        return false;
+      }
       if (!form.state) {
         toast.error("Please choose your district");
-        return;
+        return false;
       }
       if (!normalizeBdPhone(form.phone)) {
         toast.error("Enter a valid mobile number (01XXXXXXXXX)");
         document.getElementById("phone")?.focus();
-        return;
+        return false;
       }
     }
     if (quote?.errors.length) {
       toast.error(quote.errors[0]);
-      return;
+      return false;
     }
+    return true;
+  }
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (submitting || !validate()) return;
+    if (choice === "MOBILE") setPickerOpen(true);
+    else void placeOrder("COD");
+  }
+
+  async function placeOrder(paymentMethod: "COD" | "BKASH" | "UPAY") {
     setSubmitting(true);
     try {
       const res = await fetch("/api/checkout", {
@@ -186,7 +198,7 @@ export function CheckoutForm({
         checkoutUrl?: string;
         error?: string;
       };
-      if (!res.ok || !data.id) throw new Error(data.error ?? "Checkout failed");
+      if (!res.ok || !data.id) throw new Error(data.error ?? "Could not place the order");
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
         return;
@@ -194,25 +206,21 @@ export function CheckoutForm({
       clear();
       router.push(`/orders/${data.id}?success=1`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Checkout failed");
+      toast.error(err instanceof Error ? err.message : "Could not place the order");
       setSubmitting(false);
     }
   }
 
-  const ctaLabel =
-    paymentMethod === "STRIPE"
-      ? "Pay with card"
-      : paymentMethod === "COD"
-        ? "Place order"
-        : isBkashLive
-          ? "Pay with bKash"
-          : isUpayLive
-            ? "Pay now"
-            : "Place order";
+  function continueWithWallet() {
+    // Each wallet opens its own checkout. Nagad and Rocket have no gateway yet
+    // (they show as "Coming soon").
+    if (wallet === "BKASH" && wallets.BKASH) void placeOrder("BKASH");
+    else if (wallet === "UPAY" && wallets.UPAY) void placeOrder("UPAY");
+  }
 
   if (mounted && items.length === 0) {
     return (
-      <div className="mt-8 rounded-lg border border-dashed p-10 text-center">
+      <div className="mt-8 rounded-2xl border border-dashed p-10 text-center">
         <p className="text-muted-foreground">Your cart is empty.</p>
         <Button asChild className="mt-4">
           <Link href="/products">Continue shopping</Link>
@@ -221,363 +229,554 @@ export function CheckoutForm({
     );
   }
 
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-[1fr_380px] lg:gap-8"
-    >
-      <div className="min-w-0 space-y-6">
-        {/* ---------------- Delivery ---------------- */}
-        <section className="space-y-4 rounded-lg border bg-card p-4 sm:p-5">
-          <h2 className="text-lg font-semibold">Delivery address</h2>
+  const canPay = mounted && items.length > 0 && !!quote && quote.errors.length === 0;
+  const ctaLabel = choice === "MOBILE" ? "Pay now" : "Place order";
 
-          {savedAddresses.length > 0 && (
-            <div className="grid gap-2" role="radiogroup" aria-label="Saved addresses">
-              {savedAddresses.map((a) => (
+  return (
+    <>
+      <form
+        onSubmit={onSubmit}
+        className="mt-6 grid items-start gap-6 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10"
+      >
+        <div className="min-w-0 space-y-6">
+          {/* ---------------- Delivery ---------------- */}
+          <section className="rounded-2xl border bg-card p-4 sm:p-6">
+            <StepHeading step={1} title="Delivery address" hint={`Updates go to ${userEmail}`} />
+
+            {savedAddresses.length > 0 && (
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Saved addresses">
+                {savedAddresses.map((a) => {
+                  const on = addressId === a.id;
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setAddressId(a.id)}
+                      className={cn(
+                        "relative flex items-start gap-3 rounded-xl border p-3.5 text-left text-sm transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                        on ? "border-foreground bg-muted/40" : "hover:border-foreground/30",
+                      )}
+                    >
+                      <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 pr-5">
+                        <span className="block font-medium">
+                          {a.fullName}
+                          {a.isDefault && (
+                            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
+                              Default
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-muted-foreground tabular-nums">{a.phone}</span>
+                        <span className="mt-1 block break-words text-muted-foreground">
+                          {[a.line1, a.line2, a.city, a.state].filter(Boolean).join(", ")}
+                        </span>
+                      </span>
+                      {on && <RadioDot />}
+                    </button>
+                  );
+                })}
                 <button
-                  key={a.id}
                   type="button"
                   role="radio"
-                  aria-checked={addressId === a.id}
-                  onClick={() => setAddressId(a.id)}
+                  aria-checked={addressId === "new"}
+                  onClick={() => setAddressId("new")}
                   className={cn(
-                    "flex items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors",
-                    addressId === a.id
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                      : "hover:border-foreground/30",
+                    "flex min-h-16 items-center justify-center gap-2 rounded-xl border border-dashed p-3.5 text-sm font-medium transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                    addressId === "new"
+                      ? "border-foreground bg-muted/40"
+                      : "text-muted-foreground hover:border-foreground/30 hover:text-foreground",
                   )}
                 >
-                  <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0">
-                    <span className="font-medium">{a.fullName}</span>
-                    <span className="text-muted-foreground"> · {a.phone}</span>
-                    {a.isDefault && (
-                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs">Default</span>
-                    )}
-                    <span className="block break-words text-muted-foreground">
-                      {[a.line1, a.line2, a.city, a.state].filter(Boolean).join(", ")}
-                    </span>
-                  </span>
+                  <Plus className="size-4" /> New address
                 </button>
-              ))}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={addressId === "new"}
-                onClick={() => setAddressId("new")}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg border border-dashed p-3 text-left text-sm font-medium",
-                  addressId === "new" ? "border-primary bg-primary/5" : "hover:border-foreground/30",
-                )}
-              >
-                <Plus className="size-4" /> Use a new address
-              </button>
-            </div>
-          )}
+              </div>
+            )}
 
-          {addressId === "new" && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Label htmlFor="fullName">Full name</Label>
-                <Input
-                  id="fullName"
-                  required
-                  autoComplete="name"
-                  value={form.fullName}
-                  onChange={(e) => set("fullName", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Mobile number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  required
-                  placeholder="01XXXXXXXXX"
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="district">District</Label>
-                <Select value={form.state} onValueChange={(v) => set("state", v)}>
-                  <SelectTrigger id="district" className="w-full">
-                    <SelectValue placeholder="Choose district" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {BD_DISTRICTS.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="city">Area / Thana</Label>
-                <Input
-                  id="city"
-                  required
-                  autoComplete="address-level2"
-                  placeholder="e.g. Dhanmondi"
-                  value={form.city}
-                  onChange={(e) => set("city", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="postalCode">Postal code (optional)</Label>
-                <Input
-                  id="postalCode"
-                  inputMode="numeric"
-                  autoComplete="postal-code"
-                  value={form.postalCode}
-                  onChange={(e) => set("postalCode", e.target.value)}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="line1">Full address</Label>
-                <Input
-                  id="line1"
-                  required
-                  autoComplete="street-address"
-                  placeholder="House, road, block / village"
-                  value={form.line1}
-                  onChange={(e) => set("line1", e.target.value)}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="line2">Landmark (optional)</Label>
-                <Input
-                  id="line2"
-                  value={form.line2}
-                  onChange={(e) => set("line2", e.target.value)}
-                />
-              </div>
-              {savedAddresses.length > 0 && (
-                <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                  <Checkbox
-                    checked={saveAsDefault}
-                    onCheckedChange={(v) => setSaveAsDefault(v === true)}
+            {addressId === "new" && (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <Field id="fullName" label="Full name" className="sm:col-span-2">
+                  <Input
+                    id="fullName"
+                    required
+                    autoComplete="name"
+                    value={form.fullName}
+                    onChange={(e) => set("fullName", e.target.value)}
                   />
-                  Make this my default address
-                </label>
+                </Field>
+                <Field id="phone" label="Mobile number">
+                  <Input
+                    id="phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    placeholder="01XXXXXXXXX"
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                  />
+                </Field>
+                <Field id="district" label="District">
+                  <Select value={form.state} onValueChange={(v) => set("state", v)}>
+                    <SelectTrigger id="district" className="w-full">
+                      <SelectValue placeholder="Choose district" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {BD_DISTRICTS.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field id="city" label="Area / Thana">
+                  <Input
+                    id="city"
+                    required
+                    autoComplete="address-level2"
+                    placeholder="e.g. Dhanmondi"
+                    value={form.city}
+                    onChange={(e) => set("city", e.target.value)}
+                  />
+                </Field>
+                <Field id="postalCode" label="Postal code" optional>
+                  <Input
+                    id="postalCode"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    value={form.postalCode}
+                    onChange={(e) => set("postalCode", e.target.value)}
+                  />
+                </Field>
+                <Field id="line1" label="Full address" className="sm:col-span-2">
+                  <Input
+                    id="line1"
+                    required
+                    autoComplete="street-address"
+                    placeholder="House, road, block / village"
+                    value={form.line1}
+                    onChange={(e) => set("line1", e.target.value)}
+                  />
+                </Field>
+                <Field id="line2" label="Landmark" optional className="sm:col-span-2">
+                  <Input
+                    id="line2"
+                    placeholder="Near a mosque, school, market…"
+                    value={form.line2}
+                    onChange={(e) => set("line2", e.target.value)}
+                  />
+                </Field>
+                {savedAddresses.length > 0 && (
+                  <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                    <Checkbox
+                      checked={saveAsDefault}
+                      onCheckedChange={(v) => setSaveAsDefault(v === true)}
+                    />
+                    Make this my default address
+                  </label>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* ---------------- Payment ---------------- */}
+          <section className="rounded-2xl border bg-card p-4 sm:p-6">
+            <StepHeading step={2} title="Payment" hint="All payments are confirmed automatically" />
+
+            <div className="mt-5 grid gap-3" role="radiogroup" aria-label="Payment method">
+              <PayOption
+                checked={choice === "MOBILE"}
+                disabled={!mobileAvailable}
+                onSelect={() => setChoice("MOBILE")}
+                icon={<Smartphone className="size-5" />}
+                title="Mobile banking"
+                text={
+                  mobileAvailable
+                    ? "Choose your wallet in the next step"
+                    : "Not available right now"
+                }
+              >
+                <div className="mt-3 grid max-w-sm grid-cols-4 gap-2">
+                  {WALLETS.map((w) => (
+                    <LogoChip key={w.id} wallet={w} />
+                  ))}
+                </div>
+              </PayOption>
+
+              <PayOption
+                checked={choice === "COD"}
+                onSelect={() => setChoice("COD")}
+                icon={<Truck className="size-5" />}
+                title="Cash on delivery"
+                text="Pay the delivery person in cash when your order arrives"
+              />
+            </div>
+
+            <div className="mt-5">
+              {showNotes || notes ? (
+                <Field id="notes" label="Note for delivery" optional>
+                  <Textarea
+                    id="notes"
+                    rows={2}
+                    maxLength={500}
+                    autoFocus={showNotes && !notes}
+                    placeholder="e.g. Call before coming, gate code…"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </Field>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowNotes(true)}
+                  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  <Plus className="size-3.5" /> Add a note for delivery
+                </button>
               )}
             </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Order updates go to <span className="font-medium">{userEmail}</span>.
-          </p>
-        </section>
+          </section>
+        </div>
 
-        {/* ---------------- Payment ---------------- */}
-        <section className="space-y-4 rounded-lg border bg-card p-4 sm:p-5">
-          <h2 className="text-lg font-semibold">Payment method</h2>
-          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Payment method">
-            {payOptions.map((o) => {
-              const selected = paymentMethod === o.key;
+        {/* ---------------- Summary ---------------- */}
+        <aside className="rounded-2xl border bg-card p-4 sm:p-6 lg:sticky lg:top-20">
+          <h2 className="text-lg font-semibold tracking-tight">Your order</h2>
+          <ul className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
+            {mounted &&
+              items.map((i) => (
+                <li key={`${i.productId}:${i.variantId ?? ""}`} className="flex gap-3 text-sm">
+                  <span className="relative size-14 shrink-0 overflow-hidden rounded-lg border bg-muted">
+                    {i.image && (
+                      <Image src={i.image} alt="" fill sizes="56px" className="object-cover" />
+                    )}
+                    <span className="absolute -top-0 -right-0 rounded-bl-md bg-foreground px-1.5 text-[11px] font-medium text-background tabular-nums">
+                      {i.quantity}
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 leading-snug">{i.name}</span>
+                    {i.variantName && (
+                      <span className="text-xs text-muted-foreground">{i.variantName}</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-medium tabular-nums">
+                    {formatPrice(i.price * i.quantity)}
+                  </span>
+                </li>
+              ))}
+          </ul>
+
+          <div className="mt-5">
+            <Label htmlFor="coupon" className="sr-only">Coupon code</Label>
+            {quote?.coupon ? (
+              <div className="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <span className="flex items-center gap-2">
+                  <Tag className="size-4" /> {quote.coupon.code} applied
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Remove coupon"
+                  onClick={() => {
+                    setCouponCode("");
+                    setCouponInput("");
+                  }}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  id="coupon"
+                  placeholder="Coupon code"
+                  autoCapitalize="characters"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyCoupon();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={applyCoupon} disabled={!couponInput.trim()}>
+                  Apply
+                </Button>
+              </div>
+            )}
+            {couponCode && quote?.couponError && (
+              <p className="mt-1 text-xs text-destructive">{quote.couponError}</p>
+            )}
+          </div>
+
+          <dl className={cn("mt-5 space-y-2 border-t pt-4 text-sm", quoting && "opacity-60")}>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Subtotal</dt>
+              <dd className="tabular-nums">{quote ? formatPrice(quote.subtotal) : "—"}</dd>
+            </div>
+            {quote && quote.discount > 0 && (
+              <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                <dt>Discount</dt>
+                <dd className="tabular-nums">−{formatPrice(quote.discount)}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">
+                Delivery
+                {district && quote && (
+                  <span className="text-xs">
+                    {" "}({quote.zone === "DHAKA" ? "inside Dhaka" : "outside Dhaka"})
+                  </span>
+                )}
+              </dt>
+              <dd className="tabular-nums">
+                {!district
+                  ? "Choose district"
+                  : !quote
+                    ? "—"
+                    : quote.shipping === 0
+                      ? "Free"
+                      : formatPrice(quote.shipping)}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4 flex items-baseline justify-between border-t pt-4">
+            <span className="font-medium">Total</span>
+            <span className="text-2xl font-semibold tracking-tight tabular-nums">
+              {quote ? formatPrice(total) : "—"}
+            </span>
+          </div>
+          <p className="text-right text-xs text-muted-foreground">VAT included</p>
+
+          {quote?.errors.length ? (
+            <div className="mt-3 rounded-lg bg-destructive/10 p-2.5 text-xs text-destructive">
+              {quote.errors[0]}.{" "}
+              <Link href="/cart" className="underline">
+                Update cart
+              </Link>
+            </div>
+          ) : null}
+
+          <Button
+            type="submit"
+            size="lg"
+            className="mt-4 h-12 w-full rounded-xl text-base"
+            disabled={submitting || !canPay}
+          >
+            {submitting && !pickerOpen ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Placing order…
+              </>
+            ) : (
+              <>
+                {choice === "MOBILE" && <Lock className="size-4" />}
+                {ctaLabel}
+                {quote ? ` · ${formatPrice(total)}` : ""}
+              </>
+            )}
+          </Button>
+          <p className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs text-muted-foreground">
+            <ShieldCheck className="mt-px size-3.5 shrink-0" />
+            <span>
+              By placing the order you agree to our{" "}
+              <Link href="/terms" className="underline">terms</Link>.
+            </span>
+          </p>
+        </aside>
+      </form>
+
+      {/* ---------------- Wallet picker ---------------- */}
+      <Dialog open={pickerOpen} onOpenChange={(o) => !submitting && setPickerOpen(o)}>
+        <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={!submitting}>
+          <DialogHeader className="border-b px-5 pt-5 pb-4 text-left">
+            <DialogTitle className="text-lg">Choose your wallet</DialogTitle>
+            <DialogDescription>
+              {`Pay ${quote ? formatPrice(total) : "the total"} on the wallet's own secure page.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-3 p-5" role="radiogroup" aria-label="Wallet">
+            {WALLETS.map((w) => {
+              const available = wallets[w.id];
+              const on = wallet === w.id;
               return (
                 <button
-                  key={o.key}
+                  key={w.id}
                   type="button"
                   role="radio"
-                  aria-checked={selected}
-                  onClick={() => setPaymentMethod(o.key)}
+                  aria-checked={on}
+                  aria-label={available ? w.name : `${w.name}, coming soon`}
+                  disabled={!available || submitting}
+                  onClick={() => setWallet(w.id)}
                   className={cn(
-                    "relative flex items-center gap-3 rounded-lg border p-3 text-left transition-all",
-                    // Several logos need the full row.
-                    (o.logos?.length ?? 0) > 1 && "sm:col-span-2",
-                    selected
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                      : "hover:border-foreground/30",
+                    "relative flex h-32 flex-col items-center justify-center gap-3 rounded-xl border-2 bg-white p-3 transition-[border-color,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                    on && available
+                      ? "border-foreground shadow-[0_0_0_4px] shadow-foreground/10"
+                      : "border-border",
+                    available ? "hover:border-foreground/40" : "cursor-not-allowed",
                   )}
                 >
-                  {o.logos ? (
-                    <span className="flex shrink-0 gap-1">
-                      {o.logos.map((src) => (
-                        <span
-                          key={src}
-                          className="flex h-9 w-12 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-1 sm:w-14"
-                        >
-                          <Image src={src} alt="" width={56} height={28} className="h-6 w-auto object-contain" />
-                        </span>
-                      ))}
+                  <span className={cn("flex h-14 items-center", !available && "opacity-40 grayscale")}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- crisp SVG logos */}
+                    <img src={w.logo} alt="" className={cn("w-auto object-contain", w.ratio)} />
+                  </span>
+                  <span className="text-center text-xs leading-tight">
+                    <span className={cn("block font-medium", available ? "text-neutral-800" : "text-neutral-500")}>
+                      {w.name}
                     </span>
-                  ) : (
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      {o.key === "COD" ? <Truck className="size-5" /> : <CreditCard className="size-5" />}
+                    {!available && <span className="block text-neutral-400">Coming soon</span>}
+                  </span>
+                  {on && available && (
+                    <span className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+                      <Check className="size-3" strokeWidth={3} />
                     </span>
                   )}
-                  <span className="min-w-0 pr-5">
-                    <span className="block text-sm font-medium">{o.label}</span>
-                    <span className="block text-xs text-muted-foreground">{o.hint}</span>
-                  </span>
-                  {selected && <Check className="absolute top-2 right-2 size-4 text-primary" />}
                 </button>
               );
             })}
           </div>
 
-          {isBkashLive && (
-            <div className="rounded-lg border border-dashed bg-pink-50 p-4 text-sm dark:bg-pink-950/30">
-              <div className="flex items-center gap-2 font-medium text-pink-700 dark:text-pink-300">
-                <Banknote className="size-4" /> bKash checkout
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                You’ll be taken to the secure bKash page to enter your wallet number, OTP and PIN.
-                Your order is confirmed automatically once the payment completes.
-              </p>
-            </div>
-          )}
-
-          {isUpayLive && (
-            <div className="rounded-lg border border-dashed bg-sky-50 p-4 text-sm dark:bg-sky-950/30">
-              <div className="flex items-center gap-2 font-medium text-sky-700 dark:text-sky-300">
-                <Banknote className="size-4" /> Pay with bKash, Nagad or Upay
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                You’ll be taken to the secure Upay payment page, where you can pay from your
-                bKash, Nagad or Upay account.
-                Your order is confirmed automatically once the payment completes.
-              </p>
-            </div>
-          )}
-
-          {paymentMethod === "COD" && (
-            <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
-              Pay the delivery person in cash when your order arrives.
-            </div>
-          )}
-
-          <div>
-            <Label htmlFor="notes">Order note (optional)</Label>
-            <Textarea
-              id="notes"
-              rows={2}
-              maxLength={500}
-              placeholder="Anything we should know about delivery?"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-        </section>
-      </div>
-
-      {/* ---------------- Summary ---------------- */}
-      <aside className="h-fit space-y-4 rounded-lg border bg-card p-4 sm:p-5 lg:sticky lg:top-20">
-        <h2 className="text-lg font-semibold">Order summary</h2>
-        <ul className="space-y-3 text-sm">
-          {mounted &&
-            items.map((i) => (
-              <li key={`${i.productId}:${i.variantId ?? ""}`} className="flex justify-between gap-3">
-                <span className="min-w-0">
-                  <span className="line-clamp-2">{i.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {i.variantName ? `${i.variantName} · ` : ""}× {i.quantity}
-                  </span>
-                </span>
-                <span className="shrink-0">{formatPrice(i.price * i.quantity)}</span>
-              </li>
-            ))}
-        </ul>
-
-        <div>
-          <Label htmlFor="coupon" className="sr-only">Coupon code</Label>
-          {quote?.coupon ? (
-            <div className="flex items-center justify-between rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-              <span className="flex items-center gap-2">
-                <Tag className="size-4" /> {quote.coupon.code} applied
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Remove coupon"
-                onClick={() => {
-                  setCouponCode("");
-                  setCouponInput("");
-                }}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                id="coupon"
-                placeholder="Coupon code"
-                autoCapitalize="characters"
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    applyCoupon();
-                  }
-                }}
-              />
-              <Button type="button" variant="outline" onClick={applyCoupon} disabled={!couponInput.trim()}>
-                Apply
-              </Button>
-            </div>
-          )}
-          {couponCode && quote?.couponError && (
-            <p className="mt-1 text-xs text-destructive">{quote.couponError}</p>
-          )}
-        </div>
-
-        <Separator />
-        <div className={cn("space-y-1.5 text-sm", quoting && "opacity-60")}>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>{quote ? formatPrice(quote.subtotal) : "—"}</span>
-          </div>
-          {quote && quote.discount > 0 && (
-            <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
-              <span>Discount</span>
-              <span>−{formatPrice(quote.discount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              Delivery
-              {district && (
-                <span className="text-xs"> ({quote?.zone === "DHAKA" ? "inside Dhaka" : "outside Dhaka"})</span>
+          <DialogFooter className="mx-0 mb-0 flex-col gap-2 rounded-b-xl border-t bg-muted/40 px-5 py-4 sm:flex-col">
+            <Button
+              type="button"
+              size="lg"
+              className="h-12 w-full rounded-xl text-base"
+              disabled={!wallet || !wallets[wallet] || submitting}
+              onClick={continueWithWallet}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Opening {walletName}…
+                </>
+              ) : walletName && wallet && wallets[wallet] ? (
+                `Continue to ${walletName}`
+              ) : (
+                "Choose a wallet"
               )}
-            </span>
-            <span>
-              {!district ? "Choose district" : !quote ? "—" : quote.shipping === 0 ? "Free" : formatPrice(quote.shipping)}
-            </span>
-          </div>
-        </div>
-        <Separator />
-        <div className="flex justify-between text-base font-semibold">
-          <span>Total</span>
-          <span>{quote ? formatPrice(total) : "—"}</span>
-        </div>
-        {quote?.errors.length ? (
-          <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
-            {quote.errors[0]}.{" "}
-            <Link href="/cart" className="underline">
-              Update cart
-            </Link>
-          </div>
-        ) : null}
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={submitting || !mounted || items.length === 0 || !quote || quote.errors.length > 0}
-        >
-          {submitting ? "Placing order..." : `${ctaLabel}${quote ? ` · ${formatPrice(total)}` : ""}`}
-        </Button>
-        <p className="flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5" />
-          Prices include VAT. By ordering you agree to our{" "}
-          <Link href="/terms" className="underline">terms</Link>.
-        </p>
-      </aside>
-    </form>
+            </Button>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <Lock className="size-3" /> We never see your PIN or OTP
+            </p>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function StepHeading({ step, title, hint }: { step: number; title: string; hint?: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background tabular-nums">
+        {step}
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-lg leading-7 font-semibold tracking-tight">{title}</h2>
+        {hint && <p className="truncate text-sm text-muted-foreground">{hint}</p>}
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  id,
+  label,
+  optional,
+  className,
+  children,
+}: {
+  id: string;
+  label: string;
+  optional?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("grid gap-1.5", className)}>
+      <Label htmlFor={id}>
+        {label}
+        {optional && <span className="font-normal text-muted-foreground">(optional)</span>}
+      </Label>
+      {children}
+    </div>
+  );
+}
+
+function RadioDot() {
+  return (
+    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+      <Check className="size-3" strokeWidth={3} />
+    </span>
+  );
+}
+
+function PayOption({
+  checked,
+  disabled,
+  onSelect,
+  icon,
+  title,
+  text,
+  children,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "relative flex w-full items-start gap-3.5 rounded-xl border p-4 text-left transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
+        checked ? "border-foreground bg-muted/40" : "hover:border-foreground/30",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2",
+          checked ? "border-foreground" : "border-muted-foreground/40",
+        )}
+        aria-hidden
+      >
+        {checked && <span className="size-2.5 rounded-full bg-foreground" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2 font-medium">
+          <span className="text-muted-foreground">{icon}</span>
+          {title}
+        </span>
+        <span className="mt-0.5 block text-sm text-muted-foreground">{text}</span>
+        {children}
+      </span>
+    </button>
+  );
+}
+
+function LogoChip({ wallet }: { wallet: (typeof WALLETS)[number] }) {
+  return (
+    <span className="flex h-11 items-center justify-center rounded-lg border bg-white px-1.5 shadow-xs sm:h-12 sm:px-2.5">
+      {/* eslint-disable-next-line @next/next/no-img-element -- crisp SVG logos */}
+      <img
+        src={wallet.logo}
+        alt={wallet.name}
+        className={cn(
+          "w-auto max-w-full object-contain",
+          wallet.id === "BKASH" ? "h-5 sm:h-6" : wallet.id === "ROCKET" ? "h-7 sm:h-8" : "h-8 sm:h-9",
+        )}
+      />
+    </span>
   );
 }
