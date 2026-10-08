@@ -19,13 +19,21 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+const PROVIDERS = {
+  bkash: { label: "bKash", endpoint: "/api/admin/payments/bkash/refund" },
+  upay: { label: "Upay", endpoint: "/api/admin/payments/upay/refund" },
+} as const;
+
 export function BkashRefundButton({
   orderId,
   amount,
+  provider = "bkash",
 }: {
   orderId: string;
   amount: number;
+  provider?: keyof typeof PROVIDERS;
 }) {
+  const p = PROVIDERS[provider];
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -34,7 +42,7 @@ export function BkashRefundButton({
   async function refund() {
     setPending(true);
     try {
-      const res = await fetch("/api/admin/payments/bkash/refund", {
+      const res = await fetch(p.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, reason: reason.trim() || undefined }),
@@ -42,6 +50,7 @@ export function BkashRefundButton({
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         refundTrxID?: string;
+        message?: string;
       };
       if (!res.ok) {
         toast.error(data.error ?? "Refund failed");
@@ -50,7 +59,7 @@ export function BkashRefundButton({
       toast.success(
         data.refundTrxID
           ? `Refunded · ${data.refundTrxID}`
-          : "Refund issued",
+          : (data.message ?? "Refund issued"),
       );
       setOpen(false);
       router.refresh();
@@ -66,14 +75,14 @@ export function BkashRefundButton({
       <AlertDialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Undo2 className="size-4" />
-          Refund via bKash
+          Refund via {p.label}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Refund ৳{amount.toFixed(2)} to customer?</AlertDialogTitle>
           <AlertDialogDescription>
-            Issues a full refund through bKash for the original transaction. The
+            Issues a full refund through {p.label} for the original transaction. The
             order status will be set to REFUNDED. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>

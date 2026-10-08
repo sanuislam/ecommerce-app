@@ -21,6 +21,7 @@ import { OrderStatusBadge } from "@/components/site/order-status-badge";
 import { CancelOrderButton } from "@/components/site/cancel-order-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 import { STATUS_LABEL } from "@/lib/orders";
+import { settleUpayOrder } from "@/lib/upay-settle";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ success?: string; bkash?: string; payment?: string }>;
+  searchParams: Promise<{ success?: string; bkash?: string; upay?: string; payment?: string }>;
 };
 
 const dhakaDateTime = (d: Date) =>
@@ -58,19 +59,27 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const session = await auth();
   if (!session?.user) redirect(`/sign-in?callbackUrl=/orders/${id}`);
 
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      items: { include: { product: { select: { slug: true } } } },
-      address: true,
-      events: { orderBy: { createdAt: "asc" } },
-    },
-  });
+  const load = () =>
+    prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: { include: { product: { select: { slug: true } } } },
+        address: true,
+        events: { orderBy: { createdAt: "asc" } },
+      },
+    });
+  let order = await load();
   if (!order) notFound();
 
   const isOwner = order.userId === session.user.id;
   const isAdmin = session.user.role === Role.ADMIN;
   if (!isOwner && !isAdmin) notFound();
+
+  // An Upay payment still open: ask Upay again, so a refresh shows the result.
+  if (order.status === "PENDING" && order.paymentMethod === "UPAY" && order.upayTxnId) {
+    const outcome = await settleUpayOrder(order.id);
+    if (outcome === "paid" || outcome === "cancelled") order = (await load()) ?? order;
+  }
 
   const site = await getSiteSettings();
   const cancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
@@ -85,6 +94,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     order.status === "PENDING" &&
     !order.paymentTransactionId &&
     !order.bkashPaymentId &&
+    !order.upayTxnId &&
     !order.stripeId;
 
   const notice =
@@ -94,13 +104,22 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         ? { tone: "warn", text: "bKash payment did not go through. No money was taken for this order." }
         : sp.bkash === "review"
           ? { tone: "warn", text: "We received your bKash payment and are checking it. We will confirm shortly." }
-          : sp.payment === "cancelled"
+          : sp.upay === "failed" || sp.upay === "cancelled"
+            ? { tone: "warn", text: "Upay payment did not go through, so this order was cancelled. No money was taken." }
+            : sp.upay === "review"
+              ? { tone: "warn", text: "We received your Upay payment and are checking it. We will confirm shortly." }
+              : sp.upay === "pending" && order.status === "PENDING"
+                ? { tone: "warn", text: "Your Upay payment is still being processed. Refresh this page in a minute to see the result." }
+                : sp.payment === "cancelled"
             ? { tone: "warn", text: "Card payment was not completed. The order will be cancelled automatically." }
             : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      {sp.success && order.status !== "CANCELLED" && <ClearCartOnSuccess />}
+      {((sp.success && order.status !== "CANCELLED") ||
+        (sp.upay && order.status !== "CANCELLED" && order.status !== "PENDING")) && (
+        <ClearCartOnSuccess />
+      )}
       {sp.success && order.status !== "CANCELLED" && (
         <div className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
           <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />

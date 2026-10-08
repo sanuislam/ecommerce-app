@@ -128,9 +128,10 @@ export async function transitionOrder(opts: {
 }
 
 /**
- * Cancels unpaid online-payment orders (bKash gateway / Stripe) that were
- * abandoned, returning their stock. Manual MFS and COD orders wait for an
- * admin instead.
+ * Cancels unpaid online-payment orders (bKash / Upay gateway, Stripe) that
+ * were abandoned, returning their stock. Manual MFS and COD orders wait for
+ * an admin instead. Upay orders are first checked with Upay: a payment that
+ * did go through marks the order paid instead.
  */
 export async function expireStaleOrders(olderThanMinutes = 60) {
   const cutoff = new Date(Date.now() - olderThanMinutes * 60_000);
@@ -141,13 +142,27 @@ export async function expireStaleOrders(olderThanMinutes = 60) {
       OR: [
         { paymentMethod: "STRIPE" },
         { paymentMethod: "BKASH", bkashPaymentId: { not: null } },
+        { paymentMethod: "UPAY", upayTxnId: { not: null } },
       ],
     },
-    select: { id: true },
+    select: { id: true, paymentMethod: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
     take: 200,
   });
+  // Imported here: upay-settle itself uses transitionOrder from this file.
+  const { settleUpayOrder } = await import("@/lib/upay-settle");
+  const dayAgo = Date.now() - 24 * 60 * 60_000;
   let cancelled = 0;
   for (const o of stale) {
+    if (o.paymentMethod === "UPAY") {
+      const outcome = await settleUpayOrder(o.id);
+      if (outcome === "cancelled") cancelled++;
+      // Paid / needs review / Upay unreachable: never cancel on a guess.
+      // Still "pending" at Upay: give it a day before giving up.
+      const giveUp =
+        outcome === "not_found" || (outcome === "pending" && o.createdAt.getTime() < dayAgo);
+      if (!giveUp) continue;
+    }
     const ok = await transitionOrder({
       orderId: o.id,
       from: "PENDING",

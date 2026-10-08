@@ -17,7 +17,7 @@ and Stripe (test mode).
 | CMS | [Sanity](https://www.sanity.io) (Studio embedded at `/studio`) |
 | State | [Zustand](https://zustand.docs.pmnd.rs) with `persist` middleware |
 | HTTP | axios |
-| Payments | bKash Tokenized Checkout, manual MFS (TrxID), cash on delivery, optional Stripe |
+| Payments | bKash Tokenized Checkout, Upay merchant gateway, manual MFS (TrxID), cash on delivery, optional Stripe |
 
 ## Features
 
@@ -29,7 +29,7 @@ and Stripe (test mode).
   **Buy now**, **Order on WhatsApp**, wishlist, sticky buy bar on phones, verified-buyer reviews, related products
 - Cart that re-checks prices and stock with the server
 - Checkout for Bangladesh: saved addresses, 64-district picker (delivery zone and fee come from the district),
-  required 01XXXXXXXXX phone, **coupon codes**, order note; bKash gateway, manual bKash/Nagad/Rocket/Upay (TrxID),
+  required 01XXXXXXXXX phone, **coupon codes**, order note; bKash and Upay gateways, manual bKash/Nagad/Rocket/Upay (TrxID),
   cash on delivery, optional card (Stripe). Prices are VAT-inclusive.
 - Order tracking page with progress steps, courier + tracking number, history timeline, customer self-cancel while pending
 - My account: profile, address book, change password; wishlist page
@@ -39,14 +39,17 @@ and Stripe (test mode).
 
 - Products CRUD with size/colour option editor (stock per option)
 - Orders: status filter + search, allowed-transition status changes (cancel restocks automatically),
-  courier + tracking number, timeline, bKash refunds
+  courier + tracking number, timeline, bKash and Upay refunds
 - Coupons: percent / fixed, minimum spend, max discount, usage limits, validity window
-- Categories, users (role switcher), legal pages, payments (bKash), SEO & PWA, site settings incl. delivery charges
+- Categories, users (role switcher), legal pages, payments (bKash, Upay), SEO & PWA, site settings incl. delivery charges
 
 **Safety**
 
 - Every price, discount and delivery fee is calculated on the server; stock and coupon usage change atomically
 - bKash callback verifies the payment belongs to the order and the paid amount matches before marking it paid
+- Upay: the redirect's query string is never trusted — the result is read back from Upay's
+  single-payment-status API (txn_id = order id, amount and invoice must match); the expiry job asks
+  Upay before cancelling an abandoned Upay order
 - Status changes are guarded so double callbacks / double clicks can't restock or refund twice
 - Rate limits on sign-in, sign-up, checkout, reviews and password changes (stored in Postgres)
 - Admin role is re-read from the database every minute, so demoted admins lose access quickly
@@ -102,6 +105,8 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 > **Payment methods shown at checkout**
 > - Cash on delivery is always available.
 > - bKash gateway appears when credentials are saved in **Admin → Payments** (or `BKASH_*` env vars).
+> - Upay gateway appears when it is enabled with merchant ID, key, name, code and mobile in
+>   **Admin → Payments** (test base URL `https://uat-pg.upay.systems`); it replaces manual Upay.
 > - Manual "Send Money" methods (bKash/Nagad/Rocket/Upay) appear only when their
 >   `NEXT_PUBLIC_*_NUMBER` receiving number is set — so customers never pay a placeholder number.
 > - Card payment appears only with real Stripe keys.

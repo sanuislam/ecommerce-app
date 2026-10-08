@@ -75,6 +75,7 @@ export function CheckoutForm({
   savedAddresses,
   stripeEnabled,
   bkashLiveEnabled = false,
+  upayLiveEnabled = false,
   manualMethods,
 }: {
   userEmail: string;
@@ -83,6 +84,7 @@ export function CheckoutForm({
   savedAddresses: SavedAddress[];
   stripeEnabled: boolean;
   bkashLiveEnabled?: boolean;
+  upayLiveEnabled?: boolean;
   manualMethods: { method: MfsMethod; number: string }[];
 }) {
   const router = useRouter();
@@ -108,6 +110,9 @@ export function CheckoutForm({
   const payOptions: { key: PaymentMethod; label: string; hint: string; logo?: string }[] = [
     ...(bkashLiveEnabled
       ? [{ key: "BKASH" as const, label: "bKash", hint: "Pay instantly with bKash", logo: MFS_LOGOS.BKASH }]
+      : []),
+    ...(upayLiveEnabled
+      ? [{ key: "UPAY" as const, label: "Upay", hint: "Pay instantly with Upay", logo: MFS_LOGOS.UPAY }]
       : []),
     { key: "COD", label: "Cash on Delivery", hint: "Pay when you receive" },
     ...manualMethods.map((m) => ({
@@ -137,6 +142,7 @@ export function CheckoutForm({
 
   const manual = manualMethods.find((m) => m.method === paymentMethod);
   const isBkashLive = paymentMethod === "BKASH" && bkashLiveEnabled;
+  const isUpayLive = paymentMethod === "UPAY" && upayLiveEnabled;
   const total = quote?.total ?? 0;
 
   function applyCoupon() {
@@ -214,7 +220,9 @@ export function CheckoutForm({
         ? "Place order"
         : isBkashLive
           ? "Pay with bKash"
-          : "Submit order";
+          : isUpayLive
+            ? "Pay with Upay"
+            : "Submit order";
 
   if (mounted && items.length === 0) {
     return (
@@ -423,6 +431,18 @@ export function CheckoutForm({
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 You’ll be taken to the secure bKash page to enter your wallet number, OTP and PIN.
+                Your order is confirmed automatically once the payment completes.
+              </p>
+            </div>
+          )}
+
+          {isUpayLive && (
+            <div className="rounded-lg border border-dashed bg-sky-50 p-4 text-sm dark:bg-sky-950/30">
+              <div className="flex items-center gap-2 font-medium text-sky-700 dark:text-sky-300">
+                <Banknote className="size-4" /> Upay checkout
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                You’ll be taken to the secure Upay page to complete the payment.
                 Your order is confirmed automatically once the payment completes.
               </p>
             </div>

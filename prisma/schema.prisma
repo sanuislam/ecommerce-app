@@ -254,6 +254,7 @@ model Order {
   trackingNumber String?
   stripeId     String?     @unique
   bkashPaymentId String?   @unique
+  upayTxnId      String?   @unique
   addressId    String?
   paymentEmail String?
   paymentMethod        PaymentMethod @default(STRIPE)
@@ -349,6 +350,15 @@ model PaymentSettings {
   bkashPassword   String   @default("")
   bkashAppKey     String   @default("")
   bkashAppSecret  String   @default("")
+  // Upay merchant payment gateway (API v4.1.0)
+  upayEnabled        Boolean @default(false)
+  upayBaseUrl        String  @default("https://uat-pg.upay.systems")
+  upayMerchantId     String  @default("")
+  upayMerchantKey    String  @default("")
+  upayMerchantName   String  @default("")
+  upayMerchantCode   String  @default("")
+  upayMerchantCity   String  @default("Dhaka")
+  upayMerchantMobile String  @default("")
   updatedAt       DateTime @updatedAt
 }
 

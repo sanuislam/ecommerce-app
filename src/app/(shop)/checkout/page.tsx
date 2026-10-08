@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured } from "@/lib/bkash";
+import { upayConfigured } from "@/lib/upay";
 import { manualMfsAvailable, MFS_METHODS, getReceivingNumber } from "@/lib/mfs";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function CheckoutPage() {
   const session = await auth();
   if (!session?.user) redirect("/sign-in?callbackUrl=/checkout");
 
-  const [user, addresses, bkashLive] = await Promise.all([
+  const [user, addresses, bkashLive, upayLive] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { name: true, phone: true },
@@ -31,10 +32,14 @@ export default async function CheckoutPage() {
       take: 10,
     }),
     bkashConfigured(),
+    upayConfigured(),
   ]);
 
   const manualMethods = MFS_METHODS.filter(
-    (m) => manualMfsAvailable(m) && !(m === "BKASH" && bkashLive),
+    (m) =>
+      manualMfsAvailable(m) &&
+      !(m === "BKASH" && bkashLive) &&
+      !(m === "UPAY" && upayLive),
   ).map((m) => ({ method: m, number: getReceivingNumber(m) }));
 
   return (
@@ -56,6 +61,7 @@ export default async function CheckoutPage() {
         }))}
         stripeEnabled={stripeConfigured()}
         bkashLiveEnabled={bkashLive}
+        upayLiveEnabled={upayLive}
         manualMethods={manualMethods}
       />
     </div>

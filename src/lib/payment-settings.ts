@@ -7,6 +7,14 @@ export type PaymentSettingsValues = {
   bkashPassword: string;
   bkashAppKey: string;
   bkashAppSecret: string;
+  upayEnabled: boolean;
+  upayBaseUrl: string;
+  upayMerchantId: string;
+  upayMerchantKey: string;
+  upayMerchantName: string;
+  upayMerchantCode: string;
+  upayMerchantCity: string;
+  upayMerchantMobile: string;
 };
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettingsValues = {
@@ -16,6 +24,14 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettingsValues = {
   bkashPassword: "",
   bkashAppKey: "",
   bkashAppSecret: "",
+  upayEnabled: false,
+  upayBaseUrl: "https://uat-pg.upay.systems",
+  upayMerchantId: "",
+  upayMerchantKey: "",
+  upayMerchantName: "",
+  upayMerchantCode: "",
+  upayMerchantCity: "Dhaka",
+  upayMerchantMobile: "",
 };
 
 export async function getPaymentSettings(): Promise<PaymentSettingsValues> {
@@ -31,6 +47,14 @@ export async function getPaymentSettings(): Promise<PaymentSettingsValues> {
       bkashPassword: row.bkashPassword,
       bkashAppKey: row.bkashAppKey,
       bkashAppSecret: row.bkashAppSecret,
+      upayEnabled: row.upayEnabled,
+      upayBaseUrl: row.upayBaseUrl,
+      upayMerchantId: row.upayMerchantId,
+      upayMerchantKey: row.upayMerchantKey,
+      upayMerchantName: row.upayMerchantName,
+      upayMerchantCode: row.upayMerchantCode,
+      upayMerchantCity: row.upayMerchantCity,
+      upayMerchantMobile: row.upayMerchantMobile,
     };
   } catch (err) {
     console.error("getPaymentSettings failed", err);
@@ -51,6 +75,15 @@ export function sanitizeForClient(v: PaymentSettingsValues) {
     bkashAppSecretMasked: mask(v.bkashAppSecret),
     hasPassword: Boolean(v.bkashPassword),
     hasAppSecret: Boolean(v.bkashAppSecret),
+    upayEnabled: v.upayEnabled,
+    upayBaseUrl: v.upayBaseUrl,
+    upayMerchantId: v.upayMerchantId,
+    upayMerchantKeyMasked: mask(v.upayMerchantKey),
+    hasUpayMerchantKey: Boolean(v.upayMerchantKey),
+    upayMerchantName: v.upayMerchantName,
+    upayMerchantCode: v.upayMerchantCode,
+    upayMerchantCity: v.upayMerchantCity,
+    upayMerchantMobile: v.upayMerchantMobile,
   };
 }
 

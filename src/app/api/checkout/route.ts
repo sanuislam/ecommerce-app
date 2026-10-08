@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { bkashConfigured, createBkashPayment } from "@/lib/bkash";
+import { createUpayPayment, upayConfigured } from "@/lib/upay";
 import { buildQuote, MAX_LINES, MAX_QTY_PER_LINE } from "@/lib/checkout";
 import { isDistrict, normalizeBdPhone } from "@/lib/districts";
 import { transitionOrder } from "@/lib/orders";
@@ -101,12 +102,13 @@ export async function POST(req: Request) {
   // ---- Payment method checks ----
   const method = input.paymentMethod;
   const stripeOn = stripeConfigured();
-  const bkashLive = await bkashConfigured();
+  const [bkashLive, upayLive] = await Promise.all([bkashConfigured(), upayConfigured()]);
   if (method === "STRIPE" && !stripeOn) {
     return NextResponse.json({ error: "Card payment is not available" }, { status: 400 });
   }
   const isManualMfs =
-    method === "NAGAD" || method === "ROCKET" || method === "UPAY" ||
+    method === "NAGAD" || method === "ROCKET" ||
+    (method === "UPAY" && !upayLive) ||
     (method === "BKASH" && !bkashLive);
   let senderNumber: string | null = null;
   let trxId: string | null = null;
@@ -355,6 +357,29 @@ export async function POST(req: Request) {
       await cancelUnpaid("bKash payment could not be started");
       return NextResponse.json(
         { error: "bKash payment is unavailable right now. Please try again." },
+        { status: 502 },
+      );
+    }
+  }
+
+  if (method === "UPAY" && upayLive) {
+    try {
+      // The order id is unique and alphanumeric: it is both Upay's txn_id and
+      // the invoice id. Stored first, so the expiry job can always ask Upay
+      // about it even if the init answer is lost.
+      await prisma.order.update({ where: { id: order.id }, data: { upayTxnId: order.id } });
+      const created = await createUpayPayment({
+        txnId: order.id,
+        invoiceId: order.id,
+        amount: quote.total,
+        redirectUrl: `${appBase()}/api/payments/upay/callback?order=${order.id}`,
+      });
+      return NextResponse.json({ id: order.id, checkoutUrl: created.gatewayUrl });
+    } catch (err) {
+      console.error("Upay payment init failed", err);
+      await cancelUnpaid("Upay payment could not be started");
+      return NextResponse.json(
+        { error: "Upay payment is unavailable right now. Please try again." },
         { status: 502 },
       );
     }

@@ -49,9 +49,11 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   });
   if (!order) notFound();
 
-  const bkashGateway = order.paymentMethod === "BKASH" && !!order.bkashPaymentId;
+  const bkashGateway =
+    (order.paymentMethod === "BKASH" && !!order.bkashPaymentId) ||
+    (order.paymentMethod === "UPAY" && !!order.upayTxnId);
   const allowed = allowedTransitions(order.status, order.paymentMethod)
-    // Gateway bKash refunds must go through the refund button (API enforces it).
+    // Gateway bKash / Upay refunds must go through the refund button.
     .filter((s) => !(s === "REFUNDED" && bkashGateway))
     .map((s) => ({ value: s, label: STATUS_LABEL[s] }));
   const refundHidden =
@@ -162,7 +164,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               trackingNumber={order.trackingNumber}
               refundHint={
                 refundHidden
-                  ? "To refund, use “Refund via bKash” in the Payment card."
+                  ? `To refund, use “Refund via ${order.paymentMethod === "UPAY" ? "Upay" : "bKash"}” in the Payment card.`
                   : undefined
               }
             />
@@ -245,13 +247,24 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               </div>
             )}
             {order.paymentMethod === "BKASH" &&
-              order.status === "PAID" &&
+              refundHidden &&
               order.bkashPaymentId &&
               order.paymentTransactionId && (
                 <div className="mt-3 flex justify-end">
                   <BkashRefundButton
                     orderId={order.id}
                     amount={Number(order.total)}
+                  />
+                </div>
+              )}
+            {order.paymentMethod === "UPAY" &&
+              refundHidden &&
+              order.upayTxnId && (
+                <div className="mt-3 flex justify-end">
+                  <BkashRefundButton
+                    orderId={order.id}
+                    amount={Number(order.total)}
+                    provider="upay"
                   />
                 </div>
               )}
