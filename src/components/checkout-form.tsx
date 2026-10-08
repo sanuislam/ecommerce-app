@@ -84,6 +84,7 @@ export function CheckoutForm({
   defaultPhone,
   savedAddresses,
   wallets,
+  codMax = null,
 }: {
   userEmail: string;
   defaultName: string;
@@ -91,6 +92,8 @@ export function CheckoutForm({
   savedAddresses: SavedAddress[];
   /** Which wallets can be paid with right now (their gateway is set up). */
   wallets: Record<Wallet, boolean>;
+  /** Largest total allowed with cash on delivery (null = no limit). */
+  codMax?: number | null;
 }) {
   const router = useRouter();
   const mounted = useSyncExternalStore(noop, () => true, () => false);
@@ -115,6 +118,11 @@ export function CheckoutForm({
   const mobileAvailable = WALLETS.some((w) => wallets[w.id]);
   const [choice, setChoice] = useState<Choice>(mobileAvailable ? "MOBILE" : "COD");
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Cash on delivery: the shop may ask for an SMS code first.
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpPhone, setOtpPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
   const [wallet, setWallet] = useState<Wallet | null>(
     WALLETS.find((w) => wallets[w.id])?.id ?? null,
   );
@@ -175,7 +183,25 @@ export function CheckoutForm({
     else void placeOrder("COD");
   }
 
-  async function placeOrder(paymentMethod: "COD" | "BKASH" | "UPAY") {
+  async function sendCode(phone: string) {
+    setOtpSending(true);
+    try {
+      const res = await fetch("/api/checkout/otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not send the code");
+      toast.success(`Code sent to ${phone}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send the code");
+    } finally {
+      setOtpSending(false);
+    }
+  }
+
+  async function placeOrder(paymentMethod: "COD" | "BKASH" | "UPAY", code?: string) {
     setSubmitting(true);
     try {
       const res = await fetch("/api/checkout", {
@@ -191,13 +217,29 @@ export function CheckoutForm({
           paymentMethod,
           couponCode,
           notes,
+          ...(code ? { otp: code } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         id?: string;
         checkoutUrl?: string;
         error?: string;
+        otpRequired?: boolean;
+        phone?: string;
       };
+      if (data.otpRequired && data.phone) {
+        // First time: open the code box and send the code; a wrong code keeps it open.
+        if (!otpOpen) {
+          setOtpPhone(data.phone);
+          setOtp("");
+          setOtpOpen(true);
+          void sendCode(data.phone);
+        } else {
+          toast.error(data.error ?? "That code didn't work");
+        }
+        setSubmitting(false);
+        return;
+      }
       if (!res.ok || !data.id) throw new Error(data.error ?? "Could not place the order");
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
@@ -411,7 +453,11 @@ export function CheckoutForm({
                 onSelect={() => setChoice("COD")}
                 icon={<Truck className="size-5" />}
                 title="Cash on delivery"
-                text="Pay the delivery person in cash when your order arrives"
+                text={
+                  codMax != null
+                    ? `Pay in cash when your order arrives · orders up to ৳${codMax.toLocaleString("en-IN")}`
+                    : "Pay the delivery person in cash when your order arrives"
+                }
               />
             </div>
 
@@ -663,6 +709,48 @@ export function CheckoutForm({
               <Lock className="size-3" /> We never see your PIN or OTP
             </p>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ---------------- Cash on delivery code ---------------- */}
+      <Dialog open={otpOpen} onOpenChange={(o) => !submitting && setOtpOpen(o)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader className="text-left">
+            <DialogTitle>Confirm your phone</DialogTitle>
+            <DialogDescription>
+              We sent a 6-digit code to <span className="font-medium text-foreground">{otpPhone}</span>. Enter it to
+              place your cash on delivery order.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (otp.length === 6) void placeOrder("COD", otp);
+            }}
+            className="grid gap-3"
+          >
+            <Input
+              autoFocus
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="••••••"
+              className="h-12 text-center text-xl tracking-[0.4em] tabular-nums"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              aria-label="Code"
+            />
+            <Button type="submit" size="lg" className="h-11 rounded-xl" disabled={otp.length !== 6 || submitting}>
+              {submitting && <Loader2 className="size-4 animate-spin" />} Confirm and place order
+            </Button>
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline-offset-4 hover:underline disabled:opacity-50"
+              disabled={otpSending}
+              onClick={() => void sendCode(otpPhone)}
+            >
+              {otpSending ? "Sending…" : "Send a new code"}
+            </button>
+          </form>
         </DialogContent>
       </Dialog>
     </>

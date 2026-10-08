@@ -18,6 +18,8 @@ import {
   Menu,
   Truck,
   MessageSquare,
+  ShieldCheck,
+  Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,12 +37,14 @@ const NAV = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Tag },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { href: "/admin/returns", label: "Returns", icon: Undo2 },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/policies", label: "Legal pages", icon: FileText },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/couriers", label: "Couriers", icon: Truck },
   { href: "/admin/sms", label: "SMS", icon: MessageSquare },
+  { href: "/admin/order-rules", label: "Order rules", icon: ShieldCheck },
   { href: "/admin/seo", label: "SEO & PWA", icon: Search },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

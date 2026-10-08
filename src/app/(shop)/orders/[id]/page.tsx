@@ -23,6 +23,14 @@ import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 import { STATUS_LABEL } from "@/lib/orders";
 import { settleUpayOrder } from "@/lib/upay-settle";
 import { COURIER_LABEL, trackingUrl, type CourierId } from "@/lib/couriers/common";
+import {
+  RETURN_REASONS,
+  RETURN_STATUS_LABEL,
+  returnEligibility,
+  returnLabel,
+  returnableItems,
+} from "@/lib/returns";
+import { CancelReturnButton, ReturnRequestButton } from "@/components/return-request-form";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
@@ -99,6 +107,17 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     !order.stripeId;
 
   const trackUrl = trackingUrl(order.courier, order.trackingNumber, order.address?.phone);
+
+  // Returns / exchanges: the customer's requests, and whether they can ask now.
+  const [returns, elig] = await Promise.all([
+    prisma.returnRequest.findMany({
+      where: { orderId: order.id },
+      orderBy: { createdAt: "desc" },
+      include: { items: { include: { orderItem: { select: { name: true } } } } },
+    }),
+    isOwner && order.status === "DELIVERED" ? returnEligibility(order.id) : Promise.resolve(null),
+  ]);
+  const returnForm = elig?.ok ? await returnableItems(order.id, elig.items) : null;
 
   const notice =
     sp.bkash === "cancel"
@@ -339,6 +358,51 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             </div>
           )}
           {canCancel && <CancelOrderButton orderId={order.id} />}
+          {(returns.length > 0 || returnForm) && (
+            <div className="rounded-lg border bg-card p-4 text-sm">
+              <h3 className="font-semibold">Returns and exchanges</h3>
+              {returns.length > 0 && (
+                <ul className="mt-2 space-y-2">
+                  {returns.map((r) => (
+                    <li key={r.id} className="rounded-md bg-muted/50 p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">
+                          {r.type === "EXCHANGE" ? "Exchange" : "Return"} {returnLabel(r)}
+                        </span>
+                        <span className="text-xs">{RETURN_STATUS_LABEL[r.status]}</span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {r.items.map((i) => `${i.orderItem.name} ×${i.quantity}`).join(", ")}
+                      </div>
+                      {r.refundedAt && r.refundAmount && (
+                        <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
+                          Refunded {formatPrice(Number(r.refundAmount))} via {r.refundMethod}
+                        </div>
+                      )}
+                      {r.status === "REJECTED" && r.adminNote && (
+                        <div className="mt-1 text-xs text-muted-foreground">{r.adminNote}</div>
+                      )}
+                      {isOwner && r.status === "REQUESTED" && (
+                        <div className="mt-1 flex justify-end">
+                          <CancelReturnButton orderId={order.id} returnId={r.id} />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {returnForm && elig?.ok && (
+                <div className="mt-3">
+                  <ReturnRequestButton
+                    orderId={order.id}
+                    items={returnForm}
+                    reasons={RETURN_REASONS}
+                    until={elig.until ? dhakaDateTime(elig.until) : null}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           {(site.whatsappUrl || site.supportPhone) && (
             <Button asChild variant="ghost" className="w-full">
               <a

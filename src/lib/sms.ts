@@ -187,3 +187,39 @@ export function scheduleOrderSms(orderId: string, event: SmsEvent) {
     void notifyOrder(orderId, event);
   }
 }
+
+/** A one-off order message (returns etc.), sent once per event key. Never throws. */
+export async function sendOrderText(orderId: string, event: string, message: string): Promise<void> {
+  try {
+    const s = await getSmsSettings();
+    if (!s.enabled || !s.apiKey) return;
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { address: { select: { phone: true } }, user: { select: { phone: true } } },
+    });
+    const phone = bdMobile(order?.address?.phone) ?? bdMobile(order?.user.phone);
+    if (!phone) return;
+    let log;
+    try {
+      log = await prisma.smsLog.create({ data: { orderId, event, phone, message } });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return;
+      throw err;
+    }
+    const r = await sendSms(s.apiKey, phone, message, s.senderId || undefined);
+    await prisma.smsLog.update({
+      where: { id: log.id },
+      data: r.ok ? { status: "sent", requestId: r.requestId } : { status: "failed", error: r.error.slice(0, 300) },
+    });
+  } catch (err) {
+    console.error("SMS send failed", orderId, event, err);
+  }
+}
+
+export function scheduleOrderText(orderId: string, event: string, message: string) {
+  try {
+    after(() => sendOrderText(orderId, event, message));
+  } catch {
+    void sendOrderText(orderId, event, message);
+  }
+}

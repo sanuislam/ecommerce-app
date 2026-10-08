@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Download, Plus, Search, X } from "lucide-react";
+import { Download, PhoneCall, Plus, Search, X } from "lucide-react";
+import { phoneRisks, phoneTail } from "@/lib/risk";
 import { prisma } from "@/lib/prisma";
 import { cn, formatPrice } from "@/lib/utils";
 import { expireStaleOrders, STATUS_LABEL } from "@/lib/orders";
@@ -45,7 +46,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
   const f = parseOrderFilters(await searchParams);
   const where = orderWhere(f);
 
-  const [matching, orders, counts] = await Promise.all([
+  const [matching, orders, counts, toCall] = await Promise.all([
     prisma.order.count({ where }),
     prisma.order.findMany({
       where,
@@ -60,7 +61,9 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
     }),
     // Tab counts follow every filter except the status itself.
     prisma.order.groupBy({ by: ["status"], where: orderWhere(f, false), _count: { _all: true } }),
+    prisma.order.count({ where: { paymentMethod: "COD", status: "PENDING", codConfirmedAt: null } }),
   ]);
+  const risks = await phoneRisks(orders.map((o) => o.address?.phone || o.user.phone));
 
   const pages = Math.max(1, Math.ceil(matching / PAGE_SIZE));
   const countBy = new Map(counts.map((c) => [c.status, c._count._all]));
@@ -86,9 +89,11 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
     courier: o.courier,
     consignment: o.courierConsignmentId,
     courierStatus: o.courierStatus,
+    risk: risks.get(phoneTail(o.address?.phone || o.user.phone) ?? "") ?? null,
+    needsCall: o.paymentMethod === "COD" && o.status === "PENDING" && !o.codConfirmedAt,
   }));
 
-  const filtered = !!(f.q || f.status || f.method || f.courier || f.from || f.to);
+  const filtered = !!(f.q || f.status || f.method || f.courier || f.from || f.to || f.confirm);
   const exportQs = new URLSearchParams(ordersHref({ ...f, page: 1 }).split("?")[1] ?? "").toString();
   const from = matching === 0 ? 0 : (f.page - 1) * PAGE_SIZE + 1;
   const to = Math.min(matching, f.page * PAGE_SIZE);
@@ -136,10 +141,24 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
             </Link>
           );
         })}
+        <Link
+          href={ordersHref(f, { confirm: f.confirm ? null : "call", status: null })}
+          aria-current={f.confirm ? "page" : undefined}
+          className={cn(
+            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm whitespace-nowrap transition",
+            f.confirm
+              ? "border-amber-600 bg-amber-600 text-white"
+              : "border-amber-500/40 bg-amber-500/10 text-amber-900 hover:bg-amber-500/20 dark:text-amber-200",
+          )}
+        >
+          <PhoneCall className="size-3.5" /> To confirm
+          <span className="text-xs tabular-nums opacity-80">{toCall}</span>
+        </Link>
       </nav>
 
       <form method="get" action="/admin/orders" className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-end">
         {f.status && <input type="hidden" name="status" value={f.status} />}
+        {f.confirm && <input type="hidden" name="confirm" value={f.confirm} />}
         <div className="relative min-w-0 sm:w-72">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

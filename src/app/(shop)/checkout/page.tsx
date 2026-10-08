@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { bkashConfigured } from "@/lib/bkash";
 import { upayConfigured } from "@/lib/upay";
+import { getOrderSettings } from "@/lib/order-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function CheckoutPage() {
   const session = await auth();
   if (!session?.user) redirect("/sign-in?callbackUrl=/checkout");
 
-  const [user, addresses, bkashLive, upayLive] = await Promise.all([
+  const [user, addresses, bkashLive, upayLive, rules] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { name: true, phone: true },
@@ -31,6 +32,7 @@ export default async function CheckoutPage() {
     }),
     bkashConfigured(),
     upayConfigured(),
+    getOrderSettings(),
   ]);
 
 
@@ -55,6 +57,7 @@ export default async function CheckoutPage() {
           isDefault: a.isDefault,
         }))}
         wallets={{ BKASH: bkashLive, NAGAD: false, ROCKET: false, UPAY: upayLive }}
+        codMax={rules.codMaxAmount}
       />
     </div>
   );

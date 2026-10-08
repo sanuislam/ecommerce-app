@@ -47,7 +47,7 @@ export function ListPager({
     if (q) sp.set("q", q);
     if (p > 1) sp.set("page", String(p));
     const s = sp.toString();
-    return s ? `${action}?${s}` : action;
+    return s ? `${action}${action.includes("?") ? "&" : "?"}${s}` : action;
   };
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);

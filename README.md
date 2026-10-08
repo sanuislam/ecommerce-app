@@ -47,6 +47,12 @@ and Stripe (test mode).
   `/api/couriers/webhook/<courier>/<key>`, status sync in the daily cron; a delivered parcel marks the order delivered
 - Customer SMS through Alpha SMS / sms.net.bd (Admin → SMS): order received, shipped, delivered, cancelled — once
   per order (`SmsLog`), editable templates, manual messages from an order
+- Cash on delivery protection (Admin → Order rules): optional SMS code at checkout (`OtpCode`, hashed, 10 min,
+  5 tries), COD total limit, blocked numbers (`BlockedPhone`, online payment only), "To confirm" call list with
+  Confirmed / No answer / Fake (cancel + block), per-phone delivery success rate on orders
+- Returns and exchanges: customers ask from a delivered order within the return window; Admin → Returns approves /
+  rejects, receives (optional restock), refunds part or all (bKash / Upay gateway or recorded by hand, capped by
+  `Order.refundedAmount`), and creates a free replacement order for exchanges
 - Coupons: percent / fixed, minimum spend, max discount, usage limits, validity window
 - Categories, users (role switcher), legal pages, payments (bKash, Upay), SEO & PWA, site settings incl. delivery charges
 

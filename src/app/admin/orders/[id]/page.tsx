@@ -14,6 +14,10 @@ import type { OrderStatus } from "@/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { OrderCourierCard } from "@/components/admin/order-courier-card";
 import { OrderSmsCard } from "@/components/admin/order-sms-card";
+import { OrderCodCard } from "@/components/admin/order-cod-card";
+import { phoneRisk } from "@/lib/risk";
+import { RETURN_REASONS, RETURN_STATUS_LABEL, returnEligibility, returnLabel, returnableItems } from "@/lib/returns";
+import { ReturnRequestButton } from "@/components/return-request-form";
 import { COURIER_LABEL, prettyStatus, trackingUrl, type CourierId } from "@/lib/couriers/common";
 import { getSmsSettings, SMS_EVENT_LABEL, type SmsEvent } from "@/lib/sms";
 import { SOURCE_LABEL } from "@/lib/admin-orders";
@@ -54,10 +58,14 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     },
   });
   if (!order) notFound();
-  const [smsLogs, sms] = await Promise.all([
+  const [smsLogs, sms, risk, returns, elig] = await Promise.all([
     prisma.smsLog.findMany({ where: { orderId: order.id }, orderBy: { createdAt: "asc" } }),
     getSmsSettings(),
+    phoneRisk(order.address?.phone ?? order.user.phone),
+    prisma.returnRequest.findMany({ where: { orderId: order.id }, orderBy: { createdAt: "desc" } }),
+    order.status === "DELIVERED" ? returnEligibility(order.id, { admin: true }) : Promise.resolve(null),
   ]);
+  const returnForm = elig?.ok ? await returnableItems(order.id, elig.items) : null;
 
   const bkashGateway =
     (order.paymentMethod === "BKASH" && !!order.bkashPaymentId) ||
@@ -185,6 +193,30 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             </ol>
           </section>
 
+          {(returns.length > 0 || returnForm) && (
+            <section className="rounded-lg border bg-card p-4 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Returns and exchanges</h2>
+                {returnForm && <ReturnRequestButton orderId={order.id} items={returnForm} reasons={RETURN_REASONS} admin />}
+              </div>
+              {returns.length > 0 && (
+                <ul className="mt-3 divide-y">
+                  {returns.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between gap-3 py-2">
+                      <Link href={`/admin/returns/${r.id}`} className="font-medium hover:underline">
+                        {r.type === "EXCHANGE" ? "Exchange" : "Return"} {returnLabel(r)}
+                      </Link>
+                      <span className="text-muted-foreground">
+                        {RETURN_STATUS_LABEL[r.status]}
+                        {r.refundAmount ? ` · refunded ${formatPrice(Number(r.refundAmount))}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
           {order.notes && (
             <section className="rounded-lg border bg-card p-4 text-sm">
               <h2 className="text-lg font-semibold">Customer note</h2>
@@ -196,6 +228,17 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          {order.paymentMethod === "COD" && (
+            <OrderCodCard
+              orderId={order.id}
+              phone={phone ?? null}
+              confirmedAt={order.codConfirmedAt ? fmtDateTime(order.codConfirmedAt) : null}
+              attempts={order.codCallAttempts}
+              note={order.codConfirmNote}
+              pending={order.status === "PENDING"}
+              risk={risk}
+            />
+          )}
           <OrderCourierCard
             orderId={order.id}
             courierLabel={order.courier ? (COURIER_LABEL[order.courier as CourierId] ?? order.courier) : null}
@@ -268,6 +311,12 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               <span>Total</span>
               <span>{formatPrice(Number(order.total))}</span>
             </div>
+            {Number(order.refundedAmount) > 0 && (
+              <div className="flex justify-between gap-2 text-destructive">
+                <span>Refunded</span>
+                <span>−{formatPrice(Number(order.refundedAmount))}</span>
+              </div>
+            )}
             {order.couponCode && discount === 0 && (
               <p className="mt-2 text-xs text-muted-foreground">
                 Coupon <span className="font-mono">{order.couponCode}</span> applied

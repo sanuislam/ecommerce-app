@@ -7,7 +7,10 @@ import { createUpayPayment, upayConfigured } from "@/lib/upay";
 import { buildQuote, MAX_LINES, MAX_QTY_PER_LINE } from "@/lib/checkout";
 import { isDistrict, normalizeBdPhone } from "@/lib/districts";
 import { transitionOrder } from "@/lib/orders";
-import { scheduleOrderSms } from "@/lib/sms";
+import { getSmsSettings, scheduleOrderSms } from "@/lib/sms";
+import { getOrderSettings } from "@/lib/order-settings";
+import { isPhoneBlocked } from "@/lib/blocklist";
+import { verifyOtp } from "@/lib/otp";
 import { rateLimit } from "@/lib/rate-limit";
 import { Prisma } from "@/generated/prisma";
 import { siteUrl } from "@/lib/site-url";
@@ -41,6 +44,8 @@ const schema = z.object({
   }),
   couponCode: z.string().trim().max(40).optional().default(""),
   notes: z.string().trim().max(500).optional().default(""),
+  /** Cash on delivery: the SMS code, when the shop asks for one. */
+  otp: z.string().trim().max(10).optional().default(""),
 });
 
 class CheckoutError extends Error {}
@@ -121,6 +126,42 @@ export async function POST(req: Request) {
   }
   if (input.couponCode && quote.couponError) {
     return NextResponse.json({ error: quote.couponError, quote }, { status: 400 });
+  }
+
+  // ---- Cash on delivery rules: blocklist, limit, SMS code ----
+  let codConfirmed = false;
+  if (method === "COD") {
+    const rules = await getOrderSettings();
+    if (await isPhoneBlocked(normalizedPhone)) {
+      return NextResponse.json(
+        { error: "Cash on delivery isn't available for this phone number. Please pay with mobile banking." },
+        { status: 403 },
+      );
+    }
+    if (rules.codMaxAmount != null && quote.total > rules.codMaxAmount) {
+      return NextResponse.json(
+        {
+          error: `Cash on delivery is available for orders up to ৳${rules.codMaxAmount.toLocaleString("en-IN")}. Please pay with mobile banking.`,
+        },
+        { status: 400 },
+      );
+    }
+    const sms = await getSmsSettings();
+    if (rules.codOtpRequired && sms.enabled && sms.apiKey) {
+      if (!input.otp) {
+        return NextResponse.json(
+          { error: "Enter the code we sent to your phone", otpRequired: true, phone: normalizedPhone },
+          { status: 428 },
+        );
+      }
+      if (!(await verifyOtp(normalizedPhone, "cod", input.otp))) {
+        return NextResponse.json(
+          { error: "That code is wrong or expired. Ask for a new one.", otpRequired: true, phone: normalizedPhone },
+          { status: 400 },
+        );
+      }
+      codConfirmed = true;
+    }
   }
 
   // ---- Create the order atomically (stock, coupon, address) ----
@@ -232,6 +273,7 @@ export async function POST(req: Request) {
           shippingZone: quote.zone,
           paymentEmail: session.user.email,
           paymentMethod: method,
+          ...(codConfirmed ? { codConfirmedAt: new Date(), codConfirmNote: "Phone verified by SMS code" } : {}),
           notes: input.notes || null,
           addressId,
           items: {

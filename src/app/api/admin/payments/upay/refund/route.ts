@@ -29,6 +29,12 @@ export async function POST(req: Request) {
   if (order.paymentMethod !== "UPAY" || !order.upayTxnId) {
     return NextResponse.json({ error: "Order was not paid through the Upay gateway" }, { status: 400 });
   }
+  if (Number(order.refundedAmount) > 0) {
+    return NextResponse.json(
+      { error: "Part of this order was already refunded. Refund the rest from a return request." },
+      { status: 409 },
+    );
+  }
   const refundable = ["PAID", "SHIPPED", "DELIVERED"] as const;
   if (!(refundable as readonly string[]).includes(order.status)) {
     return NextResponse.json(
@@ -58,6 +64,7 @@ export async function POST(req: Request) {
     to: "REFUNDED",
     note: `Refunded via Upay${reason ? ` — ${reason}` : ""}`,
     data: {
+      refundedAmount: order.total,
       notes: [order.notes, `Upay refund on ${new Date().toISOString()}`].filter(Boolean).join("\n"),
     },
   });

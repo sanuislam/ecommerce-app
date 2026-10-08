@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/generated/prisma";
 import { CourierBookDialog } from "@/components/admin/courier-book-dialog";
+import { RiskBadge, type RiskView } from "@/components/admin/order-cod-card";
 
 export type OrderRow = {
   id: string;
@@ -36,6 +37,8 @@ export type OrderRow = {
   courier: string | null;
   consignment: string | null;
   courierStatus: string | null;
+  risk: RiskView | null;
+  needsCall: boolean;
 };
 
 function statusVariant(s: OrderStatus) {
@@ -134,6 +137,14 @@ export function OrdersTable({ rows, empty }: { rows: OrderRow[]; empty: string }
                 <div className="mt-1 truncate text-sm">
                   {o.customer} <span className="text-muted-foreground">{o.phone}</span>
                 </div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <RiskBadge risk={o.risk} />
+                  {o.needsCall && (
+                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-900 dark:text-amber-200">
+                      Not confirmed
+                    </span>
+                  )}
+                </div>
                 <div className="mt-1 flex items-center justify-between gap-2 text-sm">
                   <span className="truncate text-muted-foreground">
                     {o.placed} · {o.method}
@@ -203,6 +214,7 @@ export function OrdersTable({ rows, empty }: { rows: OrderRow[]; empty: string }
                     <div className="truncate text-xs text-muted-foreground">
                       {[o.phone, o.place].filter(Boolean).join(" · ")}
                     </div>
+                    <RiskBadge risk={o.risk} className="mt-1" />
                   </TableCell>
                   <TableCell>
                     <div className="font-medium tabular-nums">{o.total}</div>
@@ -213,6 +225,9 @@ export function OrdersTable({ rows, empty }: { rows: OrderRow[]; empty: string }
                   <TableCell className="text-sm">{o.method}</TableCell>
                   <TableCell>
                     <Badge variant={statusVariant(o.status)}>{o.statusLabel}</Badge>
+                    {o.needsCall && (
+                      <div className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">Not confirmed</div>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">
                     {o.courier ? (
