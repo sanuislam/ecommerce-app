@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, Package, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { allowedTransitions, STATUS_LABEL } from "@/lib/orders";
@@ -11,6 +11,12 @@ import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { BkashRefundButton } from "@/components/admin/bkash-refund-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 import type { OrderStatus } from "@/generated/prisma";
+import { Button } from "@/components/ui/button";
+import { OrderCourierCard } from "@/components/admin/order-courier-card";
+import { OrderSmsCard } from "@/components/admin/order-sms-card";
+import { COURIER_LABEL, prettyStatus, trackingUrl, type CourierId } from "@/lib/couriers/common";
+import { getSmsSettings, SMS_EVENT_LABEL, type SmsEvent } from "@/lib/sms";
+import { SOURCE_LABEL } from "@/lib/admin-orders";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -48,6 +54,10 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     },
   });
   if (!order) notFound();
+  const [smsLogs, sms] = await Promise.all([
+    prisma.smsLog.findMany({ where: { orderId: order.id }, orderBy: { createdAt: "asc" } }),
+    getSmsSettings(),
+  ]);
 
   const bkashGateway =
     (order.paymentMethod === "BKASH" && !!order.bkashPaymentId) ||
@@ -66,6 +76,18 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     order.user.name ||
     [order.user.firstName, order.user.lastName].filter(Boolean).join(" ") ||
     null;
+
+  const editable = ["PENDING", "PAID"].includes(order.status) && !order.courierConsignmentId;
+  const canBook =
+    !order.courierConsignmentId &&
+    (order.status === "PAID" || (order.status === "PENDING" && order.paymentMethod === "COD"));
+  const bookHint =
+    order.status === "PENDING"
+      ? "Book after the payment is confirmed."
+      : ["SHIPPED", "DELIVERED"].includes(order.status)
+        ? "Shipped without a booked courier."
+        : null;
+  const realEmail = !order.user.email.endsWith(".invalid");
 
   const timeline =
     order.events.length > 0
@@ -86,12 +108,32 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             Order #{order.id.slice(0, 8)}
           </h1>
           <p className="text-sm break-all text-muted-foreground">
-            {order.user.email} · {fmtDateTime(order.createdAt)}
+            {fmtDateTime(order.createdAt)}
+            {order.source !== "web" && <> · {SOURCE_LABEL[order.source] ?? order.source} order</>}
           </p>
         </div>
         <Badge variant={statusVariant(order.status)} className="text-sm">
           {STATUS_LABEL[order.status]}
         </Badge>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {editable && (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/admin/orders/${order.id}/edit`}>
+              <Pencil className="size-4" /> Edit order
+            </Link>
+          </Button>
+        )}
+        <Button asChild size="sm" variant="outline">
+          <a href={`/print/orders?type=invoice&ids=${order.id}`} target="_blank" rel="noreferrer">
+            <FileText className="size-4" /> Invoice
+          </a>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <a href={`/print/orders?type=slip&ids=${order.id}`} target="_blank" rel="noreferrer">
+            <Package className="size-4" /> Packing slip
+          </a>
+        </Button>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -154,6 +196,23 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <OrderCourierCard
+            orderId={order.id}
+            courierLabel={order.courier ? (COURIER_LABEL[order.courier as CourierId] ?? order.courier) : null}
+            consignment={order.courierConsignmentId}
+            tracking={order.trackingNumber}
+            trackingUrl={trackingUrl(order.courier, order.trackingNumber, phone)}
+            status={prettyStatus(order.courierStatus)}
+            updatedAt={order.courierUpdatedAt ? fmtDateTime(order.courierUpdatedAt) : null}
+            charge={order.courierCharge != null ? formatPrice(Number(order.courierCharge)) : null}
+            canBook={canBook}
+            bookHint={bookHint}
+            address={{
+              district: order.address?.state ?? null,
+              area: order.address?.city ?? null,
+              postCode: order.address?.postalCode ?? null,
+            }}
+          />
           <div className="rounded-lg border bg-card p-4 text-sm">
             <h3 className="mb-3 font-semibold">Update order</h3>
             <OrderStatusSelect
@@ -274,7 +333,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             <h3 className="font-semibold">Customer</h3>
             <div className="mt-2 space-y-0.5">
               {customerName && <div className="font-medium">{customerName}</div>}
-              <div className="break-all text-muted-foreground">{order.user.email}</div>
+              {realEmail && <div className="break-all text-muted-foreground">{order.user.email}</div>}
               {phone && (
                 <a href={`tel:${phone}`} className="block text-primary hover:underline">
                   {phone}
@@ -313,6 +372,18 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               </>
             )}
           </div>
+          <OrderSmsCard
+            orderId={order.id}
+            enabled={sms.enabled && !!sms.apiKey}
+            logs={smsLogs.map((l) => ({
+              id: l.id,
+              label: l.event.startsWith("custom:") ? "Message" : (SMS_EVENT_LABEL[l.event as SmsEvent] ?? l.event),
+              message: l.message,
+              status: l.status,
+              error: l.error,
+              at: fmtDateTime(l.createdAt),
+            }))}
+          />
         </aside>
       </div>
     </div>

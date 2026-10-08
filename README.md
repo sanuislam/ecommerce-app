@@ -40,6 +40,13 @@ and Stripe (test mode).
 - Products CRUD with size/colour option editor (stock per option)
 - Orders: status filter + search, allowed-transition status changes (cancel restocks automatically),
   courier + tracking number, timeline, bKash and Upay refunds
+- Orders back office: filters (status, payment, courier, dates), pagination, bulk status changes, CSV export,
+  printable invoices and packing slips (`/print/orders`), phone / social orders typed in by an admin
+  (`/admin/orders/new`), editing an order before it ships
+- Couriers (Admin → Couriers): Steadfast, Pathao and RedX booking (single or bulk), webhooks at
+  `/api/couriers/webhook/<courier>/<key>`, status sync in the daily cron; a delivered parcel marks the order delivered
+- Customer SMS through Alpha SMS / sms.net.bd (Admin → SMS): order received, shipped, delivered, cancelled — once
+  per order (`SmsLog`), editable templates, manual messages from an order
 - Coupons: percent / fixed, minimum spend, max discount, usage limits, validity window
 - Categories, users (role switcher), legal pages, payments (bKash, Upay), SEO & PWA, site settings incl. delivery charges
 

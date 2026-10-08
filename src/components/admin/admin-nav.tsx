@@ -16,6 +16,8 @@ import {
   Search,
   TicketPercent,
   Menu,
+  Truck,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,8 @@ const NAV = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/policies", label: "Legal pages", icon: FileText },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/couriers", label: "Couriers", icon: Truck },
+  { href: "/admin/sms", label: "SMS", icon: MessageSquare },
   { href: "/admin/seo", label: "SEO & PWA", icon: Search },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

@@ -11,20 +11,45 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { UserRoleSelect } from "@/components/admin/user-role-select";
+import { ListPager, ListSearch, listParams } from "@/components/admin/list-pager";
 
-export default async function AdminUsersPage() {
+const PAGE = 50;
+
+type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+export default async function AdminUsersPage({ searchParams }: Props) {
   const session = await auth();
   const currentUserId = session?.user?.id;
+  const { q, page } = listParams(await searchParams);
+  const digits = q.replace(/\D/g, "");
+  const where = q
+    ? {
+        OR: [
+          { email: { contains: q, mode: "insensitive" as const } },
+          { name: { contains: q, mode: "insensitive" as const } },
+          ...(digits.length >= 4 ? [{ phone: { contains: digits.slice(-10) } }] : []),
+        ],
+      }
+    : {};
 
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { orders: true } } },
-  });
+  const [users, matching] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE,
+      take: PAGE,
+      include: { _count: { select: { orders: true } } },
+    }),
+    prisma.user.count({ where }),
+  ]);
 
   return (
     <div className="p-4 sm:p-6">
       <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-      <div className="mt-6 overflow-hidden rounded-lg border bg-card">
+      <div className="mt-4">
+        <ListSearch action="/admin/users" q={q} placeholder="Name, e-mail or phone" />
+      </div>
+      <div className="mt-4 overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -48,7 +73,11 @@ export default async function AdminUsersPage() {
                 return (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">
-                      {u.email}
+                      {u.email.endsWith(".invalid") ? (
+                        <span className="text-muted-foreground">Phone customer · {u.phone}</span>
+                      ) : (
+                        u.email
+                      )}
                       {isSelf ? (
                         <span className="ml-2 text-xs text-muted-foreground">
                           (you)
@@ -76,6 +105,7 @@ export default async function AdminUsersPage() {
           </TableBody>
         </Table>
       </div>
+      <ListPager action="/admin/users" q={q} page={page} pageSize={PAGE} total={matching} noun="users" />
     </div>
   );
 }

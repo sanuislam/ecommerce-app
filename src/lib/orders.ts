@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { OrderStatus, PaymentMethod, Prisma } from "@/generated/prisma";
+import { scheduleOrderSms, type SmsEvent } from "@/lib/sms";
 
 type Tx = Prisma.TransactionClient;
 
@@ -100,12 +101,15 @@ export async function transitionOrder(opts: {
   data?: Prisma.OrderUpdateManyMutationInput;
 }): Promise<boolean> {
   const from = Array.isArray(opts.from) ? opts.from : [opts.from];
-  return prisma.$transaction(async (tx) => {
+  let before: { status: OrderStatus; paymentMethod: PaymentMethod; paymentTransactionId: string | null } | null =
+    null;
+  const ok = await prisma.$transaction(async (tx) => {
     const current = await tx.order.findUnique({
       where: { id: opts.orderId },
-      select: { status: true, couponId: true },
+      select: { status: true, couponId: true, paymentMethod: true, paymentTransactionId: true },
     });
     if (!current || !from.includes(current.status)) return false;
+    before = current;
 
     const res = await tx.order.updateMany({
       where: { id: opts.orderId, status: current.status },
@@ -125,6 +129,39 @@ export async function transitionOrder(opts: {
     });
     return true;
   });
+  if (ok && before) {
+    const event = smsEventFor(before, opts.to, opts.data?.paymentTransactionId);
+    if (event) scheduleOrderSms(opts.orderId, event);
+  }
+  return ok;
+}
+
+/** Which customer SMS a status change sends, if any. */
+function smsEventFor(
+  before: { status: OrderStatus; paymentMethod: PaymentMethod; paymentTransactionId: string | null },
+  to: OrderStatus,
+  newTrxId: unknown,
+): SmsEvent | null {
+  switch (to) {
+    case "PAID":
+      // An online payment completing is when the customer's order is really placed.
+      return before.paymentMethod === "COD" ? "confirmed" : "placed";
+    case "SHIPPED":
+      return "shipped";
+    case "DELIVERED":
+      return "delivered";
+    case "CANCELLED": {
+      // An abandoned online payment: the customer never finished ordering.
+      const unpaidOnline =
+        before.status === "PENDING" &&
+        before.paymentMethod !== "COD" &&
+        !before.paymentTransactionId &&
+        !newTrxId;
+      return unpaidOnline ? null : "cancelled";
+    }
+    default:
+      return null;
+  }
 }
 
 /**

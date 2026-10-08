@@ -14,12 +14,34 @@ import {
 import { Plus } from "lucide-react";
 import { DeleteProductButton } from "@/components/admin/delete-product-button";
 import { DemoCatalogCard } from "@/components/admin/demo-catalog-card";
+import { ListPager, ListSearch, listParams } from "@/components/admin/list-pager";
 
-export default async function AdminProductsPage() {
-  const products = await prisma.product.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { category: true, _count: { select: { variants: true } } },
-  });
+const PAGE = 50;
+
+type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+export default async function AdminProductsPage({ searchParams }: Props) {
+  const { q, page } = listParams(await searchParams);
+  const where = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" as const } },
+          { slug: { contains: q.toLowerCase() } },
+          { variants: { some: { sku: { contains: q, mode: "insensitive" as const } } } },
+        ],
+      }
+    : {};
+  const [products, matching, allCount] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE,
+      take: PAGE,
+      include: { category: true, _count: { select: { variants: true } } },
+    }),
+    prisma.product.count({ where }),
+    prisma.product.count(),
+  ]);
 
   return (
     <div className="p-4 sm:p-6">
@@ -33,10 +55,14 @@ export default async function AdminProductsPage() {
       </div>
 
       <div className="mt-6">
-        <DemoCatalogCard productCount={products.length} />
+        <DemoCatalogCard productCount={allCount} />
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-lg border bg-card">
+      <div className="mt-6">
+        <ListSearch action="/admin/products" q={q} placeholder="Name or SKU" />
+      </div>
+
+      <div className="mt-4 overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -89,6 +115,7 @@ export default async function AdminProductsPage() {
           </TableBody>
         </Table>
       </div>
+      <ListPager action="/admin/products" q={q} page={page} pageSize={PAGE} total={matching} noun="products" />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { createUpayPayment, upayConfigured } from "@/lib/upay";
 import { buildQuote, MAX_LINES, MAX_QTY_PER_LINE } from "@/lib/checkout";
 import { isDistrict, normalizeBdPhone } from "@/lib/districts";
 import { transitionOrder } from "@/lib/orders";
+import { scheduleOrderSms } from "@/lib/sms";
 import { rateLimit } from "@/lib/rate-limit";
 import { Prisma } from "@/generated/prisma";
 import { siteUrl } from "@/lib/site-url";
@@ -309,5 +310,7 @@ export async function POST(req: Request) {
     }
   }
 
+  // Cash on delivery: the order is placed now (online orders send it when paid).
+  scheduleOrderSms(order.id, "placed");
   return NextResponse.json({ id: order.id });
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role, OrderStatus } from "@/generated/prisma";
-import { allowedTransitions, transitionOrder } from "@/lib/orders";
+import { adminChangeStatus } from "@/lib/admin-order-actions";
 
 const schema = z.object({
   status: z.nativeEnum(OrderStatus).optional(),
@@ -34,39 +34,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (trackingNumber !== undefined) shipping.trackingNumber = trackingNumber || null;
 
   if (status && status !== order.status) {
-    if (!allowedTransitions(order.status, order.paymentMethod).includes(status)) {
-      return NextResponse.json(
-        { error: `Cannot change an order from ${order.status} to ${status}` },
-        { status: 400 },
-      );
-    }
-    const bkashGatewayPaid =
-      order.paymentMethod === "BKASH" &&
-      !!order.bkashPaymentId &&
-      ["PAID", "SHIPPED", "DELIVERED"].includes(order.status);
-    if (bkashGatewayPaid && (status === "REFUNDED" || status === "CANCELLED")) {
-      return NextResponse.json(
-        { error: "This order was paid through bKash. Use the bKash refund button so the money is returned." },
-        { status: 400 },
-      );
-    }
-    const manualRefund = status === "REFUNDED" || (status === "CANCELLED" && order.status !== "PENDING" && order.paymentMethod !== "COD");
-    const ok = await transitionOrder({
-      orderId: id,
-      from: order.status,
-      to: status,
-      note:
-        [note, manualRefund ? "Money must be returned to the customer outside the app" : ""]
-          .filter(Boolean)
-          .join(" · ") || undefined,
-      data: shipping,
-    });
-    if (!ok) {
-      return NextResponse.json(
-        { error: "The order was changed by someone else. Refresh and try again." },
-        { status: 409 },
-      );
-    }
+    const r = await adminChangeStatus({ orderId: id, status, note, shipping });
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status ?? 400 });
   } else if (Object.keys(shipping).length) {
     await prisma.order.update({ where: { id }, data: shipping });
   }

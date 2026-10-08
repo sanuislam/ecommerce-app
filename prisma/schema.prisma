@@ -255,6 +255,14 @@ model Order {
   stripeId     String?     @unique
   bkashPaymentId String?   @unique
   upayTxnId      String?   @unique
+  /// Where the order came from: web (checkout) or a channel an admin typed it in from.
+  source         String    @default("web")
+  /// Admin who created / last edited the order by hand.
+  createdById    String?
+  courierConsignmentId String?
+  courierStatus        String?
+  courierUpdatedAt     DateTime?
+  courierCharge        Decimal?  @db.Decimal(10, 2)
   addressId    String?
   paymentEmail String?
   paymentMethod        PaymentMethod @default(STRIPE)
@@ -271,6 +279,7 @@ model Order {
   events  OrderEvent[]
 
   @@index([paymentTransactionId])
+  @@index([courier, courierConsignmentId])
   @@index([userId])
   @@index([status])
   @@index([createdAt])
@@ -407,4 +416,68 @@ model PolicyDocument {
   bodyEn    String   @db.Text
   bodyBn    String   @db.Text
   updatedAt DateTime @updatedAt
+}
+
+/// Courier accounts (Steadfast, Pathao, RedX). One row, admin-managed.
+model CourierSettings {
+  id                    String    @id @default("default")
+  /// Secret part of the webhook URLs (/api/couriers/webhook/<courier>/<key>).
+  webhookKey            String    @default("")
+  defaultWeightKg       Decimal   @default(0.5) @db.Decimal(5, 2)
+  steadfastEnabled      Boolean   @default(false)
+  steadfastApiKey       String    @default("")
+  steadfastSecretKey    String    @default("")
+  steadfastWebhookToken String    @default("")
+  pathaoEnabled         Boolean   @default(false)
+  pathaoMode            String    @default("sandbox")
+  pathaoClientId        String    @default("")
+  pathaoClientSecret    String    @default("")
+  pathaoUsername        String    @default("")
+  pathaoPassword        String    @default("")
+  pathaoStoreId         Int?
+  pathaoWebhookSecret   String    @default("")
+  pathaoAccessToken     String    @default("")
+  pathaoRefreshToken    String    @default("")
+  pathaoTokenExpiresAt  DateTime?
+  redxEnabled           Boolean   @default(false)
+  redxMode              String    @default("sandbox")
+  redxToken             String    @default("")
+  redxPickupStoreId     Int?
+  updatedAt             DateTime  @updatedAt
+}
+
+/// Alpha SMS (sms.net.bd) account and message templates. One row.
+model SmsSettings {
+  id           String   @id @default("default")
+  enabled      Boolean  @default(false)
+  apiKey       String   @default("")
+  senderId     String   @default("")
+  onPlaced     Boolean  @default(true)
+  onConfirmed  Boolean  @default(false)
+  onShipped    Boolean  @default(true)
+  onDelivered  Boolean  @default(true)
+  onCancelled  Boolean  @default(true)
+  tplPlaced    String   @default("")
+  tplConfirmed String   @default("")
+  tplShipped   String   @default("")
+  tplDelivered String   @default("")
+  tplCancelled String   @default("")
+  updatedAt    DateTime @updatedAt
+}
+
+/// Every SMS sent (or attempted). (orderId, event) is unique for automatic
+/// messages, so each one goes out once; manual messages use a unique event.
+model SmsLog {
+  id        String   @id @default(cuid())
+  orderId   String?
+  event     String
+  phone     String
+  message   String   @db.Text
+  status    String   @default("sending")
+  error     String?
+  requestId String?
+  createdAt DateTime @default(now())
+
+  @@unique([orderId, event])
+  @@index([createdAt])
 }

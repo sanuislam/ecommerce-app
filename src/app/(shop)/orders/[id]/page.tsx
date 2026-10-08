@@ -22,6 +22,7 @@ import { CancelOrderButton } from "@/components/site/cancel-order-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 import { STATUS_LABEL } from "@/lib/orders";
 import { settleUpayOrder } from "@/lib/upay-settle";
+import { COURIER_LABEL, trackingUrl, type CourierId } from "@/lib/couriers/common";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
@@ -96,6 +97,8 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     !order.bkashPaymentId &&
     !order.upayTxnId &&
     !order.stripeId;
+
+  const trackUrl = trackingUrl(order.courier, order.trackingNumber, order.address?.phone);
 
   const notice =
     sp.bkash === "cancel"
@@ -187,13 +190,18 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
           <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-3 text-sm">
             <Truck className="size-4 shrink-0" />
             <span>
-              {order.courier ?? "Courier"}
+              {COURIER_LABEL[order.courier as CourierId] ?? order.courier ?? "Courier"}
               {order.trackingNumber && (
                 <>
                   {" "}· Tracking no. <span className="font-mono font-medium">{order.trackingNumber}</span>
                 </>
               )}
             </span>
+            {trackUrl && (
+              <a href={trackUrl} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-2">
+                Track parcel
+              </a>
+            )}
           </div>
         )}
         {order.events.length > 0 && (
