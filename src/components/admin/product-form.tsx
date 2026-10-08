@@ -35,6 +35,9 @@ type ProductInput = {
   flashDealDiscount: number | null;
   published: boolean;
   categoryId: string | null;
+  costPrice?: number | null;
+  lowStockAt?: number | null;
+  tags?: string[];
   variants?: VariantInput[];
 };
 
@@ -46,6 +49,7 @@ export type VariantInput = {
   stock: number;
   stockBase?: number;
   sku?: string | null;
+  costPrice?: number | null;
 };
 
 type VariantRow = {
@@ -58,6 +62,7 @@ type VariantRow = {
   price: string;
   stock: string;
   sku: string;
+  cost: string;
 };
 
 let rowSeq = 0;
@@ -73,6 +78,7 @@ function toRow(v: VariantInput): VariantRow {
     price: v.price == null ? "" : String(v.price),
     stock: String(v.stock),
     sku: v.sku ?? "",
+    cost: v.costPrice == null ? "" : String(v.costPrice),
   };
 }
 
@@ -108,6 +114,7 @@ export function ProductForm({
     () => initial?.variants?.map(toRow) ?? [],
   );
   const [genSizes, setGenSizes] = useState("");
+  const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(", "));
   const [genColors, setGenColors] = useState("");
 
   const hasVariants = rows.length > 0;
@@ -123,7 +130,7 @@ export function ProductForm({
   function addRow() {
     setRows((prev) => [
       ...prev,
-      { key: newKey(), size: "", color: "", price: "", stock: "0", sku: "" },
+      { key: newKey(), size: "", color: "", price: "", stock: "0", sku: "", cost: "" },
     ]);
   }
 
@@ -156,6 +163,7 @@ export function ProductForm({
         price: "",
         stock: "0",
         sku: "",
+        cost: "",
       }));
     if (added.length === 0) {
       toast.info("Those options already exist");
@@ -186,7 +194,12 @@ export function ProductForm({
         if (!Number.isFinite(price) || price < 0)
           return `${label}: price must be a number ≥ 0`;
       }
-      out.push({ id: r.id, size, color, price, stock, stockBase: r.stockBase, sku: r.sku.trim() || null });
+      let costPrice: number | null = null;
+      if (r.cost.trim() !== "") {
+        costPrice = Number(r.cost);
+        if (!Number.isFinite(costPrice) || costPrice < 0) return `${label}: cost must be a number ≥ 0`;
+      }
+      out.push({ id: r.id, size, color, price, stock, stockBase: r.stockBase, sku: r.sku.trim() || null, costPrice });
     }
     return out;
   }
@@ -218,6 +231,7 @@ export function ProductForm({
         variants,
         flashDealDiscount: data.flashDeal ? data.flashDealDiscount : null,
         slug: data.slug || slugify(data.name),
+        tags: splitList(tagsText.toLowerCase()),
         images: data.images.map((s) => s.trim()).filter(Boolean),
       };
       if (initial?.id) {
@@ -339,6 +353,43 @@ export function ProductForm({
             </p>
           )}
         </div>
+        <div>
+          <Label htmlFor="costPrice">Cost price (optional)</Label>
+          <Input
+            id="costPrice"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="What one unit costs you"
+            value={data.costPrice ?? ""}
+            onChange={(e) => set("costPrice", e.target.value === "" ? null : parseFloat(e.target.value))}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Never shown to customers. Used for profit.</p>
+        </div>
+        <div>
+          <Label htmlFor="lowStockAt">Low stock warning at</Label>
+          <Input
+            id="lowStockAt"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            placeholder="Shop default"
+            value={data.lowStockAt ?? ""}
+            onChange={(e) => set("lowStockAt", e.target.value === "" ? null : parseInt(e.target.value, 10))}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="tags">Tags (optional)</Label>
+          <Input
+            id="tags"
+            placeholder="eid-2026, new, cotton"
+            value={tagsText}
+            onChange={(e) => setTagsText(e.target.value)}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Comma separated. A tag works as a collection: /products?tag=eid-2026
+          </p>
+        </div>
         <div className="flex flex-wrap items-end gap-6">
           <div className="flex items-center gap-2">
             <Switch
@@ -436,10 +487,11 @@ export function ProductForm({
 
           {rows.length > 0 && (
             <div className="mt-3 space-y-2">
-              <div className="hidden grid-cols-[1fr_1fr_7rem_6rem_1fr_2.5rem] gap-2 px-1 text-xs font-medium text-muted-foreground md:grid">
+              <div className="hidden grid-cols-[1fr_1fr_6.5rem_6.5rem_5.5rem_1fr_2.5rem] gap-2 px-1 text-xs font-medium text-muted-foreground md:grid">
                 <span>Size</span>
                 <span>Colour</span>
                 <span>Price (opt.)</span>
+                <span>Cost (opt.)</span>
                 <span>Stock</span>
                 <span>SKU (opt.)</span>
                 <span className="sr-only">Remove</span>
@@ -447,7 +499,7 @@ export function ProductForm({
               {rows.map((r, i) => (
                 <div
                   key={r.key}
-                  className="grid grid-cols-2 gap-2 rounded-md border p-3 md:grid-cols-[1fr_1fr_7rem_6rem_1fr_2.5rem] md:items-center md:border-0 md:p-1"
+                  className="grid grid-cols-2 gap-2 rounded-md border p-3 md:grid-cols-[1fr_1fr_6.5rem_6.5rem_5.5rem_1fr_2.5rem] md:items-center md:border-0 md:p-1"
                 >
                   <div className="col-span-2 flex items-center justify-between md:hidden">
                     <span className="text-xs font-medium text-muted-foreground">
@@ -484,6 +536,16 @@ export function ProductForm({
                     min="0"
                     value={r.price}
                     onChange={(e) => updateRow(r.key, { price: e.target.value })}
+                  />
+                  <Input
+                    aria-label="Cost"
+                    placeholder={data.costPrice != null ? `৳${data.costPrice}` : "Cost"}
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    value={r.cost}
+                    onChange={(e) => updateRow(r.key, { cost: e.target.value })}
                   />
                   <Input
                     aria-label="Stock"

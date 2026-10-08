@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
 import { slugify } from "@/lib/utils";
 import { firstIssue, syncVariants, variantsSchema } from "./_lib/variants";
+import { logStockDiff, stockSnapshot } from "@/lib/stock-log";
 
 const productSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -19,6 +20,13 @@ const productSchema = z.object({
   flashDealDiscount: z.number().int().min(1).max(99).nullable().optional(),
   published: z.boolean().default(true),
   categoryId: z.string().nullable().optional(),
+  costPrice: z.number().nonnegative("Cost cannot be negative").nullable().optional(),
+  lowStockAt: z.number().int().min(0).max(100000).nullable().optional(),
+  tags: z
+    .array(z.string().trim().toLowerCase().max(40))
+    .max(20)
+    .transform((t) => [...new Set(t.map((x) => x.replace(/\s+/g, "-")).filter(Boolean))])
+    .default([]),
   variants: variantsSchema.default([]),
 }).refine(
   (d) => !d.flashDeal || (d.flashDealDiscount != null && d.flashDealDiscount >= 1 && d.flashDealDiscount <= 99),
@@ -69,11 +77,21 @@ export async function POST(req: Request) {
           flashDealDiscount: data.flashDeal ? (data.flashDealDiscount ?? null) : null,
           published: data.published,
           categoryId: data.categoryId ?? null,
+          costPrice: data.costPrice ?? null,
+          lowStockAt: data.lowStockAt ?? null,
+          tags: data.tags,
         },
       });
-      if (data.variants.length === 0) return created;
-      const stock = await syncVariants(tx, created.id, data.variants);
-      return tx.product.update({ where: { id: created.id }, data: { stock } });
+      const before = await stockSnapshot(tx, []);
+      const done =
+        data.variants.length === 0
+          ? created
+          : await tx.product.update({
+              where: { id: created.id },
+              data: { stock: await syncVariants(tx, created.id, data.variants) },
+            });
+      await logStockDiff(tx, before, [created.id], { reason: "initial", userId: session.user.id });
+      return done;
     });
     return NextResponse.json(product, { status: 201 });
   } catch (err) {

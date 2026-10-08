@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/generated/prisma";
+import { Role, type Prisma } from "@/generated/prisma";
+import { logStockDiff, stockSnapshot } from "@/lib/stock-log";
 import { slugify } from "@/lib/utils";
 import { firstIssue, syncVariants, variantsSchema } from "../_lib/variants";
 
@@ -21,6 +22,13 @@ const patchSchema = z.object({
   flashDealDiscount: z.number().int().min(1).max(99).nullable().optional(),
   published: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
+  costPrice: z.number().nonnegative("Cost cannot be negative").nullable().optional(),
+  lowStockAt: z.number().int().min(0).max(100000).nullable().optional(),
+  tags: z
+    .array(z.string().trim().toLowerCase().max(40))
+    .max(20)
+    .transform((t) => [...new Set(t.map((x) => x.replace(/\s+/g, "-")).filter(Boolean))])
+    .optional(),
   variants: variantsSchema.optional(),
 }).refine(
   (d) =>
@@ -60,10 +68,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
-      const exists = await tx.product.findUnique({ where: { id }, select: { id: true } });
-      if (!exists) return null;
-
+    // The edit itself; stock changes are logged around it.
+    async function save(tx: Prisma.TransactionClient) {
       if (variants !== undefined) {
         if (variants.length > 0) {
           data.stock = await syncVariants(tx, id, variants);
@@ -88,6 +94,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
       }
 
       return tx.product.update({ where: { id }, data });
+    }
+    const updated = await prisma.$transaction(async (tx) => {
+      const exists = await tx.product.findUnique({ where: { id }, select: { id: true } });
+      if (!exists) return null;
+      const before = await stockSnapshot(tx, [id]);
+      const result = await save(tx);
+      await logStockDiff(tx, before, [id], { reason: "edit", userId: user.id });
+      return result;
     });
     if (!updated) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });

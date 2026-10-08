@@ -6,6 +6,7 @@ export type OrderSettingsValues = {
   codMaxAmount: number | null;
   returnsEnabled: boolean;
   returnWindowDays: number;
+  lowStockDefault: number;
 };
 
 export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
@@ -13,6 +14,7 @@ export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
   codMaxAmount: null,
   returnsEnabled: true,
   returnWindowDays: 7,
+  lowStockDefault: 5,
 };
 
 export async function getOrderSettings(): Promise<OrderSettingsValues> {
@@ -23,5 +25,6 @@ export async function getOrderSettings(): Promise<OrderSettingsValues> {
     codMaxAmount: row.codMaxAmount,
     returnsEnabled: row.returnsEnabled,
     returnWindowDays: row.returnWindowDays,
+    lowStockDefault: row.lowStockDefault,
   };
 }

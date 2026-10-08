@@ -9,6 +9,8 @@ export type FilterState = {
   min?: string;
   max?: string;
   sort?: string;
+  /** A product tag used as a collection. */
+  tag?: string;
 };
 
 export const SORTS = [

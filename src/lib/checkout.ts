@@ -29,6 +29,8 @@ export type QuoteLine = {
   slug: string;
   image: string | null;
   unitPrice: number;
+  /** What one unit costs the shop, when known (for profit). */
+  unitCost: number | null;
   quantity: number;
   lineTotal: number;
   available: number;
@@ -114,6 +116,12 @@ export async function buildQuote(opts: {
       slug: p.slug,
       image: p.images[0] ?? null,
       unitPrice: price,
+      unitCost:
+        variant?.costPrice != null
+          ? Number(variant.costPrice)
+          : p.costPrice != null
+            ? Number(p.costPrice)
+            : null,
       quantity: i.quantity,
       lineTotal: round2(price * i.quantity),
       available,

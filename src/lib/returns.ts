@@ -7,6 +7,7 @@ import { refundBkashPayment } from "@/lib/bkash";
 import { refundUpayPayment } from "@/lib/upay";
 import { round2, variantLabel } from "@/lib/pricing";
 import { scheduleOrderText } from "@/lib/sms";
+import { logStock } from "@/lib/stock-log";
 
 export const RETURN_REASONS = [
   "Wrong size",
@@ -174,6 +175,17 @@ export async function receiveReturn(id: string, restock: boolean) {
     if (r.count !== 1) throw new ReturnError("Only an approved request can be received", 409);
     if (!restock) return;
     const req = await tx.returnRequest.findUniqueOrThrow({ where: { id }, include: { items: { include: { orderItem: true } } } });
+    await logStock(
+      tx,
+      req.items.map((it) => ({
+        productId: it.orderItem.productId,
+        variantId: it.orderItem.variantId,
+        change: it.quantity,
+        reason: "return" as const,
+        orderId: req.orderId,
+        note: `Return R-${String(req.number).padStart(4, "0")}`,
+      })),
+    );
     const touched = new Set<string>();
     for (const it of req.items) {
       const oi = it.orderItem;
@@ -310,12 +322,13 @@ export async function createReplacementOrder(id: string, deliveryCharge: number,
       }
       lines.push({
         productId: oi.productId,
-        variantId: variant?.id ?? null,
+        variantId: variant?.id ?? oi.variantId ?? null,
         variantName: variant ? variantLabel(variant) : oi.variantName,
         name: oi.name,
         price: oi.price,
         quantity: it.quantity,
         image: oi.image,
+        costPrice: variant?.costPrice ?? oi.costPrice ?? oi.product.costPrice ?? null,
       });
     }
     const subtotal = round2(lines.reduce((n, l) => n + Number(l.price) * l.quantity, 0));
@@ -343,6 +356,17 @@ export async function createReplacementOrder(id: string, deliveryCharge: number,
       },
     });
     await tx.returnRequest.update({ where: { id }, data: { replacementOrderId: o.id } });
+    await logStock(
+      tx,
+      lines.map((l) => ({
+        productId: l.productId,
+        variantId: l.variantId,
+        change: -l.quantity,
+        reason: "exchange" as const,
+        orderId: o.id,
+        userId: adminId,
+      })),
+    );
     return o;
   });
   return newOrder;

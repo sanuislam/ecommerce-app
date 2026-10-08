@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
+import { isLow, isOut, stockUnits } from "@/lib/inventory";
+import { profitSummary } from "@/lib/profit";
+import { STATUS_LABEL } from "@/lib/orders";
 import {
   Package,
   Users,
@@ -10,6 +13,8 @@ import {
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
+  const [units, profit] = await Promise.all([stockUnits(), profitSummary(30)]);
+  const attention = units.filter((u) => isOut(u) || isLow(u)).sort((a, b) => a.stock - b.stock);
   const [productCount, orderCount, userCount, revenue, recentOrders] =
     await Promise.all([
       prisma.product.count(),
@@ -22,7 +27,10 @@ export default async function AdminDashboardPage() {
       prisma.order.findMany({
         take: 8,
         orderBy: { createdAt: "desc" },
-        include: { user: { select: { email: true, name: true } } },
+        include: {
+          user: { select: { email: true, name: true } },
+          address: { select: { fullName: true, phone: true } },
+        },
       }),
     ]);
 
@@ -66,6 +74,67 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <section className="rounded-lg border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Profit · last 30 days</h2>
+            <span className="text-xs text-muted-foreground">{profit.orders} delivered orders</span>
+          </div>
+          <dl className="mt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Sales (after discounts and refunds)</dt>
+              <dd className="tabular-nums">{formatPrice(profit.revenue)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Cost of goods</dt>
+              <dd className="tabular-nums">−{formatPrice(profit.cost)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Courier charges</dt>
+              <dd className="tabular-nums">−{formatPrice(profit.courier)}</dd>
+            </div>
+            <div className="flex justify-between border-t pt-2 text-base font-semibold">
+              <dt>Profit</dt>
+              <dd className="tabular-nums">{formatPrice(profit.netProfit)}</dd>
+            </div>
+          </dl>
+          {profit.orders > 0 && profit.costCoverage < 1 && (
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+              {Math.round((1 - profit.costCoverage) * 100)}% of units sold have no cost price, so profit looks higher than it
+              is. Add cost prices on products.
+            </p>
+          )}
+        </section>
+        <section className="rounded-lg border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Running low</h2>
+            <Link href="/admin/inventory" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+              Inventory <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+          {attention.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">Stock looks healthy.</p>
+          ) : (
+            <ul className="mt-2 divide-y text-sm">
+              {attention.slice(0, 6).map((u) => (
+                <li key={`${u.productId}:${u.variantId ?? ""}`} className="flex items-center justify-between gap-3 py-2">
+                  <span className="min-w-0 truncate">
+                    {u.name}
+                    {u.option && <span className="text-muted-foreground"> · {u.option}</span>}
+                  </span>
+                  <span className={u.stock <= 0 ? "font-medium text-destructive" : "font-medium text-amber-700 dark:text-amber-400"}>
+                    {u.stock <= 0 ? "Out" : `${u.stock} left`}
+                  </span>
+                </li>
+              ))}
+              {attention.length > 6 && (
+                <li className="pt-2 text-xs text-muted-foreground">and {attention.length - 6} more</li>
+              )}
+            </ul>
+          )}
+        </section>
+      </div>
+
       <div className="mt-8 rounded-lg border bg-card">
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-lg font-semibold">Recent orders</h2>
@@ -91,12 +160,14 @@ export default async function AdminDashboardPage() {
                 <div className="min-w-0">
                   <div className="font-medium">#{o.id.slice(0, 8)}</div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {o.user.email}
+                    {o.address?.fullName || o.user.name || ""}
+                    {" · "}
+                    {o.user.email.endsWith(".invalid") ? o.address?.phone : o.user.email}
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-4">
                   <span className="text-xs text-muted-foreground sm:text-sm">
-                    {o.status}
+                    {STATUS_LABEL[o.status]}
                   </span>
                   <span className="font-semibold">
                     {formatPrice(Number(o.total))}

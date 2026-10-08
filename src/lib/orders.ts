@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { OrderStatus, PaymentMethod, Prisma } from "@/generated/prisma";
 import { scheduleOrderSms, type SmsEvent } from "@/lib/sms";
+import { logStock, type StockReason } from "@/lib/stock-log";
 
 type Tx = Prisma.TransactionClient;
 
@@ -41,11 +42,15 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
  * product total is recomputed from the options, so an option deleted (or
  * added) since the order was placed can't leave the two out of sync.
  */
-export async function restockOrder(tx: Tx, orderId: string) {
+export async function restockOrder(tx: Tx, orderId: string, reason: StockReason = "cancel", userId?: string | null) {
   const items = await tx.orderItem.findMany({
     where: { orderId },
     select: { productId: true, variantId: true, quantity: true },
   });
+  await logStock(
+    tx,
+    items.map((i) => ({ productId: i.productId, variantId: i.variantId, change: i.quantity, reason, orderId, userId })),
+  );
   const touched = new Set<string>();
   for (const i of items) {
     if (i.variantId) {
@@ -118,11 +123,11 @@ export async function transitionOrder(opts: {
     if (res.count !== 1) return false;
 
     if (opts.to === "CANCELLED") {
-      await restockOrder(tx, opts.orderId);
+      await restockOrder(tx, opts.orderId, "cancel");
       await releaseCoupon(tx, current.couponId);
     } else if (opts.to === "REFUNDED" && current.status === "PAID") {
       // Refunded before it shipped: the goods never left the shop.
-      await restockOrder(tx, opts.orderId);
+      await restockOrder(tx, opts.orderId, "refund");
     }
     await tx.orderEvent.create({
       data: { orderId: opts.orderId, status: opts.to, note: opts.note ?? null },

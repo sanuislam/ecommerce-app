@@ -2,19 +2,11 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Plus } from "lucide-react";
-import { DeleteProductButton } from "@/components/admin/delete-product-button";
 import { DemoCatalogCard } from "@/components/admin/demo-catalog-card";
 import { ListPager, ListSearch, listParams } from "@/components/admin/list-pager";
+import { ProductsTable } from "@/components/admin/products-table";
+import { getOrderSettings } from "@/lib/order-settings";
 
 const PAGE = 50;
 
@@ -28,10 +20,11 @@ export default async function AdminProductsPage({ searchParams }: Props) {
           { name: { contains: q, mode: "insensitive" as const } },
           { slug: { contains: q.toLowerCase() } },
           { variants: { some: { sku: { contains: q, mode: "insensitive" as const } } } },
+          { tags: { has: q.toLowerCase().replace(/^#/, "") } },
         ],
       }
     : {};
-  const [products, matching, allCount] = await Promise.all([
+  const [products, matching, allCount, categories, rules] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -41,6 +34,8 @@ export default async function AdminProductsPage({ searchParams }: Props) {
     }),
     prisma.product.count({ where }),
     prisma.product.count(),
+    prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    getOrderSettings(),
   ]);
 
   return (
@@ -62,59 +57,21 @@ export default async function AdminProductsPage({ searchParams }: Props) {
         <ListSearch action="/admin/products" q={q} placeholder="Name or SKU" />
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-0 text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {products.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="p-6 text-center text-sm text-muted-foreground">
-                  No products yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              products.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="max-w-64 truncate font-medium" title={p.name}>{p.name}</TableCell>
-                  <TableCell>{p.category?.name ?? "—"}</TableCell>
-                  <TableCell>{formatPrice(Number(p.price))}</TableCell>
-                  <TableCell>
-                    {p.stock}
-                    {p._count.variants > 0 && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({p._count.variants} options)
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={p.published ? "default" : "secondary"}>
-                      {p.published ? "Published" : "Draft"}
-                    </Badge>
-                    {p.featured && <Badge className="ml-1" variant="outline">Featured</Badge>}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={`/admin/products/${p.id}/edit`}>Edit</Link>
-                      </Button>
-                      <DeleteProductButton id={p.id} />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ProductsTable
+        categories={categories}
+        rows={products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category?.name ?? null,
+          price: formatPrice(Number(p.price)),
+          stock: p.stock,
+          options: p._count.variants,
+          low: p.stock <= (p.lowStockAt ?? rules.lowStockDefault),
+          published: p.published,
+          featured: p.featured,
+          tags: p.tags,
+        }))}
+      />
       <ListPager action="/admin/products" q={q} page={page} pageSize={PAGE} total={matching} noun="products" />
     </div>
   );

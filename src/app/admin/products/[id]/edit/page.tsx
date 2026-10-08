@@ -35,6 +35,9 @@ export default async function EditProductPage({ params }: Props) {
             flashDealDiscount: product.flashDealDiscount,
             published: product.published,
             categoryId: product.categoryId,
+            costPrice: product.costPrice != null ? Number(product.costPrice) : null,
+            lowStockAt: product.lowStockAt,
+            tags: product.tags,
             variants: product.variants.map((v) => ({
               id: v.id,
               size: v.size,
@@ -42,6 +45,7 @@ export default async function EditProductPage({ params }: Props) {
               price: v.price != null ? Number(v.price) : null,
               stock: v.stock,
               sku: v.sku,
+              costPrice: v.costPrice != null ? Number(v.costPrice) : null,
             })),
           }}
         />

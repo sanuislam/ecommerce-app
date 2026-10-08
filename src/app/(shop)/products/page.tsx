@@ -57,9 +57,12 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   // Category listings live at /category/<slug>; the rest canonicalise to
   // /products (plus the deals / featured views). Searches and filtered or
   // paginated views are kept out of the index to avoid thin duplicates.
+  const tag = sp.tag ? sp.tag.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40) : "";
   const canonical = category
     ? `/category/${category}`
-    : sp.sale === "1"
+    : tag
+      ? `/products?tag=${tag}`
+      : sp.sale === "1"
       ? "/products?sale=1"
       : featured === "1"
         ? "/products?featured=1"
@@ -100,6 +103,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     min: sp.min && Number(sp.min) > 0 ? String(Number(sp.min)) : undefined,
     max: sp.max && Number(sp.max) > 0 ? String(Number(sp.max)) : undefined,
     sort: sp.sort || undefined,
+    tag: sp.tag ? sp.tag.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40) || undefined : undefined,
   };
   const { q, category, featured, sort } = state;
   const page = Math.max(1, Math.floor(Number(sp.page) || 1));
@@ -113,9 +117,11 @@ export default async function ProductsPage({ searchParams }: Props) {
         { name: { contains: q, mode: "insensitive" } },
         { description: { contains: q, mode: "insensitive" } },
         { category: { name: { contains: q, mode: "insensitive" } } },
+        { tags: { has: q.toLowerCase() } },
       ],
     });
   }
+  if (state.tag) and.push({ tags: { has: state.tag } });
   if (category) and.push({ category: { slug: category } });
   if (state.sale) {
     and.push({ OR: [{ flashDeal: true, flashDealDiscount: { gt: 0 } }, { compareAt: { not: null } }] });
@@ -218,7 +224,9 @@ export default async function ProductsPage({ searchParams }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight break-words sm:text-3xl">
             {categoryName
               ? categoryName
-              : q
+              : state.tag
+                ? `#${state.tag}`
+                : q
                 ? `Results for “${q}”`
                 : state.sale
                   ? "Deals"

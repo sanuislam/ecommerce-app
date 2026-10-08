@@ -78,6 +78,9 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     bkashGateway && allowedTransitions(order.status, order.paymentMethod).includes("REFUNDED");
 
   const discount = Number(order.discount);
+  const costed = order.items.filter((i) => i.costPrice != null);
+  const cogs = costed.length ? costed.reduce((n, i) => n + Number(i.costPrice) * i.quantity, 0) : null;
+  const costMissing = costed.length > 0 && costed.length < order.items.length;
   const phone = order.address?.phone || order.user.phone;
   const customerName =
     order.address?.fullName ||
@@ -311,6 +314,23 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               <span>Total</span>
               <span>{formatPrice(Number(order.total))}</span>
             </div>
+            {cogs != null && (
+              <>
+                <div className="mt-2 flex justify-between gap-2 text-muted-foreground">
+                  <span>Cost of goods{costMissing ? " (some items)" : ""}</span>
+                  <span>−{formatPrice(cogs)}</span>
+                </div>
+                <div className="flex justify-between gap-2 font-medium">
+                  <span>Gross profit</span>
+                  <span>
+                    {formatPrice(
+                      Number(order.subtotal) - discount - Number(order.refundedAmount) - cogs - Number(order.courierCharge ?? 0),
+                    )}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">After discount, refunds and courier charge. Admin only.</p>
+              </>
+            )}
             {Number(order.refundedAmount) > 0 && (
               <div className="flex justify-between gap-2 text-destructive">
                 <span>Refunded</span>

@@ -17,6 +17,7 @@ export const variantSchema = z
       .int("Option stock must be a whole number")
       .nonnegative("Option stock cannot be negative"),
     sku: z.string().trim().max(64, "SKU is too long").nullish(),
+    costPrice: z.number().nonnegative("Option cost cannot be negative").nullable().optional(),
     /** Stock shown when the form was opened; lets the save apply a delta. */
     stockBase: z.number().int().nonnegative().optional(),
   })
@@ -114,6 +115,7 @@ export async function syncVariants(
       color: r.color,
       price: r.price,
       sku: r.sku || null,
+      ...(r.costPrice !== undefined ? { costPrice: r.costPrice } : {}),
       position,
     };
     const submittedId = r.id && r.id === rows[position]?.id;

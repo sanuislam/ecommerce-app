@@ -53,6 +53,14 @@ and Stripe (test mode).
 - Returns and exchanges: customers ask from a delivered order within the return window; Admin → Returns approves /
   rejects, receives (optional restock), refunds part or all (bKash / Upay gateway or recorded by hand, capped by
   `Order.refundedAmount`), and creates a free replacement order for exchanges
+- Inventory (Admin → Inventory): every stock change is a `StockMovement` (sale, cancel, return, exchange, edit,
+  adjustment, CSV import) with who and why; low / out-of-stock lists (per-product or shop-wide warning level),
+  stock value at cost and price, manual adjustments (add or set counted stock, row-locked)
+- Cost prices on products and options, copied to each order line (`OrderItem.costPrice`); order page and dashboard
+  show profit after discounts, refunds and courier charges
+- Products CSV (Admin → Import / export): export, edit, import with a checked preview (update by id / SKU, new
+  products and options, categories by name); bulk publish / hide / category / price % / tags; tags work as
+  collections at `/products?tag=<tag>`
 - Coupons: percent / fixed, minimum spend, max discount, usage limits, validity window
 - Categories, users (role switcher), legal pages, payments (bKash, Upay), SEO & PWA, site settings incl. delivery charges
 

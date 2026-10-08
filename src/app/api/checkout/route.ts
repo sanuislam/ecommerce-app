@@ -8,6 +8,7 @@ import { buildQuote, MAX_LINES, MAX_QTY_PER_LINE } from "@/lib/checkout";
 import { isDistrict, normalizeBdPhone } from "@/lib/districts";
 import { transitionOrder } from "@/lib/orders";
 import { getSmsSettings, scheduleOrderSms } from "@/lib/sms";
+import { logStock } from "@/lib/stock-log";
 import { getOrderSettings } from "@/lib/order-settings";
 import { isPhoneBlocked } from "@/lib/blocklist";
 import { verifyOtp } from "@/lib/otp";
@@ -258,7 +259,7 @@ export async function POST(req: Request) {
         addressId = created.id;
       }
 
-      return tx.order.create({
+      const created = await tx.order.create({
         data: {
           userId,
           status: "PENDING",
@@ -285,11 +286,23 @@ export async function POST(req: Request) {
               price: l.unitPrice,
               quantity: l.quantity,
               image: l.image,
+              costPrice: l.unitCost,
             })),
           },
           events: { create: { status: "PENDING", note: "Order placed" } },
         },
       });
+      await logStock(
+        tx,
+        quote.lines.map((l) => ({
+          productId: l.productId,
+          variantId: l.variantId,
+          change: -l.quantity,
+          reason: "sale" as const,
+          orderId: created.id,
+        })),
+      );
+      return created;
     });
   } catch (err) {
     if (err instanceof CheckoutError) {

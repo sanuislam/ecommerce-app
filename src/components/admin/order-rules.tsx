@@ -10,7 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-type Rules = { codOtpRequired: boolean; codMaxAmount: number | null; returnsEnabled: boolean; returnWindowDays: number };
+type Rules = {
+  codOtpRequired: boolean;
+  codMaxAmount: number | null;
+  returnsEnabled: boolean;
+  returnWindowDays: number;
+  lowStockDefault: number;
+};
 
 export function OrderRulesForm({ initial, smsReady }: { initial: Rules; smsReady: boolean }) {
   const router = useRouter();
@@ -18,6 +24,7 @@ export function OrderRulesForm({ initial, smsReady }: { initial: Rules; smsReady
   const [max, setMax] = useState(initial.codMaxAmount != null ? String(initial.codMaxAmount) : "");
   const [returns, setReturns] = useState(initial.returnsEnabled);
   const [days, setDays] = useState(String(initial.returnWindowDays));
+  const [lowAt, setLowAt] = useState(String(initial.lowStockDefault));
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -31,6 +38,7 @@ export function OrderRulesForm({ initial, smsReady }: { initial: Rules; smsReady
           codMaxAmount: max.trim() === "" ? null : Math.round(Number(max)),
           returnsEnabled: returns,
           returnWindowDays: Math.round(Number(days)) || 7,
+          lowStockDefault: Math.max(0, Math.round(Number(lowAt)) || 0),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -88,6 +96,13 @@ export function OrderRulesForm({ initial, smsReady }: { initial: Rules; smsReady
           <Label htmlFor="days">Days after delivery</Label>
           <Input id="days" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))} />
         </div>
+      </div>
+
+      <h2 className="mt-8 text-lg font-semibold">Stock</h2>
+      <div className="mt-4 grid gap-1.5 sm:max-w-xs">
+        <Label htmlFor="lowat">Warn when stock is at or below</Label>
+        <Input id="lowat" inputMode="numeric" value={lowAt} onChange={(e) => setLowAt(e.target.value.replace(/\D/g, ""))} />
+        <p className="text-xs text-muted-foreground">For products without their own warning level.</p>
       </div>
 
       <div className="mt-6 flex justify-end">

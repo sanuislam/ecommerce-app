@@ -121,6 +121,12 @@ model Product {
   flashDeal         Boolean @default(false)
   flashDealDiscount Int?
   published         Boolean @default(true)
+  /// What one unit costs the shop (for profit). Options may override it.
+  costPrice         Decimal? @db.Decimal(10, 2)
+  /// Warn when stock is at or below this (null = the shop default).
+  lowStockAt        Int?
+  /// Free labels for collections / filters ("eid-2026", "new").
+  tags              String[] @default([])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -131,6 +137,7 @@ model Product {
   cartItems  CartItem[]
   reviews    Review[]
   variants   ProductVariant[]
+  stockMoves StockMovement[]
   wishlistedBy WishlistItem[]
 
   @@index([slug])
@@ -148,6 +155,7 @@ model ProductVariant {
   color     String   @default("")
   sku       String?
   price     Decimal? @db.Decimal(10, 2)
+  costPrice Decimal? @db.Decimal(10, 2)
   stock     Int      @default(0)
   position  Int      @default(0)
   createdAt DateTime @default(now())
@@ -315,6 +323,8 @@ model OrderItem {
   price       Decimal @db.Decimal(10, 2)
   quantity    Int
   image       String?
+  /// Unit cost when sold (copied from the product / option).
+  costPrice   Decimal? @db.Decimal(10, 2)
 
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id])
@@ -500,6 +510,8 @@ model OrderSettings {
   returnsEnabled    Boolean  @default(true)
   /// Days after delivery a customer may ask for a return / exchange.
   returnWindowDays  Int      @default(7)
+  /// Low-stock warning level for products without their own.
+  lowStockDefault   Int      @default(5)
   updatedAt         DateTime @updatedAt
 }
 
@@ -583,4 +595,22 @@ model ReturnItem {
   orderItem OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
   @@index([returnId])
+}
+
+/// Every change to stock, with why (sale, cancel, return, edit, adjust, import…).
+model StockMovement {
+  id        String   @id @default(cuid())
+  productId String
+  variantId String?
+  change    Int
+  reason    String
+  orderId   String?
+  note      String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+  @@index([createdAt])
 }

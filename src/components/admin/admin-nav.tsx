@@ -20,6 +20,8 @@ import {
   MessageSquare,
   ShieldCheck,
   Undo2,
+  Boxes,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,8 @@ import {
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes },
+  { href: "/admin/products/import", label: "Import / export", icon: Upload },
   { href: "/admin/categories", label: "Categories", icon: Tag },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/returns", label: "Returns", icon: Undo2 },
@@ -49,9 +53,15 @@ const NAV = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-function isActive(pathname: string, href: string) {
+function matches(pathname: string, href: string) {
   if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Active = the most specific nav entry for the page ("/admin/products/import" isn't "Products"). */
+function isActive(pathname: string, href: string) {
+  if (!matches(pathname, href)) return false;
+  return !NAV.some((n) => n.href.length > href.length && matches(pathname, n.href));
 }
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

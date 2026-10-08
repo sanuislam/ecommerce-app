@@ -8,6 +8,7 @@ import { round2, shippingFee } from "@/lib/pricing";
 import { getShippingConfig } from "@/lib/site-settings";
 import { ORDER_SOURCES } from "@/lib/admin-orders";
 import { scheduleOrderSms } from "@/lib/sms";
+import { logStock } from "@/lib/stock-log";
 import type { Prisma } from "@/generated/prisma";
 
 type Tx = Prisma.TransactionClient;
@@ -104,7 +105,11 @@ const itemRows = (lines: QuoteLine[]) =>
     price: l.unitPrice,
     quantity: l.quantity,
     image: l.image,
+    costPrice: l.unitCost,
   }));
+
+const saleMoves = (lines: QuoteLine[], orderId: string, reason: "sale" | "order_edit", userId: string) =>
+  lines.map((l) => ({ productId: l.productId, variantId: l.variantId, change: -l.quantity, reason, orderId, userId }));
 
 function totals(subtotal: number, discount: number, shipping: number) {
   const d = round2(Math.min(discount, subtotal));
@@ -174,7 +179,7 @@ export async function createAdminOrder(input: CreateOrderInput, adminId: string)
       },
     });
     if (!user.phone) await tx.user.update({ where: { id: user.id }, data: { phone } });
-    return tx.order.create({
+    const created = await tx.order.create({
       data: {
         userId: user.id,
         status: paid ? "PAID" : "PENDING",
@@ -198,6 +203,8 @@ export async function createAdminOrder(input: CreateOrderInput, adminId: string)
         },
       },
     });
+    await logStock(tx, saleMoves(quote.lines, created.id, "sale", adminId));
+    return created;
   });
   if (input.sendSms) scheduleOrderSms(order.id, "placed");
   return order;
@@ -241,9 +248,10 @@ export async function editAdminOrder(orderId: string, input: EditOrderInput, adm
     }
 
     // Products: give back the old lines' stock, then take the new.
-    await restockOrder(tx, order.id);
+    await restockOrder(tx, order.id, "order_edit", adminId);
     await tx.orderItem.deleteMany({ where: { orderId: order.id } });
     await takeStock(tx, quote.lines);
+    await logStock(tx, saleMoves(quote.lines, order.id, "order_edit", adminId));
     await tx.orderItem.createMany({ data: itemRows(quote.lines).map((r) => ({ ...r, orderId: order.id })) });
 
     // The order gets its own address row, so the customer's address book isn't changed.
