@@ -115,8 +115,34 @@ export function UpaySettingsForm({ initial }: { initial: PaymentSettingsClient }
     }
   }
 
+  // What checkout sees right now (the SAVED settings, not unsaved edits).
+  const missing = [
+    !initial.upayMerchantId && "Merchant ID",
+    !initial.hasUpayMerchantKey && "Merchant key",
+    !initial.upayMerchantName && "Merchant name",
+    !initial.upayMerchantCode && "Merchant code",
+    !initial.upayMerchantMobile && "Merchant mobile",
+  ].filter(Boolean) as string[];
+  const live = initial.upayEnabled && missing.length === 0;
+  const why = [
+    ...(initial.upayEnabled ? [] : ["the switch below is off"]),
+    ...(missing.length ? [`missing: ${missing.join(", ")}`] : []),
+  ].join("; ");
+
   return (
     <form onSubmit={onSubmit} className="grid gap-6 sm:max-w-2xl">
+      <div
+        role="status"
+        className={
+          live
+            ? "rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300"
+            : "rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200"
+        }
+      >
+        {live
+          ? "Live: checkout shows “Mobile banking” (bKash, Nagad, Upay)."
+          : `Not shown at checkout — ${why}. Fill in the fields, turn the switch on and press Save.`}
+      </div>
       <div className="rounded-lg border bg-card p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
