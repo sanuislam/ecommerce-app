@@ -10,6 +10,8 @@ export function TawkChat({ tawkId }: { tawkId: string }) {
         var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
         // Lift the chat bubble above the phone bottom bar / sticky buy bar.
         Tawk_API.customStyle = { visibility: { mobile: { position: "br", xOffset: 12, yOffset: 84 } } };
+        // Our install card may be on screen: keep the bubble out of its way (lib/chat-widget.ts).
+        Tawk_API.onLoad = function () { if (window.__ebChatHidden && Tawk_API.hideWidget) Tawk_API.hideWidget(); };
         (function(){
           var s1 = document.createElement("script"),
               s0 = document.getElementsByTagName("script")[0];

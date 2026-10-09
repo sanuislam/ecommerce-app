@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Download, Share, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useHideChatWidget } from "@/lib/chat-widget";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -78,6 +79,7 @@ function useDeferredInstallPrompt() {
 }
 
 function IosInstructionsSheet({ onClose }: { onClose: () => void }) {
+  useHideChatWidget(true);
   return (
     <div
       role="dialog"
@@ -202,6 +204,9 @@ export function PwaInstallBanner() {
   const deferred = useDeferredInstallPrompt();
   const [iosOpen, setIosOpen] = useState(false);
   const ios = typeof window !== "undefined" && isIos();
+  const visible = !installed && !dismissed && (!!deferred || ios);
+  // The chat bubble sits in the same corner and is stacked above us: hide it while the card shows.
+  useHideChatWidget(visible);
 
   if (installed || dismissed) return null;
   if (!deferred && !ios) return null;
