@@ -1,21 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useSyncExternalStore } from "react";
-import { motion } from "framer-motion";
 import { Flame, Clock, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { formatPrice } from "@/lib/utils";
+import { ProductCard, type ProductCardData } from "@/components/product-card";
 
-export type FlashDealProduct = {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  flashDealDiscount: number;
-  images: string[];
-};
 
 function pad(n: number) {
   return n.toString().padStart(2, "0");
@@ -90,15 +79,11 @@ function Countdown({ endsAt }: { endsAt: string }) {
   );
 }
 
-export function FlashDeals({ products, endsAt }: { products: FlashDealProduct[]; endsAt: string | null }) {
+export function FlashDeals({ products, endsAt }: { products: ProductCardData[]; endsAt: string | null }) {
   if (products.length === 0) return null;
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      <div
         className="overflow-hidden rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50 via-orange-50 to-amber-100 p-5 shadow-sm dark:border-rose-900/40 dark:from-rose-950/40 dark:via-orange-950/30 dark:to-amber-950/30 sm:p-6"
       >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -118,52 +103,9 @@ export function FlashDeals({ products, endsAt }: { products: FlashDealProduct[];
           {endsAt ? <Countdown endsAt={endsAt} /> : null}
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p, i) => {
-            const discount = p.flashDealDiscount;
-            const flashPrice = Math.round(p.price * (1 - discount / 100) * 100) / 100;
-            return (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.35, delay: i * 0.05 }}
-              >
-                <Link
-                  href={`/products/${p.slug}`}
-                  className="group block overflow-hidden rounded-xl border border-border/60 bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                >
-                  <div className="relative aspect-square overflow-hidden bg-muted">
-                    {p.images[0] && (
-                      <Image
-                        src={p.images[0]}
-                        alt={p.name}
-                        fill
-                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                    )}
-                    <Badge className="absolute left-2 top-2 bg-rose-600 text-white hover:bg-rose-600">
-                      -{discount}%
-                    </Badge>
-                  </div>
-                  <div className="space-y-1 p-3">
-                    <div className="line-clamp-1 text-sm font-medium">
-                      {p.name}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-rose-600 dark:text-rose-400">
-                        {formatPrice(flashPrice)}
-                      </span>
-                      <span className="text-xs text-muted-foreground line-through">
-                        {formatPrice(p.price)}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
+          {products.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
         </div>
         <div className="mt-5 flex justify-end">
           <Link
@@ -173,7 +115,7 @@ export function FlashDeals({ products, endsAt }: { products: FlashDealProduct[];
             View all deals <ArrowRight className="size-4" />
           </Link>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }

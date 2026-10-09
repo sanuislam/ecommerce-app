@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/product-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DesktopFilters, MobileFilterButton } from "@/components/site/product-filters";
-import { buildQuery, type FilterState } from "@/lib/product-filters";
+import { buildQuery, listOf, type FilterState } from "@/lib/product-filters";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { CARD_INCLUDE, toCardProduct } from "@/lib/product-view";
 import { absoluteUrl, cn } from "@/lib/utils";
@@ -67,7 +67,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       : featured === "1"
         ? "/products?featured=1"
         : "/products";
-  const filtered = Boolean(q || sp.sort || sp.min || sp.max || sp.instock || (sp.page && sp.page !== "1"));
+  const filtered = Boolean(q || sp.sort || sp.min || sp.max || sp.instock || sp.size || sp.color || (sp.page && sp.page !== "1"));
 
   const ogImages = [{ url: seo.defaultOgImage || "/og-default.png" }];
 
@@ -104,7 +104,11 @@ export default async function ProductsPage({ searchParams }: Props) {
     max: sp.max && Number(sp.max) > 0 ? String(Number(sp.max)) : undefined,
     sort: sp.sort || undefined,
     tag: sp.tag ? sp.tag.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40) || undefined : undefined,
+    size: listOf(sp.size).join(",") || undefined,
+    color: listOf(sp.color).join(",") || undefined,
   };
+  const sizes = listOf(state.size);
+  const colors = listOf(state.color);
   const { q, category, featured, sort } = state;
   const page = Math.max(1, Math.floor(Number(sp.page) || 1));
   const seo = await getSeoSettings();
@@ -112,14 +116,18 @@ export default async function ProductsPage({ searchParams }: Props) {
   const and: Prisma.ProductWhereInput[] = [{ published: true }];
   if (featured) and.push({ featured: true });
   if (q) {
-    and.push({
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-        { category: { name: { contains: q, mode: "insensitive" } } },
-        { tags: { has: q.toLowerCase() } },
-      ],
-    });
+    // Every word must appear somewhere ("white kurta" finds "Classic White Eid Kurta").
+    for (const w of q.split(/\s+/).filter((x) => x.length > 0).slice(0, 6)) {
+      and.push({
+        OR: [
+          { name: { contains: w, mode: "insensitive" } },
+          { description: { contains: w, mode: "insensitive" } },
+          { category: { name: { contains: w, mode: "insensitive" } } },
+          { tags: { has: w.toLowerCase() } },
+          { variants: { some: { OR: [{ sku: { equals: w, mode: "insensitive" } }, { color: { equals: w, mode: "insensitive" } }] } } },
+        ],
+      });
+    }
   }
   if (state.tag) and.push({ tags: { has: state.tag } });
   if (category) and.push({ category: { slug: category } });
@@ -135,6 +143,19 @@ export default async function ProductsPage({ searchParams }: Props) {
       },
     });
   }
+  // Size / colour facets are counted on everything else that is filtered.
+  const baseWhere: Prisma.ProductWhereInput = { AND: [...and] };
+  if (sizes.length || colors.length) {
+    and.push({
+      variants: {
+        some: {
+          ...(sizes.length ? { size: { in: sizes } } : {}),
+          ...(colors.length ? { color: { in: colors } } : {}),
+          ...(state.instock ? { stock: { gt: 0 } } : {}),
+        },
+      },
+    });
+  }
   const where: Prisma.ProductWhereInput = { AND: and };
 
   const orderBy: Prisma.ProductOrderByWithRelationInput[] =
@@ -144,9 +165,13 @@ export default async function ProductsPage({ searchParams }: Props) {
         ? [{ price: "desc" }]
         : sort === "name"
           ? [{ name: "asc" }]
-          : [{ createdAt: "desc" }];
+          : sort === "best"
+            ? [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }]
+            : sort === "reviews"
+              ? [{ reviews: { _count: "desc" } }, { createdAt: "desc" }]
+              : [{ createdAt: "desc" }];
 
-  const [total, products, categories] = await Promise.all([
+  const [total, products, categories, sizeFacets, colorFacets] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
@@ -156,13 +181,42 @@ export default async function ProductsPage({ searchParams }: Props) {
       take: PAGE_SIZE,
     }),
     prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.productVariant.groupBy({
+      by: ["size"],
+      where: { product: baseWhere, size: { not: "" }, ...(colors.length ? { color: { in: colors } } : {}) },
+      _count: { _all: true },
+    }),
+    prisma.productVariant.groupBy({
+      by: ["color"],
+      where: { product: baseWhere, color: { not: "" }, ...(sizes.length ? { size: { in: sizes } } : {}) },
+      _count: { _all: true },
+    }),
   ]);
+  const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "3XL", "4XL"];
+  const sizeRank = (v: string) => {
+    const i = SIZE_ORDER.indexOf(v.toUpperCase());
+    return i >= 0 ? i : Number.isFinite(Number(v)) ? 100 + Number(v) : 1000;
+  };
+  const facets = {
+    size: sizeFacets.map((f) => ({ value: f.size, count: f._count._all })).sort((a, b) => sizeRank(a.value) - sizeRank(b.value) || a.value.localeCompare(b.value)),
+    color: colorFacets.map((f) => ({ value: f.color, count: f._count._all })).sort((a, b) => b.count - a.count).slice(0, 20),
+  };
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Nothing found: show what sells instead of an empty page.
+  const fallback =
+    products.length === 0
+      ? await prisma.product.findMany({
+          where: { published: true, stock: { gt: 0 } },
+          orderBy: [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }],
+          include: CARD_INCLUDE,
+          take: 8,
+        })
+      : [];
 
   const categoryName = category
     ? categories.find((c) => c.slug === category)?.name ?? null
     : null;
-  const activeFilters = [state.sale, state.instock, state.min, state.max, state.sort].filter(Boolean).length;
+  const activeFilters = [state.sale, state.instock, state.min, state.max, state.sort, state.size, state.color].filter(Boolean).length;
 
   const itemListJsonLd = seo.jsonLdEnabled && products.length > 0
     ? {
@@ -252,7 +306,7 @@ export default async function ProductsPage({ searchParams }: Props) {
 
       {/* Mobile / tablet: category chips + filter sheet */}
       <div className="-mx-4 mb-5 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:hidden">
-        <MobileFilterButton state={state} active={activeFilters} />
+        <MobileFilterButton state={state} active={activeFilters} facets={facets} />
         <Link href={buildQuery({ ...state, category: undefined })} className={chip(!category)}>
           All
         </Link>
@@ -296,17 +350,30 @@ export default async function ProductsPage({ searchParams }: Props) {
               ))}
             </ul>
           </nav>
-          <DesktopFilters state={state} />
+          <DesktopFilters state={state} facets={facets} />
         </aside>
 
         <div className="min-w-0">
           {products.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground sm:p-12">
-              <p>No products match your filters.</p>
-              <Button asChild variant="outline" className="mt-4">
-                <Link href="/products">Clear filters</Link>
-              </Button>
-            </div>
+            <>
+              <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground sm:p-10">
+                <p>{q ? `Nothing found for “${q}”.` : "No products match your filters."}</p>
+                <p className="mt-1 text-sm">Try fewer words, another spelling, or a category below.</p>
+                <Button asChild variant="outline" className="mt-4">
+                  <Link href="/products">Clear search and filters</Link>
+                </Button>
+              </div>
+              {fallback.length ? (
+                <section className="mt-8">
+                  <h2 className="mb-4 text-lg font-semibold">Popular right now</h2>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
+                    {fallback.map((p) => (
+                      <ProductCard key={p.id} product={toCardProduct(p)} />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
               {products.map((p) => (

@@ -47,3 +47,14 @@ export function signCloudinaryUpload(params: CloudinarySignParams): {
     folder: params.folder,
   };
 }
+
+/** Is this a photo our customers uploaded to our Cloudinary folder (reviews / returns)? */
+export function isCustomerPhoto(url: string, folder: "eidbazar/reviews" | "eidbazar/returns"): boolean {
+  const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+  if (!cloud) return false;
+  return (
+    url.length < 400 &&
+    url.startsWith(`https://res.cloudinary.com/${cloud}/image/upload/`) &&
+    url.includes(`/${folder}/`)
+  );
+}

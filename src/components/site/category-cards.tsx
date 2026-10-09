@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 
 export type CategoryCardData = {
@@ -35,14 +34,7 @@ export function CategoryCards({ categories }: { categories: CategoryCardData[] }
         // On 2-column phones, a lone last card spans the full row.
         const wide = i === categories.length - 1 && categories.length % 2 === 1;
         return (
-        <motion.li
-          key={c.id}
-          className={wide ? "col-span-2 sm:col-span-1" : undefined}
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.45, delay: Math.min(i, 8) * 0.05, ease: [0.22, 1, 0.36, 1] }}
-        >
+        <li key={c.id} className={wide ? "col-span-2 sm:col-span-1" : undefined}>
           <Link
             href={`/category/${c.slug}`}
             className={`group relative isolate flex ${wide ? "aspect-[2/1]" : "aspect-[5/6]"} flex-col justify-between overflow-hidden rounded-2xl bg-neutral-900 p-3 text-white shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none sm:aspect-square sm:p-4 md:aspect-[4/3]`}
@@ -97,7 +89,7 @@ export function CategoryCards({ categories }: { categories: CategoryCardData[] }
               </span>
             </div>
           </Link>
-        </motion.li>
+        </li>
         );
       })}
     </ul>

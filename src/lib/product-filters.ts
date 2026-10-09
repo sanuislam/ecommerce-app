@@ -11,10 +11,24 @@ export type FilterState = {
   sort?: string;
   /** A product tag used as a collection. */
   tag?: string;
+  /** Comma-separated option values, e.g. "M,L". */
+  size?: string;
+  color?: string;
 };
+
+/** "M,L" → ["M","L"] (trimmed, max 12, each ≤ 30 chars). */
+export const listOf = (v?: string) =>
+  (v ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, 12)
+    .map((x) => x.slice(0, 30));
 
 export const SORTS = [
   { k: "", label: "Newest" },
+  { k: "best", label: "Best selling" },
+  { k: "reviews", label: "Most reviewed" },
   { k: "price-asc", label: "Price: low to high" },
   { k: "price-desc", label: "Price: high to low" },
   { k: "name", label: "Name A–Z" },

@@ -9,18 +9,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { PhotoPicker } from "@/components/photo-picker";
 
 export function ReviewForm({
   slug,
   initial,
+  photos = false,
 }: {
   slug: string;
-  initial?: { rating: number; title: string; comment: string };
+  initial?: { rating: number; title: string; comment: string; images?: string[] };
+  /** Photo upload is set up (Cloudinary). */
+  photos?: boolean;
 }) {
   const router = useRouter();
   const [rating, setRating] = useState(initial?.rating ?? 0);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [comment, setComment] = useState(initial?.comment ?? "");
+  const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [saving, setSaving] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
@@ -34,7 +39,7 @@ export function ReviewForm({
       const res = await fetch(`/api/products/${slug}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, title, comment }),
+        body: JSON.stringify({ rating, title, comment, images }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Could not save review");
@@ -79,6 +84,14 @@ export function ReviewForm({
           onChange={(e) => setComment(e.target.value)}
         />
       </div>
+      {photos ? (
+        <div>
+          <Label>Photos (optional)</Label>
+          <div className="mt-1">
+            <PhotoPicker kind="review" value={images} onChange={setImages} />
+          </div>
+        </div>
+      ) : null}
       <Button type="submit" disabled={saving}>
         {saving ? "Saving..." : initial ? "Update review" : "Submit review"}
       </Button>

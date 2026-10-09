@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { CategoryManager } from "@/components/admin/category-manager";
 import { DeleteCategoryButton } from "@/components/admin/delete-category-button";
+import { SizeGuideEditor } from "@/components/admin/size-guide-editor";
 
 export default async function AdminCategoriesPage() {
   const categories = await prisma.category.findMany({
@@ -28,13 +29,14 @@ export default async function AdminCategoriesPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Products</TableHead>
+                <TableHead>Size guide</TableHead>
                 <TableHead className="w-0 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {categories.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="p-6 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={5} className="p-6 text-center text-sm text-muted-foreground">
                     No categories yet.
                   </TableCell>
                 </TableRow>
@@ -44,6 +46,9 @@ export default async function AdminCategoriesPage() {
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell className="text-muted-foreground">{c.slug}</TableCell>
                     <TableCell>{c._count.products}</TableCell>
+                    <TableCell>
+                      <SizeGuideEditor id={c.id} name={c.name} initial={c.sizeGuide} />
+                    </TableCell>
                     <TableCell className="text-right">
                       <DeleteCategoryButton id={c.id} />
                     </TableCell>

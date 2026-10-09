@@ -13,8 +13,7 @@ import {
   Menu,
   Search,
   Heart,
-  X,
-} from "lucide-react";
+  X, LayoutGrid, ChevronDown } from "lucide-react";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/store/cart";
@@ -152,6 +151,27 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
             <Logo />
           </Link>
           <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex lg:gap-5" aria-label="Main">
+            {categories.length ? (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger className="inline-flex items-center gap-1 whitespace-nowrap outline-none hover:text-foreground data-[state=open]:text-foreground">
+                  <LayoutGrid className="size-4" /> Categories <ChevronDown className="size-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="grid w-[min(36rem,90vw)] grid-cols-2 gap-0.5 p-2">
+                  {categories.map((c) => (
+                    <DropdownMenuItem key={c.slug} asChild>
+                      <Link href={`/category/${c.slug}`} className="rounded-md px-3 py-2">
+                        {c.name}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem asChild>
+                    <Link href="/products" className="col-span-2 rounded-md px-3 py-2 font-medium">
+                      All products →
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}

@@ -34,6 +34,8 @@ const schema = z.object({
   newsletterCoupon: z.string().trim().toUpperCase().max(40).default(""),
   /** "YYYY-MM-DDTHH:mm" in Dhaka time, or "" for none. */
   flashSaleEndsAt: z.string().trim().max(30).default(""),
+  deliveryDaysDhaka: z.string().trim().max(20).default(""),
+  deliveryDaysOutside: z.string().trim().max(20).default(""),
 });
 
 export async function PUT(req: Request) {

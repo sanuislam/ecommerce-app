@@ -24,6 +24,9 @@ export type SiteSettingsView = {
   newsletterCoupon: string;
   /** ISO time the flash sale ends; null = no countdown. */
   flashSaleEndsAt: string | null;
+  /** Usual delivery days, e.g. "1–2". */
+  deliveryDaysDhaka: string;
+  deliveryDaysOutside: string;
 };
 
 export const SETTINGS_DEFAULTS: SiteSettingsView = {
@@ -40,6 +43,8 @@ export const SETTINGS_DEFAULTS: SiteSettingsView = {
   tawkId: "",
   newsletterCoupon: "",
   flashSaleEndsAt: null,
+  deliveryDaysDhaka: "1–2",
+  deliveryDaysOutside: "2–4",
 };
 
 type Row = Partial<Omit<SiteSettingsView, "flashSaleEndsAt">> & { flashSaleEndsAt?: Date | string | null };
@@ -51,6 +56,8 @@ function storefrontFrom(row: Row | null) {
     tawkId: row?.tawkId?.trim() ?? "",
     newsletterCoupon: row?.newsletterCoupon?.trim() ?? "",
     flashSaleEndsAt: end ? new Date(end).toISOString() : null,
+    deliveryDaysDhaka: row?.deliveryDaysDhaka?.trim() ?? "1–2",
+    deliveryDaysOutside: row?.deliveryDaysOutside?.trim() ?? "2–4",
   };
 }
 

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { expireStaleOrders } from "@/lib/orders";
 import { pruneRateLimits } from "@/lib/rate-limit";
 import { syncShippedOrders } from "@/lib/couriers";
+import { notifyBackInStock } from "@/lib/stock-alerts";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,5 +21,8 @@ export async function GET(req: Request) {
   await pruneRateLimits().catch(() => {});
   // Courier webhooks are the main signal; this catches any that were missed.
   const couriers = await syncShippedOrders().catch(() => null);
-  return NextResponse.json({ cancelled, couriers });
+  // Back-in-stock texts that the instant path missed.
+  const waiting = await prisma.stockAlert.findMany({ where: { notifiedAt: null }, select: { productId: true }, distinct: ["productId"], take: 200 });
+  const backInStock = await notifyBackInStock(waiting.map((w) => w.productId)).catch(() => 0);
+  return NextResponse.json({ cancelled, couriers, backInStock });
 }

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/wishlist-button";
 import { formatPrice } from "@/lib/utils";
@@ -30,13 +29,8 @@ export function ProductCard({ product }: { product: ProductCardData }) {
   const soldOut = product.stock != null && product.stock <= 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      className="group relative"
-    >
+    // Shown at once (no fade-in on scroll): the grid is the page's main content.
+    <div className="group relative">
       <Link
         href={`/products/${product.slug}`}
         className="block overflow-hidden rounded-xl border bg-card transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -84,6 +78,6 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         productId={product.id}
         className="absolute right-2 top-2 bg-background/80 backdrop-blur"
       />
-    </motion.div>
+    </div>
   );
 }

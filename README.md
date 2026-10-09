@@ -103,6 +103,15 @@ and Stripe (test mode).
   `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are set (customer accounts only)
 - The cart follows the account: on sign-in the saved cart is merged into this browser's cart
 - Cart page: free-delivery progress, delivery charges, coupon (carried to checkout), best sellers when empty
+- Search: live suggestions in the header (`/api/search/suggest`, products + categories, keyboard friendly); every
+  word must match (name, description, category, tags, colour, SKU); empty results show best sellers
+- Listing: size and colour filters (facets with counts), "Best selling" / "Most reviewed" sorts; desktop
+  "Categories" menu in the header
+- Product page: full-screen zoomable photos, size guide per category (Admin → Categories → Size guide), delivery
+  time (Settings), share buttons, star breakdown + reviews with customer photos (Cloudinary, signed by
+  `/api/uploads/sign`) and "Show more", recently viewed, "Tell me when it's back" SMS (`StockAlert`, sent when stock
+  is added and by the daily cron)
+- Home: no repeated products, real Best sellers, one product-card style, no fade-in-on-scroll for the main grids
 - Passwords: `/forgot-password` e-mails a one-time link (60 min, only its SHA-256 stored) through Resend, or sends it
   by SMS to the account's phone when e-mail isn't set up; the owner can make a 24-hour link for anyone from Users /
   Staff. Changing or resetting a password signs that account out everywhere within a minute

@@ -22,11 +22,13 @@ export type SiteSettingsFormValues = {
   tawkId: string;
   newsletterCoupon: string;
   flashSaleEndsAt: string | null;
+  deliveryDaysDhaka: string;
+  deliveryDaysOutside: string;
 };
 
 type TextKey = Exclude<
   keyof SiteSettingsFormValues,
-  "shippingInsideDhaka" | "shippingOutsideDhaka" | "freeShippingThreshold" | "flashSaleEndsAt" | "supportHours" | "tawkId" | "newsletterCoupon"
+  "shippingInsideDhaka" | "shippingOutsideDhaka" | "freeShippingThreshold" | "flashSaleEndsAt" | "supportHours" | "tawkId" | "newsletterCoupon" | "deliveryDaysDhaka" | "deliveryDaysOutside"
 >;
 type StoreKey = "supportHours" | "tawkId" | "newsletterCoupon";
 
@@ -214,6 +216,13 @@ export function SiteSettingsForm({
                 }
               />
               <p className="text-xs text-muted-foreground">{help}</p>
+            </div>
+          ))}
+          {(["deliveryDaysDhaka", "deliveryDaysOutside"] as const).map((key) => (
+            <div key={key} className="grid content-start gap-1.5">
+              <Label htmlFor={key}>{key === "deliveryDaysDhaka" ? "Delivery time inside Dhaka (days)" : "Delivery time outside Dhaka (days)"}</Label>
+              <Input id={key} value={values[key]} placeholder={key === "deliveryDaysDhaka" ? "1–2" : "2–4"} onChange={(e) => update(key, e.target.value)} />
+              <p className="text-xs text-muted-foreground">Shown on product pages. Blank hides it.</p>
             </div>
           ))}
         </div>

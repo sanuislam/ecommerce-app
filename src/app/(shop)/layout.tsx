@@ -13,7 +13,7 @@ async function getNavCategories() {
     return await prisma.category.findMany({
       select: { name: true, slug: true },
       orderBy: { name: "asc" },
-      take: 12,
+      take: 40,
     });
   } catch {
     return [];

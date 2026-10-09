@@ -10,7 +10,6 @@ import { HomeHero } from "@/components/site/home-hero";
 import { ProductBannerCarousel } from "@/components/site/product-banner-carousel";
 import { CategoryCards } from "@/components/site/category-cards";
 import { FlashDeals } from "@/components/site/flash-deals";
-import { SpeciallyForYou } from "@/components/site/specially-for-you";
 import { Testimonials } from "@/components/site/testimonials";
 import { TrustStrip } from "@/components/site/trust-strip";
 import { Newsletter } from "@/components/site/newsletter";
@@ -55,7 +54,7 @@ export default async function HomePage() {
     prisma.product.findMany({
       where: { published: true },
       include: CARD_INCLUDE,
-      take: 8,
+      take: 16,
       orderBy: { createdAt: "desc" },
     }),
     prisma.category.findMany({
@@ -79,14 +78,16 @@ export default async function HomePage() {
         flashDeal: true,
         flashDealDiscount: { gt: 0 },
       },
+      include: CARD_INCLUDE,
       take: 8,
       orderBy: { createdAt: "desc" },
     }),
+    // Best sellers: most ordered (in stock only).
     prisma.product.findMany({
-      where: { published: true },
+      where: { published: true, stock: { gt: 0 }, orderItems: { some: {} } },
       include: CARD_INCLUDE,
-      take: 12,
-      orderBy: [{ createdAt: "desc" }],
+      take: 8,
+      orderBy: [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }],
     }),
     getShippingConfig(),
     getStoreFacts(),
@@ -131,31 +132,13 @@ export default async function HomePage() {
       productCount: c._count.products,
     }));
 
-  const speciallyForYou = speciallyRaw.map((p) => {
-    const c = toCardProduct(p);
-    return {
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      price: c.price,
-      compareAt: c.compareAt ?? null,
-      stock: p.stock,
-      images: c.images,
-      hasVariants: c.hasVariants ?? false,
-    };
-  });
+  const bestSellers = speciallyRaw;
 
-  const flashDeals = dealsRaw
-    .filter((p) => p.flashDealDiscount != null && p.flashDealDiscount > 0)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      price: Number(p.price),
-      flashDealDiscount: p.flashDealDiscount as number,
-      images: p.images,
-    }))
-    .slice(0, 4);
+
+  const flashDeals = dealsRaw.map(toCardProduct).slice(0, 4);
+  // Don't show the same product twice on the page.
+  const shown = new Set([...flashDeals.map((p) => p.id), ...featured.map((p) => p.id)]);
+  const newArrivals = latest.filter((p) => !shown.has(p.id)).slice(0, 8);
 
   const bannerProducts = featured.map((p) => ({
     id: p.id,
@@ -234,7 +217,23 @@ export default async function HomePage() {
 
       <FlashDeals products={saleOver ? [] : flashDeals} endsAt={facts.flashSaleEndsAt} />
 
-      <SpeciallyForYou products={speciallyForYou} />
+      {bestSellers.length >= 4 && (
+        <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-end justify-between">
+            <h2 className="text-2xl font-semibold tracking-tight">Best sellers</h2>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/products?sort=best">
+                View all <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+            {bestSellers.map((p) => (
+              <ProductCard key={p.id} product={toCardProduct(p)} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {shopCategories.length > 0 && (
         <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8" aria-labelledby="shop-by-category">
@@ -276,7 +275,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {latest.length > 0 && (
+      {newArrivals.length > 0 && (
         <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex items-end justify-between">
             <h2 className="text-2xl font-semibold tracking-tight">New arrivals</h2>
@@ -287,7 +286,7 @@ export default async function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {latest.map((p) => (
+            {newArrivals.map((p) => (
               <ProductCard key={p.id} product={toCardProduct(p)} />
             ))}
           </div>

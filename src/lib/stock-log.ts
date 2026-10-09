@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma";
+import { scheduleBackInStock } from "@/lib/stock-alerts";
 
 type Tx = Prisma.TransactionClient;
 
@@ -41,6 +42,8 @@ export async function logStock(tx: Tx, entries: StockEntry[]) {
       userId: e.userId ?? null,
     }));
   if (rows.length) await tx.stockMovement.createMany({ data: rows });
+  // Stock came back: text the people who asked to be told.
+  scheduleBackInStock(rows.filter((r) => r.change > 0).map((r) => r.productId));
 }
 
 export type StockSnapshot = Map<string, { productId: string; variantId: string | null; stock: number }>;

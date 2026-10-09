@@ -115,6 +115,8 @@ model Category {
   slug        String    @unique
   description String?
   image       String?
+  /// Size chart shown on this category's product pages (one row per line, cells split by "|").
+  sizeGuide   String    @default("")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   products    Product[]
@@ -355,6 +357,8 @@ model Review {
   rating    Int
   title     String?
   comment   String?  @db.Text
+  /// Customer photos (Cloudinary URLs), at most 4.
+  images    String[] @default([])
   createdAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -382,6 +386,9 @@ model SiteSettings {
   newsletterCoupon String @default("")
   /// End of the current flash sale (countdown); null = no countdown.
   flashSaleEndsAt  DateTime?
+  /// Usual delivery time shown on product pages, e.g. "1–2" (days).
+  deliveryDaysDhaka   String @default("1–2")
+  deliveryDaysOutside String @default("2–4")
   updatedAt     DateTime @updatedAt
 }
 
@@ -763,4 +770,19 @@ model ContactMessage {
 
   @@index([createdAt])
   @@index([handledAt])
+}
+
+/// "Tell me when it's back": SMS when an out-of-stock product / option returns.
+model StockAlert {
+  id         String    @id @default(cuid())
+  productId  String
+  /// "" = the product (no option).
+  variantId  String    @default("")
+  phone      String
+  userId     String?
+  createdAt  DateTime  @default(now())
+  notifiedAt DateTime?
+
+  @@unique([productId, variantId, phone])
+  @@index([productId, notifiedAt])
 }

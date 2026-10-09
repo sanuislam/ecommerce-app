@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/json-ld";
 import { notFound } from "next/navigation";
-import { Star, Truck, ShieldCheck, Tag, RotateCcw, Banknote } from "lucide-react";
+import { Star, Truck, ShieldCheck, Tag, RotateCcw, Banknote, Clock } from "lucide-react";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { absoluteUrl, formatDate, formatPrice } from "@/lib/utils";
+import { absoluteUrl, formatPrice } from "@/lib/utils";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getStoreFacts } from "@/lib/store-facts";
@@ -19,6 +19,11 @@ import { AddToCart } from "@/components/add-to-cart";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
 import { ReviewForm } from "@/components/review-form";
+import { ProductReviews } from "@/components/product-reviews";
+import { RecentlyViewed } from "@/components/recently-viewed";
+import { ShareButtons } from "@/components/share-buttons";
+import { parseSizeGuide } from "@/lib/size-guide";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -75,8 +80,8 @@ export default async function ProductDetailPage({ params }: Props) {
       variants: { orderBy: { position: "asc" } },
       reviews: {
         orderBy: { createdAt: "desc" },
-        take: 20,
-        include: { user: { select: { name: true } } },
+        take: 10,
+        include: { user: { select: { name: true, firstName: true } } },
       },
     },
   });
@@ -85,7 +90,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const session = await auth();
   const facts = await getStoreFacts();
-  const [seo, site, shipping, ratingAgg, related, delivered] = await Promise.all([
+  const [seo, site, shipping, ratingAgg, related, delivered, breakdownRows, mine] = await Promise.all([
     getSeoSettings(),
     getSiteSettings(),
     getShippingConfig(),
@@ -113,12 +118,16 @@ export default async function ProductDetailPage({ params }: Props) {
           select: { id: true },
         })
       : null,
+    prisma.review.groupBy({ by: ["rating"], where: { productId: product.id }, _count: { _all: true } }),
+    session?.user
+      ? prisma.review.findUnique({ where: { productId_userId: { productId: product.id, userId: session.user.id } } })
+      : null,
   ]);
+  const breakdown = Object.fromEntries(breakdownRows.map((b) => [b.rating, b._count._all]));
+  const sizeGuide = parseSizeGuide(product.category?.sizeGuide ?? "");
   const avg = ratingAgg._avg.rating;
   const reviewCount = ratingAgg._count;
-  const myReview = session?.user
-    ? product.reviews.find((r) => r.userId === session.user.id)
-    : undefined;
+  const myReview = mine ?? undefined;
   const productUrl = absoluteUrl(`/products/${product.slug}`);
 
   const availability = (stock: number) =>
@@ -315,7 +324,25 @@ export default async function ProductDetailPage({ params }: Props) {
             }))}
             whatsappUrl={site.whatsappUrl}
             productUrl={productUrl}
+            sizeGuide={sizeGuide}
+            categoryName={product.category?.name ?? ""}
           />
+          {site.deliveryDaysDhaka || site.deliveryDaysOutside ? (
+            <p className="flex items-start gap-2 text-sm">
+              <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <span>
+                Delivery in{" "}
+                {[
+                  site.deliveryDaysDhaka && `${site.deliveryDaysDhaka} days inside Dhaka`,
+                  site.deliveryDaysOutside && `${site.deliveryDaysOutside} days elsewhere`,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+                .
+              </span>
+            </p>
+          ) : null}
+          <ShareButtons url={productUrl} title={product.name} />
 
           <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2 rounded-md border bg-card p-3">
@@ -356,35 +383,27 @@ export default async function ProductDetailPage({ params }: Props) {
           Reviews {reviewCount > 0 && <span className="text-muted-foreground">({reviewCount})</span>}
         </h2>
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="grid content-start gap-4 sm:grid-cols-2">
-            {product.reviews.length === 0 && (
-              <p className="text-sm text-muted-foreground sm:col-span-2">
+          <div>
+            {reviewCount === 0 ? (
+              <p className="text-sm text-muted-foreground">
                 No reviews yet. Customers can review a product once it has been delivered.
               </p>
+            ) : (
+              <ProductReviews
+                slug={product.slug}
+                total={reviewCount}
+                breakdown={breakdown}
+                initial={product.reviews.map((r) => ({
+                  id: r.id,
+                  rating: r.rating,
+                  title: r.title,
+                  comment: r.comment,
+                  images: r.images,
+                  createdAt: r.createdAt.toISOString(),
+                  name: (r.user.firstName || r.user.name || "Customer").split(" ")[0],
+                }))}
+              />
             )}
-            {product.reviews.map((r) => (
-              <article key={r.id} className="rounded-lg border bg-card p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex text-amber-500" aria-label={`${r.rating} out of 5 stars`}>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star
-                        key={i}
-                        className={i <= r.rating ? "size-4 fill-current" : "size-4 text-muted-foreground/40"}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm font-medium">{r.user.name ?? "Customer"}</span>
-                  <span className="text-xs text-muted-foreground">· {formatDate(r.createdAt)}</span>
-                </div>
-                {r.title && <div className="mt-2 text-sm font-medium">{r.title}</div>}
-                {r.comment && (
-                  <p className="mt-1 text-sm break-words whitespace-pre-line text-muted-foreground">
-                    {r.comment}
-                  </p>
-                )}
-                <div className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">Verified purchase</div>
-              </article>
-            ))}
           </div>
           <div>
             {delivered ? (
@@ -392,9 +411,10 @@ export default async function ProductDetailPage({ params }: Props) {
                 slug={product.slug}
                 initial={
                   myReview
-                    ? { rating: myReview.rating, title: myReview.title ?? "", comment: myReview.comment ?? "" }
+                    ? { rating: myReview.rating, title: myReview.title ?? "", comment: myReview.comment ?? "", images: myReview.images }
                     : undefined
                 }
+                photos={cloudinaryConfigured()}
               />
             ) : (
               <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
@@ -413,6 +433,10 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      <RecentlyViewed
+        current={{ id: product.id, slug: product.slug, name: product.name, image: product.images[0] ?? null, price: unitPrice(product) }}
+      />
 
       {related.length > 0 && (
         <section className="mt-12 sm:mt-14">

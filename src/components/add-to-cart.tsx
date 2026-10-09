@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/wishlist-button";
 import { MAX_QTY_PER_LINE, useCart } from "@/store/cart";
 import { track } from "@/lib/track";
+import { BackInStock } from "@/components/back-in-stock";
+import { SizeGuideButton } from "@/components/size-guide-button";
 import { strikePrice, unitPrice, variantLabel, type PricedProduct } from "@/lib/pricing";
 import { cn, formatPrice } from "@/lib/utils";
 
@@ -41,11 +43,15 @@ export function AddToCart({
   variants = [],
   whatsappUrl,
   productUrl,
+  sizeGuide = [],
+  categoryName = "",
 }: {
   product: PurchaseProduct;
   variants?: PurchaseVariant[];
   whatsappUrl?: string;
   productUrl?: string;
+  sizeGuide?: string[][];
+  categoryName?: string;
 }) {
   const router = useRouter();
   const add = useCart((s) => s.add);
@@ -191,8 +197,10 @@ export function AddToCart({
               isAvailable={(c) => optionInStock(size, c)}
             />
           )}
+          <SizeGuideButton rows={sizeGuide} category={categoryName} />
         </div>
       )}
+      {!hasVariants && sizeGuide.length > 1 ? <SizeGuideButton rows={sizeGuide} category={categoryName} /> : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex items-center rounded-lg border">
@@ -220,6 +228,14 @@ export function AddToCart({
         </div>
         <WishlistButton productId={product.id} withLabel />
       </div>
+
+      {soldOut ? (
+        <BackInStock
+          productId={product.id}
+          variantId={variant?.id ?? null}
+          label={variant ? `${product.name} (${variantLabel(variant)})` : product.name}
+        />
+      ) : null}
 
       <div className="grid gap-2 sm:grid-cols-2">
         <Button onClick={handleAdd} size="lg" variant="outline" disabled={soldOut}>
