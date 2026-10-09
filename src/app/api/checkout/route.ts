@@ -274,7 +274,7 @@ export async function POST(req: Request) {
           couponId: quote.coupon?.id ?? null,
           couponCode: quote.coupon?.code ?? null,
           shippingZone: quote.zone,
-          paymentEmail: session.user.email,
+          paymentEmail: session.user.email?.endsWith(".invalid") ? null : session.user.email,
           paymentMethod: method,
           ...(codConfirmed ? { codConfirmedAt: new Date(), codConfirmNote: "Phone verified by SMS code" } : {}),
           notes: input.notes || null,

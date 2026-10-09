@@ -70,7 +70,7 @@ export function ProfileForm({
       </div>
       <div>
         <Label htmlFor="acc-email">Email</Label>
-        <Input id="acc-email" value={email} readOnly disabled />
+        <Input id="acc-email" value={email} placeholder="Not added (signed in with mobile)" readOnly disabled />
       </div>
       <div className="sm:col-span-2">
         <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</Button>

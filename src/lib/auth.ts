@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { hashRecovery, openSecret, verifyTotp } from "@/lib/totp";
+import { verifyOtp } from "@/lib/otp";
+import { StaffMustUsePassword, userForPhone } from "@/lib/phone-login";
+import Google from "next-auth/providers/google";
 
 /** The account has two-factor sign-in: ask for the code. */
 class TwoFactorRequired extends CredentialsSignin {
@@ -15,6 +18,14 @@ class TwoFactorRequired extends CredentialsSignin {
 /** The two-factor code (or recovery code) was wrong. */
 class TwoFactorInvalid extends CredentialsSignin {
   code = "2fa_invalid";
+}
+/** The SMS sign-in code was wrong or expired. */
+class OtpInvalid extends CredentialsSignin {
+  code = "otp_invalid";
+}
+/** Staff accounts sign in with e-mail, password (and two-factor), not SMS. */
+class StaffUsePassword extends CredentialsSignin {
+  code = "staff_use_password";
 }
 
 declare module "next-auth" {
@@ -70,6 +81,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/sign-in",
   },
   providers: [
+    // Mobile number + 6-digit SMS code: signs in, or creates the account.
+    Credentials({
+      id: "phone-otp",
+      name: "Mobile number",
+      credentials: { phone: { label: "Mobile", type: "tel" }, code: { label: "Code", type: "text" }, name: { label: "Name", type: "text" } },
+      async authorize(raw) {
+        const parsed = z
+          .object({ phone: z.string().max(20), code: z.string().trim().max(10), name: z.string().trim().max(80).optional() })
+          .safeParse(raw);
+        if (!parsed.success) throw new OtpInvalid();
+        const ip = await clientIp().catch(() => "unknown");
+        if (!(await rateLimit(`otplogin:ip:${ip}`, 30, 900))) throw new OtpInvalid();
+        if (!(await verifyOtp(parsed.data.phone, "login", parsed.data.code.replace(/\s/g, "")))) throw new OtpInvalid();
+        let user;
+        try {
+          user = await userForPhone(parsed.data.phone, parsed.data.name);
+        } catch (err) {
+          if (err instanceof StaffMustUsePassword) throw new StaffUsePassword();
+          throw err;
+        }
+        if (!user) throw new OtpInvalid();
+        return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role, staffRole: null, needs2fa: false };
+      },
+    }),
+    // Google sign-in, only when its keys are set (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET).
+    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
+      ? [Google({ allowDangerousEmailAccountLinking: true })]
+      : []),
     Credentials({
       name: "Credentials",
       credentials: {
@@ -126,6 +165,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // Google may only open customer accounts: staff need password + two-factor.
+      if (account?.provider === "google") {
+        const u = user.email ? await prisma.user.findUnique({ where: { email: user.email.toLowerCase() }, select: { role: true } }) : null;
+        if (u && u.role !== Role.USER) return "/sign-in?error=staff_use_password";
+      }
+      return true;
+    },
     async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;

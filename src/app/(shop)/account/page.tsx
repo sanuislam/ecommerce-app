@@ -5,7 +5,7 @@ import { Heart, LayoutDashboard, Package } from "lucide-react";
 import { auth } from "@/auth";
 import { isAdminUser } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { formatDate, formatPrice } from "@/lib/utils";
+import { formatDate, formatPrice, shownEmail } from "@/lib/utils";
 import { AddressBook, PasswordForm, ProfileForm } from "@/components/account/account-forms";
 import { SmsOffersToggle } from "@/components/account/sms-offers-toggle";
 import { OrderStatusBadge } from "@/components/site/order-status-badge";
@@ -48,7 +48,7 @@ export default async function AccountPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">My account</h1>
-          <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+          <p className="truncate text-sm text-muted-foreground">{shownEmail(user.email) || user.phone}</p>
         </div>
         <SignOutButton />
       </div>
@@ -97,7 +97,7 @@ export default async function AccountPage() {
       <section className="mt-8 rounded-lg border bg-card p-4 sm:p-5">
         <h2 className="mb-4 text-lg font-semibold">Profile</h2>
         <ProfileForm
-          email={user.email}
+          email={shownEmail(user.email)}
           initial={{
             firstName: user.firstName ?? fallbackFirst ?? "",
             lastName: user.lastName ?? rest.join(" "),

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/checkout-form";
 import { auth } from "@/auth";
+import { shownEmail } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { bkashConfigured } from "@/lib/bkash";
 import { upayConfigured } from "@/lib/upay";
@@ -48,7 +49,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
         Two steps: where to deliver, then how to pay.
       </p>
       <CheckoutForm
-        userEmail={session.user.email ?? ""}
+        userEmail={shownEmail(session.user.email)}
         defaultName={user?.name ?? ""}
         defaultPhone={user?.phone?.startsWith("01") ? user.phone : ""}
         savedAddresses={addresses.map((a) => ({

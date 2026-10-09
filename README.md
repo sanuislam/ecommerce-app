@@ -98,6 +98,11 @@ and Stripe (test mode).
   customer-facing statuses ("Order placed", "Awaiting payment", "Confirmed", "On the way"…)
 - `/track`: order status by order number + phone, no sign-in (SMS `{link}` points here); `/contact` form →
   Admin → Messages (e-mailed to support when e-mail is set up)
+- Sign in with a mobile number + 6-digit SMS code (`phone-otp` provider, `/api/login-code`): the same step creates
+  the account; staff accounts must use e-mail + password (+ two-factor). "Continue with Google" appears when
+  `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are set (customer accounts only)
+- The cart follows the account: on sign-in the saved cart is merged into this browser's cart
+- Cart page: free-delivery progress, delivery charges, coupon (carried to checkout), best sellers when empty
 - Passwords: `/forgot-password` e-mails a one-time link (60 min, only its SHA-256 stored) through Resend, or sends it
   by SMS to the account's phone when e-mail isn't set up; the owner can make a 24-hour link for anyone from Users /
   Staff. Changing or resetting a password signs that account out everywhere within a minute

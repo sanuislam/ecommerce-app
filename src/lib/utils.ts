@@ -44,3 +44,6 @@ export function formatDate(input: string | number | Date) {
     year: "numeric",
   });
 }
+
+/** Phone-only accounts have a placeholder "…@….invalid" e-mail: never show it. */
+export const shownEmail = (email: string | null | undefined) => (email && !email.endsWith(".invalid") ? email : "");

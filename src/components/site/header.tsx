@@ -36,7 +36,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { motion, AnimatePresence } from "framer-motion";
 import { SearchBar } from "@/components/site/search-bar";
-import { cn } from "@/lib/utils";
+import { cn, shownEmail } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/products", label: "Shop" },
@@ -118,7 +118,7 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
                   <>
                     <div className="px-3 py-2 text-sm">
                       <div className="truncate font-medium">{session.user.name ?? "My account"}</div>
-                      <div className="truncate text-xs text-muted-foreground">{session.user.email}</div>
+                      <div className="truncate text-xs text-muted-foreground">{shownEmail(session.user.email)}</div>
                     </div>
                     <MenuLink href="/account" icon={User} onClick={close}>My account</MenuLink>
                     <MenuLink href="/orders" icon={Package} onClick={close}>My orders</MenuLink>
@@ -217,8 +217,8 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5 text-sm">
-                  <div className="truncate font-medium">{session.user.name ?? session.user.email}</div>
-                  <div className="truncate text-xs text-muted-foreground">{session.user.email}</div>
+                  <div className="truncate font-medium">{session.user.name || shownEmail(session.user.email) || "My account"}</div>
+                  <div className="truncate text-xs text-muted-foreground">{shownEmail(session.user.email)}</div>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>

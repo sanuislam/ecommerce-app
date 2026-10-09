@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { syncCart } from "@/lib/carts";
+import { cleanLines, resolveLines, syncCart } from "@/lib/carts";
+import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -29,4 +30,13 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 });
   const r = await syncCart(session.user.id, parsed.data.items);
   return NextResponse.json({ ok: true, ...r });
+}
+
+/** The saved cart (for a shopper who signs in on another phone or browser). */
+export async function GET() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ lines: [] }, { status: 401 });
+  const snap = await prisma.cartSnapshot.findUnique({ where: { userId: session.user.id } });
+  const lines = snap ? await resolveLines(cleanLines(snap.items)) : [];
+  return NextResponse.json({ lines: lines.filter((l) => l.stock > 0) });
 }

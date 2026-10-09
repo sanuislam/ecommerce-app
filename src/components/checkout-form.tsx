@@ -298,7 +298,7 @@ export function CheckoutForm({
         <div className="min-w-0 space-y-6">
           {/* ---------------- Delivery ---------------- */}
           <section className="rounded-2xl border bg-card p-4 sm:p-6">
-            <StepHeading step={1} title="Delivery address" hint={`Updates go to ${userEmail}`} />
+            <StepHeading step={1} title="Delivery address" hint={userEmail ? `Updates go to ${userEmail} and by SMS` : "Order updates come by SMS"} />
 
             {savedAddresses.length > 0 && (
               <div className="mt-5 grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Saved addresses">

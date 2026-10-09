@@ -12,7 +12,11 @@ const hash = (phone: string, code: string) =>
 
 export type OtpSendResult = { ok: true } | { ok: false; error: string; status: number };
 
-/** Sends a 6-digit code to a phone (rate-limited per phone and per user). */
+const OTP_TEXT: Record<string, (code: string, shop: string) => string> = {
+  login: (code, shop) => `${code} is your ${shop} sign-in code. It expires in 10 minutes. Never share it.`,
+};
+
+/** Sends a 6-digit code to a phone (rate-limited per phone and per user / IP). */
 export async function sendOtp(rawPhone: string, purpose: string, userId: string, shop: string): Promise<OtpSendResult> {
   const phone = bdMobile(rawPhone);
   if (!phone) return { ok: false, error: "Enter a valid mobile number (01XXXXXXXXX)", status: 400 };
@@ -28,7 +32,8 @@ export async function sendOtp(rawPhone: string, purpose: string, userId: string,
   await prisma.otpCode.create({
     data: { phone, purpose, codeHash: hash(phone, code), expiresAt: new Date(Date.now() + TTL_MS) },
   });
-  const r = await sendSms(s.apiKey, phone, `${code} is your ${shop} order code. It expires in 10 minutes.`, s.senderId || undefined);
+  const text = OTP_TEXT[purpose]?.(code, shop) ?? `${code} is your ${shop} order code. It expires in 10 minutes.`;
+  const r = await sendSms(s.apiKey, phone, text, s.senderId || undefined);
   if (!r.ok) {
     console.error("OTP SMS failed", r.error);
     return { ok: false, error: "Could not send the code. Try again.", status: 502 };
