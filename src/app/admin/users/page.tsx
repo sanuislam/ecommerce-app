@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { UserRoleSelect } from "@/components/admin/user-role-select";
+import { UserResetLink } from "@/components/admin/user-reset-link";
 import { ListPager, ListSearch, listParams } from "@/components/admin/list-pager";
 
 const PAGE = 50;
@@ -20,6 +21,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 export default async function AdminUsersPage({ searchParams }: Props) {
   const session = await auth();
   const currentUserId = session?.user?.id;
+  const isOwner = session?.user?.role === "ADMIN";
   const { q, page } = listParams(await searchParams);
   const digits = q.replace(/\D/g, "");
   const where = q
@@ -58,12 +60,13 @@ export default async function AdminUsersPage({ searchParams }: Props) {
               <TableHead>Role</TableHead>
               <TableHead>Orders</TableHead>
               <TableHead>Joined</TableHead>
+              {isOwner ? <TableHead /> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="p-6 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={isOwner ? 6 : 5} className="p-6 text-center text-sm text-muted-foreground">
                   No users yet.
                 </TableCell>
               </TableRow>
@@ -86,11 +89,11 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                     </TableCell>
                     <TableCell>{u.name ?? "—"}</TableCell>
                     <TableCell>
-                      <UserRoleSelect
-                        userId={u.id}
-                        role={u.role}
-                        disabled={isSelf}
-                      />
+                      {u.role === "STAFF" ? (
+                        <Badge variant="outline">Staff · {u.staffRole}</Badge>
+                      ) : (
+                        <UserRoleSelect userId={u.id} role={u.role} disabled={isSelf || !isOwner} />
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{u._count.orders}</Badge>
@@ -98,6 +101,11 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                     <TableCell className="text-muted-foreground">
                       {formatDate(u.createdAt)}
                     </TableCell>
+                    {isOwner ? (
+                      <TableCell className="text-right">
+                        {!isSelf && !u.email.endsWith(".invalid") ? <UserResetLink userId={u.id} email={u.email} /> : null}
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })

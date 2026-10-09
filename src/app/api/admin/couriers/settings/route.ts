@@ -4,6 +4,7 @@ import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { getCourierSettings } from "@/lib/couriers";
 import { resetPathaoToken } from "@/lib/couriers/pathao";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,8 @@ const schema = z.object({
 });
 
 export async function PUT(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await adminSession();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
@@ -64,5 +66,6 @@ export async function PUT(req: Request) {
     data.pathaoUsername !== cur.pathaoUsername ||
     data.pathaoPassword !== cur.pathaoPassword;
   if (pathaoChanged) await resetPathaoToken();
+  await audit(session, { action: "settings.couriers", summary: "Courier settings saved", data: v });
   return NextResponse.json({ ok: true });
 }

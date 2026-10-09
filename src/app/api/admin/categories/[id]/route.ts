@@ -1,18 +1,20 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/generated/prisma";
+import { audit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function DELETE(_req: Request, ctx: Ctx) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "products")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await ctx.params;
   try {
-    await prisma.category.delete({ where: { id } });
+    const gone = await prisma.category.delete({ where: { id } });
+    await audit(session, { action: "category.delete", targetType: "category", targetId: id, summary: `Category "${gone.name}" deleted` });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

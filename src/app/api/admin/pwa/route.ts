@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -53,5 +54,6 @@ export async function PUT(req: Request) {
   });
   revalidatePath("/", "layout");
   revalidatePath("/manifest.webmanifest");
+  await audit(session, { action: "settings.pwa", summary: "App (PWA) settings saved", data });
   return NextResponse.json({ ok: true });
 }

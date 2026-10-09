@@ -1,10 +1,11 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/generated/prisma";
 import { bkashConfigured, refundBkashPayment } from "@/lib/bkash";
 import { transitionOrder } from "@/lib/orders";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "refunds")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -111,6 +112,12 @@ export async function POST(req: Request) {
     },
   });
 
+  await audit(session, {
+    action: "order.refund",
+    targetType: "order",
+    targetId: order.id,
+    summary: `#${order.id.slice(0, 8)} refunded ৳${Number(order.total)} via bKash (${result.refundTrxID ?? "-"})`,
+  });
   return NextResponse.json({
     ok: true,
     refundTrxID: result.refundTrxID,

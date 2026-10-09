@@ -1,11 +1,12 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/generated/prisma";
 import { slugify } from "@/lib/utils";
 import { firstIssue, syncVariants, variantsSchema } from "./_lib/variants";
 import { logStockDiff, stockSnapshot } from "@/lib/stock-log";
+import { audit } from "@/lib/audit";
 
 const productSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -35,7 +36,7 @@ const productSchema = z.object({
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "products")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const products = await prisma.product.findMany({
@@ -47,7 +48,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "products")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await req.json().catch(() => null);
@@ -92,6 +93,12 @@ export async function POST(req: Request) {
             });
       await logStockDiff(tx, before, [created.id], { reason: "initial", userId: session.user.id });
       return done;
+    });
+    await audit(session, {
+      action: "product.create",
+      targetType: "product",
+      targetId: product.id,
+      summary: `"${product.name}" created at ৳${Number(product.price)}`,
     });
     return NextResponse.json(product, { status: 201 });
   } catch (err) {

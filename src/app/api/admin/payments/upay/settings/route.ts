@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
 import { normalizeUpayBase, resetUpayTokenCache } from "@/lib/upay";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -74,5 +75,6 @@ export async function PUT(req: Request) {
   resetUpayTokenCache();
   revalidatePath("/checkout");
   revalidatePath("/", "layout");
+  await audit(session, { action: "settings.payments", summary: "Upay settings saved", data: v });
   return NextResponse.json({ ok: true });
 }

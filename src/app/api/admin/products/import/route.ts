@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { adminSession } from "@/lib/admin-auth";
 import { applyImport, planImport } from "@/lib/product-csv";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -11,7 +12,7 @@ const schema = z.object({ csv: z.string().min(1).max(8_000_000), apply: z.boolea
 
 /** Checks a CSV (apply=false) or runs it (apply=true; re-checked first). */
 export async function POST(req: Request) {
-  const session = await adminSession();
+  const session = await adminSession("products");
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Upload a CSV file" }, { status: 400 });
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
   try {
     const r = await applyImport(plan, session.user.id);
     revalidatePath("/", "layout");
+    await audit(session, { action: "product.import", summary: `CSV import: ${r.products} product(s) created or updated` });
     return NextResponse.json({ ...preview, applied: r.products });
   } catch (err) {
     console.error("product import failed", err);

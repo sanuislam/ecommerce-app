@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { adminSession } from "@/lib/admin-auth";
 import { orderWhere, parseOrderFilters, SOURCE_LABEL } from "@/lib/admin-orders";
 import { STATUS_LABEL } from "@/lib/orders";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -30,7 +31,8 @@ const dhaka = (d: Date) =>
 
 /** CSV of every order matching the list's filters (or the given ids). */
 export async function GET(req: Request) {
-  if (!(await adminSession())) return new Response("Forbidden", { status: 403 });
+  const session = await adminSession("orders");
+  if (!session) return new Response("Forbidden", { status: 403 });
   const url = new URL(req.url);
   const ids = (url.searchParams.get("ids") ?? "").split(",").filter(Boolean).slice(0, 500);
   const where = ids.length ? { id: { in: ids } } : orderWhere(parseOrderFilters(url.searchParams));
@@ -80,6 +82,7 @@ export async function GET(req: Request) {
   // BOM so Excel opens the UTF-8 (Bangla names) correctly.
   const csv = "﻿" + [header, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");
   const stamp = new Date().toISOString().slice(0, 10);
+  await audit(session, { action: "order.export", summary: `${orders.length} order(s) exported to CSV` });
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

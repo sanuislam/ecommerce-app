@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
 import { resetBkashTokenCache } from "@/lib/bkash";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -72,5 +73,6 @@ export async function PUT(req: Request) {
   revalidatePath("/checkout");
   revalidatePath("/", "layout");
 
+  await audit(session, { action: "settings.payments", summary: "bKash settings saved", data: v });
   return NextResponse.json({ ok: true });
 }

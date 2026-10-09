@@ -20,10 +20,14 @@ import {
   MessageSquare,
   ShieldCheck,
   Undo2,
+  UserCog,
+  ScrollText,
+  KeyRound,
   Boxes,
   Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { canAccessPath } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -51,6 +55,9 @@ const NAV = [
   { href: "/admin/order-rules", label: "Order rules", icon: ShieldCheck },
   { href: "/admin/seo", label: "SEO & PWA", icon: Search },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/staff", label: "Staff", icon: UserCog },
+  { href: "/admin/audit", label: "Audit log", icon: ScrollText },
+  { href: "/admin/security", label: "My security", icon: KeyRound },
 ];
 
 function matches(pathname: string, href: string) {
@@ -64,12 +71,15 @@ function isActive(pathname: string, href: string) {
   return !NAV.some((n) => n.href.length > href.length && matches(pathname, n.href));
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+type Access = { role: string; staffRole: string | null };
+
+function NavLinks({ onNavigate, access }: { onNavigate?: () => void; access: Access }) {
   const pathname = usePathname() ?? "";
+  const items = NAV.filter((n) => canAccessPath(access.role, access.staffRole, n.href));
   return (
     <>
       <nav className="flex flex-col gap-0.5 px-2 py-2 text-sm">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link
@@ -105,19 +115,19 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /** Desktop sidebar (md and up). */
-export function AdminSidebar() {
+export function AdminSidebar({ access }: { access: Access }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col overflow-y-auto border-r bg-muted/30 md:flex">
       <div className="flex h-16 items-center px-4 text-lg font-semibold tracking-tight">
         Admin
       </div>
-      <NavLinks />
+      <NavLinks access={access} />
     </aside>
   );
 }
 
 /** Sticky top bar with a slide-out menu (below md). */
-export function AdminMobileBar() {
+export function AdminMobileBar({ access }: { access: Access }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "";
   const current = NAV.find((n) => isActive(pathname, n.href));
@@ -138,7 +148,7 @@ export function AdminMobileBar() {
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-1 flex-col overflow-y-auto">
-            <NavLinks onNavigate={() => setOpen(false)} />
+            <NavLinks access={access} onNavigate={() => setOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>

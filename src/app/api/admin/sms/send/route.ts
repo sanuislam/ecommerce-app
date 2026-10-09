@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { bdMobile, getSmsSettings, sendSms } from "@/lib/sms";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,8 @@ const schema = z.object({
 
 /** A one-off SMS to an order's customer, typed by an admin. */
 export async function POST(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await adminSession("orders");
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Write a message (2–480 characters)" }, { status: 400 });
   const s = await getSmsSettings();
@@ -40,5 +42,13 @@ export async function POST(req: Request) {
     where: { id: log.id },
     data: r.ok ? { status: "sent", requestId: r.requestId } : { status: "failed", error: r.error.slice(0, 300) },
   });
+  if (r.ok) {
+    await audit(session, {
+      action: "order.sms",
+      targetType: "order",
+      targetId: order.id,
+      summary: `#${order.id.slice(0, 8)} SMS to ${phone}: ${parsed.data.message.slice(0, 80)}`,
+    });
+  }
   return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: r.error }, { status: 502 });
 }

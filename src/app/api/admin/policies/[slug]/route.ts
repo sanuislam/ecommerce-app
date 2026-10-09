@@ -1,9 +1,10 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/generated/prisma";
 import { POLICY_SLUGS, POLICY_META, type PolicySlug } from "@/lib/policy-docs";
+import { audit } from "@/lib/audit";
 
 const schema = z.object({
   titleEn: z.string().trim().min(1).max(200),
@@ -21,7 +22,7 @@ export async function PUT(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "content")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { slug } = await params;
@@ -49,6 +50,7 @@ export async function PUT(
     },
     update: data,
   });
+  await audit(session, { action: "settings.policy", targetType: "policy", targetId: slug, summary: `Legal page "${slug}" saved` });
   return NextResponse.json(row);
 }
 
@@ -57,7 +59,7 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "content")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { slug } = await params;
@@ -65,5 +67,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Unknown policy" }, { status: 404 });
   }
   await prisma.policyDocument.delete({ where: { slug } }).catch(() => {});
+  await audit(session, { action: "settings.policy", targetType: "policy", targetId: slug, summary: `Legal page "${slug}" reset to default` });
   return NextResponse.json({ ok: true });
 }

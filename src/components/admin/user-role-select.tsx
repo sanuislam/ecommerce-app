@@ -57,8 +57,8 @@ export function UserRoleSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="USER">USER</SelectItem>
-        <SelectItem value="ADMIN">ADMIN</SelectItem>
+        <SelectItem value="USER">Customer</SelectItem>
+        <SelectItem value="ADMIN">Owner</SelectItem>
       </SelectContent>
     </Select>
   );

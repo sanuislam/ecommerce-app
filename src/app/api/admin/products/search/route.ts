@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Products for the admin order editor: name search, with options and stock. */
 export async function GET(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await adminSession("orders"))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const q = (new URL(req.url).searchParams.get("q") ?? "").trim().slice(0, 80);
   const products = await prisma.product.findMany({
     where: {

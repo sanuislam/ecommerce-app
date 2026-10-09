@@ -3,6 +3,7 @@ import { z } from "zod";
 import { OrderStatus } from "@/generated/prisma";
 import { adminSession } from "@/lib/admin-auth";
 import { adminChangeStatus } from "@/lib/admin-order-actions";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,7 +17,8 @@ const schema = z.object({
 
 /** Changes many orders at once; each one is checked like a single change. */
 export async function POST(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await adminSession("orders");
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   const { ids, status, note } = parsed.data;
@@ -26,8 +28,16 @@ export async function POST(req: Request) {
     const r = await adminChangeStatus({ orderId: id, status, note });
     results.push(r.ok ? { id, ok: true } : { id, ok: false, error: r.error });
   }
+  const done = results.filter((r) => r.ok);
+  if (done.length) {
+    await audit(session, {
+      action: "order.bulk",
+      summary: `${done.length} order(s) → ${status}${note ? ` (${note})` : ""}`,
+      data: { status, ids: done.map((r) => r.id), failed: results.length - done.length },
+    });
+  }
   return NextResponse.json({
-    done: results.filter((r) => r.ok).length,
+    done: done.length,
     failed: results.filter((r) => !r.ok),
   });
 }

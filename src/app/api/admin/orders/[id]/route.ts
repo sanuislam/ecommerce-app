@@ -1,9 +1,11 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role, OrderStatus } from "@/generated/prisma";
+import { OrderStatus } from "@/generated/prisma";
 import { adminChangeStatus } from "@/lib/admin-order-actions";
+import { audit } from "@/lib/audit";
 
 const schema = z.object({
   status: z.nativeEnum(OrderStatus).optional(),
@@ -16,7 +18,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, ctx: Ctx) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "orders")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await ctx.params;
@@ -36,8 +38,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (status && status !== order.status) {
     const r = await adminChangeStatus({ orderId: id, status, note, shipping });
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status ?? 400 });
+    await audit(session, {
+      action: "order.status",
+      targetType: "order",
+      targetId: id,
+      summary: `#${id.slice(0, 8)}: ${order.status} → ${status}${note ? ` (${note})` : ""}`,
+      data: { from: order.status, to: status, ...shipping },
+    });
   } else if (Object.keys(shipping).length) {
     await prisma.order.update({ where: { id }, data: shipping });
+    await audit(session, { action: "order.edit", targetType: "order", targetId: id, summary: `#${id.slice(0, 8)}: tracking updated`, data: shipping });
   }
 
   const updated = await prisma.order.findUnique({ where: { id } });

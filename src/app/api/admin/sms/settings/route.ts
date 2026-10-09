@@ -3,6 +3,7 @@ import { z } from "zod";
 import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { SMS_EVENTS, SMS_ON_FIELD, SMS_TPL_FIELD } from "@/lib/sms";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,8 @@ const schema = z.object({
 });
 
 export async function PUT(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await adminSession();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   const v = parsed.data;
@@ -33,5 +35,6 @@ export async function PUT(req: Request) {
     data[SMS_TPL_FIELD[e]] = v.templates[e];
   }
   await prisma.smsSettings.upsert({ where: { id: "default" }, create: { id: "default", ...data }, update: data });
+  await audit(session, { action: "settings.sms", summary: "SMS settings saved", data: v });
   return NextResponse.json({ ok: true });
 }

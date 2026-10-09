@@ -25,6 +25,7 @@ export function ReturnActions({
   gateway,
   methods,
   replacementOrderId,
+  canRefund = true,
 }: {
   id: string;
   type: "RETURN" | "EXCHANGE";
@@ -36,6 +37,7 @@ export function ReturnActions({
   gateway: "bKash" | "Upay" | null;
   methods: string[];
   replacementOrderId: string | null;
+  canRefund?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -102,7 +104,7 @@ export function ReturnActions({
         </section>
       )}
 
-      {type === "RETURN" && (status === "APPROVED" || status === "RECEIVED") && !refunded && (
+      {canRefund && type === "RETURN" && (status === "APPROVED" || status === "RECEIVED") && !refunded && (
         <section className="rounded-lg border bg-card p-4 text-sm">
           <h3 className="flex items-center gap-2 font-semibold">
             <Undo2 className="size-4" /> Refund

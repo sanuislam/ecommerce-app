@@ -3,6 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ const schema = z.object({
 });
 
 export async function PUT(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await adminSession();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   await prisma.orderSettings.upsert({
@@ -24,5 +26,6 @@ export async function PUT(req: Request) {
     update: parsed.data,
   });
   revalidatePath("/checkout");
+  await audit(session, { action: "settings.order_rules", summary: "Order rules saved", data: parsed.data });
   return NextResponse.json({ ok: true });
 }

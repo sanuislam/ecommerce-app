@@ -8,6 +8,8 @@ import { allowedTransitions, STATUS_LABEL } from "@/lib/orders";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
+import { auth } from "@/auth";
+import { can } from "@/lib/permissions";
 import { BkashRefundButton } from "@/components/admin/bkash-refund-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 import type { OrderStatus } from "@/generated/prisma";
@@ -47,6 +49,8 @@ function statusVariant(s: OrderStatus) {
 }
 
 export default async function AdminOrderDetailPage({ params }: Props) {
+  const viewer = (await auth())?.user;
+  const canRefund = can(viewer?.role, viewer?.staffRole, "refunds");
   const { id } = await params;
   const order = await prisma.order.findUnique({
     where: { id },
@@ -375,6 +379,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               </div>
             )}
             {order.paymentMethod === "BKASH" &&
+              canRefund &&
               refundHidden &&
               order.bkashPaymentId &&
               order.paymentTransactionId && (
@@ -386,6 +391,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
                 </div>
               )}
             {order.paymentMethod === "UPAY" &&
+              canRefund &&
               refundHidden &&
               order.upayTxnId && (
                 <div className="mt-3 flex justify-end">

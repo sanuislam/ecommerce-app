@@ -35,7 +35,7 @@ and Stripe (test mode).
 - My account: profile, address book, change password; wishlist page
 - Phone bottom tab bar, safe-area aware layout, 40px+ touch targets on touch screens
 
-**Admin dashboard** (`/admin`, requires `ADMIN` role, works on phones)
+**Admin dashboard** (`/admin`, for the owner (`ADMIN`) and staff (`STAFF`), works on phones)
 
 - Products CRUD with size/colour option editor (stock per option)
 - Orders: status filter + search, allowed-transition status changes (cancel restocks automatically),
@@ -63,6 +63,20 @@ and Stripe (test mode).
   collections at `/products?tag=<tag>`
 - Coupons: percent / fixed, minimum spend, max discount, usage limits, validity window
 - Categories, users (role switcher), legal pages, payments (bKash, Upay), SEO & PWA, site settings incl. delivery charges
+- Staff (Admin → Staff, owner only): add people by e-mail with a role — Manager, Order staff, Inventory staff,
+  Content staff (`src/lib/permissions.ts`); new e-mails get a one-time link (7 days) to set a password. The proxy
+  checks every `/admin`, `/print` and `/api/admin` path against the role, route handlers check again
+  (`adminSession("<permission>")`), and the menu shows only allowed pages. Settings, payments, couriers, SMS setup,
+  staff and the audit log stay with owners
+- Audit log (Admin → Audit log, owner only): every admin change — orders, refunds, returns, products, stock,
+  coupons, settings, roles, staff, security — with who, when, IP and details (`AuditLog`, append-only; secret-looking
+  fields are hidden). Filter by area, person, text or one order / product's history
+- Two-factor sign-in (Admin → My security): authenticator app (TOTP), secret encrypted with `AUTH_SECRET`,
+  8 one-time recovery codes (hashed). The owner can require it for everyone (Admin → Staff); until someone turns it
+  on they only reach My security. The owner can reset a staff member's two-factor
+- Passwords: `/forgot-password` e-mails a one-time link (60 min, only its SHA-256 stored) through Resend, or sends it
+  by SMS to the account's phone when e-mail isn't set up; the owner can make a 24-hour link for anyone from Users /
+  Staff. Changing or resetting a password signs that account out everywhere within a minute
 
 **Safety**
 
@@ -73,7 +87,8 @@ and Stripe (test mode).
   Upay before cancelling an abandoned Upay order
 - Status changes are guarded so double callbacks / double clicks can't restock or refund twice
 - Rate limits on sign-in, sign-up, checkout, reviews and password changes (stored in Postgres)
-- Admin role is re-read from the database every minute, so demoted admins lose access quickly
+- Role, staff role and the two-factor rule are re-read from the database every minute, so removed staff lose access
+  quickly; a password change ends older sessions
 - Abandoned online-payment orders are cancelled after 60 minutes (cron + lazy cleanup)
 
 **SEO**
@@ -121,6 +136,10 @@ STRIPE_WEBHOOK_SECRET="whsec_replace_me"
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_replace_me"
 
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Optional — password reset and staff invite e-mails (https://resend.com)
+RESEND_API_KEY=""
+MAIL_FROM="Eid Bazar <no-reply@yourdomain.com>"
 ```
 
 > **Payment methods shown at checkout**

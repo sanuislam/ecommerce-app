@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
+import { audit } from "@/lib/audit";
 
 const shippingInt = (label: string) =>
   z
@@ -55,5 +56,6 @@ export async function PUT(req: Request) {
   });
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
+  await audit(session, { action: "settings.site", summary: "Store settings saved", data });
   return NextResponse.json(row);
 }

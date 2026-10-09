@@ -3,9 +3,11 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma, Role } from "@/generated/prisma";
+import { audit } from "@/lib/audit";
 
+// Owner / customer only: staff roles are managed on the Staff page.
 const schema = z.object({
-  role: z.nativeEnum(Role),
+  role: z.enum([Role.USER, Role.ADMIN]),
 });
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -53,12 +55,18 @@ export async function PATCH(req: Request, ctx: Ctx) {
         }
         return tx.user.update({
           where: { id },
-          data: { role: parsed.data.role },
-          select: { id: true, role: true },
+          data: { role: parsed.data.role, staffRole: null },
+          select: { id: true, role: true, email: true },
         });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+    await audit(session, {
+      action: "user.role",
+      targetType: "user",
+      targetId: id,
+      summary: `${updated.email}: ${updated.role === "ADMIN" ? "made an owner" : "now a customer"}`,
+    });
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof LastAdminError) {

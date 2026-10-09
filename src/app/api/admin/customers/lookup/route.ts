@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /** A customer by phone: their name, e-mail, last address and order history size. */
 export async function GET(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await adminSession("orders"))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const digits = (new URL(req.url).searchParams.get("phone") ?? "").replace(/\D/g, "");
   if (digits.length < 10) return NextResponse.json({ customer: null });
   const tail = digits.slice(-10);

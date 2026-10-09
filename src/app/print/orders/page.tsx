@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { Role } from "@/generated/prisma";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -34,7 +34,7 @@ const money = (n: number) => formatPrice(n);
 export default async function PrintOrdersPage({ searchParams }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/sign-in?callbackUrl=/admin/orders");
-  if (session.user.role !== Role.ADMIN) notFound();
+  if (!can(session.user.role, session.user.staffRole, "orders")) notFound();
 
   const sp = await searchParams;
   const type = sp.type === "slip" ? "slip" : "invoice";

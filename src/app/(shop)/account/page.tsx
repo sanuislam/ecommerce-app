@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Heart, LayoutDashboard, Package } from "lucide-react";
 import { auth } from "@/auth";
+import { isAdminUser } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { AddressBook, PasswordForm, ProfileForm } from "@/components/account/account-forms";
@@ -23,7 +24,7 @@ export default async function AccountPage() {
   const [user, addresses, recent, wishlistCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, firstName: true, lastName: true, phone: true, email: true, role: true },
+      select: { name: true, firstName: true, lastName: true, phone: true, email: true, role: true, staffRole: true },
     }),
     prisma.address.findMany({
       where: { userId: session.user.id, archived: false },
@@ -59,7 +60,7 @@ export default async function AccountPage() {
           <Heart className="size-5 text-rose-500" />
           <span className="text-sm font-medium">Wishlist ({wishlistCount})</span>
         </Link>
-        {user.role === "ADMIN" && (
+        {isAdminUser(user.role, user.staffRole) && (
           <Link href="/admin" className="flex items-center gap-3 rounded-lg border bg-card p-4 hover:shadow-sm">
             <LayoutDashboard className="size-5" />
             <span className="text-sm font-medium">Admin</span>

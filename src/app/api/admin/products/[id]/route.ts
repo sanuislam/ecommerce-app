@@ -1,11 +1,13 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role, type Prisma } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma";
 import { logStockDiff, stockSnapshot } from "@/lib/stock-log";
 import { slugify } from "@/lib/utils";
 import { firstIssue, syncVariants, variantsSchema } from "../_lib/variants";
+import { audit } from "@/lib/audit";
 
 const patchSchema = z.object({
   name: z.string().trim().min(1, "Name is required").optional(),
@@ -41,7 +43,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function requireAdmin() {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) return null;
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "products")) return null;
   return session.user;
 }
 
@@ -106,6 +108,19 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (!updated) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
+    const changed = parsed.data as Record<string, unknown>;
+    await audit({ user }, {
+      action: "product.update",
+      targetType: "product",
+      targetId: id,
+      summary: `"${updated.name}" edited`,
+      data: {
+        fields: Object.keys(changed).filter((k) => changed[k] !== undefined),
+        price: changed.price,
+        stock: changed.stock,
+        published: changed.published,
+      },
+    });
     return NextResponse.json(updated);
   } catch (err) {
     if ((err as { code?: string })?.code === "P2002") {
@@ -122,7 +137,8 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 
   const { id } = await ctx.params;
   try {
-    await prisma.product.delete({ where: { id } });
+    const gone = await prisma.product.delete({ where: { id } });
+    await audit({ user }, { action: "product.delete", targetType: "product", targetId: id, summary: `"${gone.name}" deleted` });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

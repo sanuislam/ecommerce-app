@@ -1,7 +1,7 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/generated/prisma";
 import {
   checkCoupon,
   couponFields,
@@ -10,18 +10,21 @@ import {
   rowToFields,
   type CouponFields,
 } from "../_lib/schema";
+import { audit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/** The session when it may manage coupons, else null. */
 async function isAdmin() {
   const session = await auth();
-  return session?.user?.role === Role.ADMIN;
+  return session?.user && can(session.user.role, session.user.staffRole, "coupons") ? session : null;
 }
 
 const patchSchema = couponFields.partial();
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  if (!(await isAdmin())) {
+  const session = await isAdmin();
+  if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await ctx.params;
@@ -49,6 +52,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   try {
     const coupon = await prisma.coupon.update({ where: { id }, data: patch });
+    await audit(session, { action: "coupon.update", targetType: "coupon", targetId: id, summary: `Coupon ${coupon.code} changed`, data: patch });
     return NextResponse.json(coupon);
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -63,13 +67,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  if (!(await isAdmin())) {
+  const session = await isAdmin();
+  if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await ctx.params;
+  const existing = await prisma.coupon.findUnique({ where: { id }, select: { code: true } });
   const res = await prisma.coupon.deleteMany({ where: { id } });
   if (res.count === 0) {
     return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
   }
+  await audit(session, { action: "coupon.delete", targetType: "coupon", targetId: id, summary: `Coupon ${existing?.code ?? id} deleted` });
   return NextResponse.json({ ok: true });
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { MapPin, Plus, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -93,10 +94,9 @@ export function PasswordForm() {
     setSaving(true);
     try {
       await send("/api/account/password", "POST", { currentPassword, newPassword });
-      toast.success("Password changed");
-      setCurrent("");
-      setNew("");
-      setConfirm("");
+      toast.success("Password changed. Sign in again with the new one.");
+      // Every session (this one too) ends after a password change.
+      await signOut({ callbackUrl: "/sign-in" });
     } catch (err) {
       toast.error((err as Error).message);
     } finally {

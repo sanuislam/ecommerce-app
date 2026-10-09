@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  *   ?courier=redx&type=areas&district=<name>[&post=<code>] | stores
  */
 export async function GET(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await adminSession("orders"))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const sp = new URL(req.url).searchParams;
   const courier = sp.get("courier");
   const type = sp.get("type");

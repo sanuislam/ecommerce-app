@@ -3,6 +3,7 @@ import { z } from "zod";
 import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { logStock } from "@/lib/stock-log";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const schema = z.object({
 
 /** Stock received, counted or written off — always logged with a reason. */
 export async function POST(req: Request) {
-  const session = await adminSession();
+  const session = await adminSession("inventory");
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
@@ -48,6 +49,13 @@ export async function POST(req: Request) {
       await tx.product.update({ where: { id: productId }, data: { stock: next } });
       await logStock(tx, [{ productId, change: next - p.stock, reason: "adjust", note, userId: session.user.id }]);
       return next;
+    });
+    const product = await prisma.product.findUnique({ where: { id: productId }, select: { name: true } });
+    await audit(session, {
+      action: "inventory.adjust",
+      targetType: "product",
+      targetId: productId,
+      summary: `"${product?.name ?? productId}"${variantId ? " (option)" : ""}: ${mode === "set" ? `set to ${amount}` : `${amount > 0 ? "+" : ""}${amount}`} → ${result}${note ? ` — ${note}` : ""}`,
     });
     return NextResponse.json({ ok: true, stock: result });
   } catch (err) {

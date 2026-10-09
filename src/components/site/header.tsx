@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { isAdminUser } from "@/lib/permissions";
 import {
   ShoppingBag,
   User,
@@ -122,7 +123,7 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
                     <MenuLink href="/account" icon={User} onClick={close}>My account</MenuLink>
                     <MenuLink href="/orders" icon={Package} onClick={close}>My orders</MenuLink>
                     <MenuLink href="/wishlist" icon={Heart} onClick={close}>Wishlist</MenuLink>
-                    {session.user.role === "ADMIN" && (
+                    {isAdminUser(session.user.role, session.user.staffRole) && (
                       <MenuLink href="/admin" icon={LayoutDashboard} onClick={close}>Admin</MenuLink>
                     )}
                     <button
@@ -235,7 +236,7 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
                     <Heart className="size-4" /> Wishlist
                   </Link>
                 </DropdownMenuItem>
-                {session.user.role === "ADMIN" && (
+                {isAdminUser(session.user.role, session.user.staffRole) && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin" className="gap-2">
                       <LayoutDashboard className="size-4" /> Admin

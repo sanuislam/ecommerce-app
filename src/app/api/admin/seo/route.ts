@@ -1,9 +1,10 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/generated/prisma";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ const seoSchema = z.object({
 
 export async function PUT(req: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "content")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const json = await req.json().catch(() => null);
@@ -44,5 +45,6 @@ export async function PUT(req: Request) {
     update: parsed.data,
   });
   revalidatePath("/", "layout");
+  await audit(session, { action: "settings.seo", summary: "SEO settings saved", data: parsed.data });
   return NextResponse.json({ ok: true });
 }

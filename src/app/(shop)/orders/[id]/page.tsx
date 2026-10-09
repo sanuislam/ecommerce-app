@@ -15,7 +15,8 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
-import { Role, type OrderStatus } from "@/generated/prisma";
+import type { OrderStatus } from "@/generated/prisma";
+import { can } from "@/lib/permissions";
 import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
 import { OrderStatusBadge } from "@/components/site/order-status-badge";
 import { CancelOrderButton } from "@/components/site/cancel-order-button";
@@ -81,7 +82,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   if (!order) notFound();
 
   const isOwner = order.userId === session.user.id;
-  const isAdmin = session.user.role === Role.ADMIN;
+  const isAdmin = can(session.user.role, session.user.staffRole, "orders");
   if (!isOwner && !isAdmin) notFound();
 
   // An Upay payment still open: ask Upay again, so a refresh shows the result.

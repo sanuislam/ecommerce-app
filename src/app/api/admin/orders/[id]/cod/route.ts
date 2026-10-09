@@ -4,6 +4,7 @@ import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { adminChangeStatus } from "@/lib/admin-order-actions";
 import { blockPhone } from "@/lib/blocklist";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ const schema = z.object({
 
 /** The result of calling a cash-on-delivery customer. */
 export async function POST(req: Request, ctx: Ctx) {
-  const session = await adminSession();
+  const session = await adminSession("orders");
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -38,6 +39,7 @@ export async function POST(req: Request, ctx: Ctx) {
       }),
       prisma.orderEvent.create({ data: { orderId: id, status: "PENDING", note: "Order confirmed" } }),
     ]);
+    await audit(session, { action: "order.cod", targetType: "order", targetId: id, summary: `#${id.slice(0, 8)} confirmed by phone${note ? `: ${note}` : ""}` });
     return NextResponse.json({ ok: true });
   }
 
@@ -46,6 +48,7 @@ export async function POST(req: Request, ctx: Ctx) {
       where: { id },
       data: { codCallAttempts: { increment: 1 }, codConfirmNote: note || "No answer" },
     });
+    await audit(session, { action: "order.cod", targetType: "order", targetId: id, summary: `#${id.slice(0, 8)} no answer (try ${updated.codCallAttempts})` });
     return NextResponse.json({ ok: true, attempts: updated.codCallAttempts });
   }
 
@@ -59,5 +62,11 @@ export async function POST(req: Request, ctx: Ctx) {
   if (block && order.address?.phone) {
     await blockPhone(order.address.phone, note || `Fake order #${id.slice(0, 8)}`, session.user.id).catch(() => null);
   }
+  await audit(session, {
+    action: "order.cod",
+    targetType: "order",
+    targetId: id,
+    summary: `#${id.slice(0, 8)} cancelled as fake${block ? ", phone blocked" : ""}${note ? `: ${note}` : ""}`,
+  });
   return NextResponse.json({ ok: true });
 }

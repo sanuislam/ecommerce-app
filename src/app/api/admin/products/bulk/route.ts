@@ -4,6 +4,7 @@ import { z } from "zod";
 import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/utils";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,8 @@ const schema = z.discriminatedUnion("action", [
 
 /** Changes many products at once. Prices round to whole taka. */
 export async function POST(req: Request) {
-  if (!(await adminSession())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await adminSession("products");
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   const b = parsed.data;
@@ -53,5 +55,14 @@ export async function POST(req: Request) {
           UPDATE "Product" SET "tags" = array_remove("tags", ${tag}) WHERE "id" = ANY(${b.ids}) AND ${tag} = ANY("tags")`;
   }
   revalidatePath("/", "layout");
+  const what =
+    b.action === "publish"
+      ? b.value ? "published" : "hidden"
+      : b.action === "category"
+        ? "category changed"
+        : b.action === "price"
+          ? `prices ${b.percent > 0 ? "+" : ""}${b.percent}%`
+          : `tag "${b.tag}" ${b.add ? "added" : "removed"}`;
+  await audit(session, { action: "product.bulk", summary: `${updated} product(s): ${what}`, data: { ids: b.ids } });
   return NextResponse.json({ ok: true, updated });
 }

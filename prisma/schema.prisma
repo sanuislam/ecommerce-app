@@ -13,6 +13,8 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  /// Shop staff: what they can do comes from `User.staffRole`.
+  STAFF
 }
 
 enum OrderStatus {
@@ -44,6 +46,14 @@ model User {
   image         String?
   passwordHash  String?
   role          Role      @default(USER)
+  /// For STAFF: manager | orders | inventory | content.
+  staffRole     String?
+  /// Two-factor sign-in (TOTP). The secret is encrypted; recovery codes are hashed.
+  twoFactorSecret    String?
+  twoFactorEnabledAt DateTime?
+  twoFactorRecovery  String[]  @default([])
+  /// Sessions issued before this are signed out.
+  passwordChangedAt  DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -613,4 +623,43 @@ model StockMovement {
 
   @@index([productId, createdAt])
   @@index([createdAt])
+}
+
+/// Who did what in the admin panel. Append-only.
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userLabel  String   @default("")
+  action     String
+  targetType String?
+  targetId   String?
+  summary    String   @default("")
+  data       Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([userId, createdAt])
+}
+
+/// A one-time password reset link. Only the SHA-256 of the token is stored.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Admin-panel security rules. One row.
+model AdminSettings {
+  id             String   @id @default("default")
+  /// Owner and staff must turn on two-factor sign-in before using the admin panel.
+  require2fa     Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
 }

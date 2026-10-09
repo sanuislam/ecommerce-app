@@ -1,11 +1,11 @@
+import { can } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { Role } from "@/generated/prisma";
 import { cloudinaryConfigured, signCloudinaryUpload } from "@/lib/cloudinary";
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== Role.ADMIN) {
+  if (!session?.user || !can(session.user.role, session.user.staffRole, "products")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (!cloudinaryConfigured()) {

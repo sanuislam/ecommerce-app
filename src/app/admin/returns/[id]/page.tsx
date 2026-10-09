@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { REFUND_METHODS, RETURN_STATUS_LABEL, returnLabel } from "@/lib/returns";
+import { auth } from "@/auth";
+import { can } from "@/lib/permissions";
 import { ReturnActions } from "@/components/admin/return-actions";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,8 @@ const fmt = (d: Date) =>
   d.toLocaleString("en-GB", { timeZone: "Asia/Dhaka", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 
 export default async function ReturnDetailPage({ params }: Props) {
+  const viewer = (await auth())?.user;
+  const canRefund = can(viewer?.role, viewer?.staffRole, "refunds");
   const { id } = await params;
   const r = await prisma.returnRequest.findUnique({
     where: { id },
@@ -97,6 +101,7 @@ export default async function ReturnDetailPage({ params }: Props) {
         </div>
         <aside className="space-y-4">
           <ReturnActions
+            canRefund={canRefund}
             id={r.id}
             type={r.type}
             status={r.status}

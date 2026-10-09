@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 type Props = {
-  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string; email?: string }>;
 };
 
 function safeCallbackUrl(url: string | undefined): string {
@@ -25,7 +25,7 @@ function safeCallbackUrl(url: string | undefined): string {
 }
 
 export default async function SignInPage({ searchParams }: Props) {
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl, email } = await searchParams;
   const safeUrl = safeCallbackUrl(callbackUrl);
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
@@ -40,13 +40,11 @@ export default async function SignInPage({ searchParams }: Props) {
         <p className="mt-1 text-sm text-muted-foreground">
           Sign in to continue shopping.
         </p>
-        <SignInForm callbackUrl={safeUrl} />
+        <SignInForm callbackUrl={safeUrl} defaultEmail={typeof email === "string" ? email.slice(0, 200) : ""} />
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          Forgot your password?{" "}
-          <Link href="/contact" className="underline hover:text-foreground">
-            Contact us
-          </Link>{" "}
-          and we&apos;ll help you reset it.
+          <Link href="/forgot-password" className="underline hover:text-foreground">
+            Forgot your password?
+          </Link>
         </p>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
