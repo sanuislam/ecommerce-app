@@ -17,6 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { PhotoPicker } from "@/components/photo-picker";
 
 export type ReturnableItem = {
   orderItemId: string;
@@ -36,12 +37,15 @@ export function ReturnRequestButton({
   reasons,
   admin = false,
   until,
+  photos = false,
 }: {
   orderId: string;
   items: ReturnableItem[];
   reasons: readonly string[];
   admin?: boolean;
   until?: string | null;
+  /** Let the customer add photos of the items (needs Cloudinary). */
+  photos?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -50,6 +54,7 @@ export function ReturnRequestButton({
   const [swap, setSwap] = useState<Record<string, string>>({});
   const [reason, setReason] = useState<string>(reasons[0]);
   const [note, setNote] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   const chosen = items.filter((i) => (qty[i.orderItemId] ?? 0) > 0);
@@ -66,6 +71,7 @@ export function ReturnRequestButton({
           type,
           reason,
           note,
+          ...(admin ? {} : { images }),
           items: chosen.map((i) => ({
             orderItemId: i.orderItemId,
             quantity: qty[i.orderItemId],
@@ -79,6 +85,7 @@ export function ReturnRequestButton({
       setOpen(false);
       setQty({});
       setNote("");
+      setImages([]);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not send the request");
@@ -204,6 +211,14 @@ export function ReturnRequestButton({
             </span>
             <Textarea rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
           </Label>
+          {photos && !admin ? (
+            <div className="grid gap-1.5 text-sm">
+              <span className="font-medium">
+                Photos <span className="font-normal text-muted-foreground">(optional — helps us decide faster)</span>
+              </span>
+              <PhotoPicker kind="return" value={images} onChange={setImages} />
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>

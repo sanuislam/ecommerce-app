@@ -91,3 +91,16 @@ export async function GET(req: Request, ctx: Ctx) {
     })),
   });
 }
+
+/** The customer removes their own review of this product. */
+export async function DELETE(_req: Request, ctx: Ctx) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Please sign in" }, { status: 401 });
+  const { slug } = await ctx.params;
+  const product = await prisma.product.findUnique({ where: { slug }, select: { id: true } });
+  if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
+  const r = await prisma.review.deleteMany({ where: { productId: product.id, userId: session.user.id } });
+  if (!r.count) return NextResponse.json({ error: "Review not found" }, { status: 404 });
+  revalidatePath(`/products/${slug}`);
+  return NextResponse.json({ ok: true });
+}

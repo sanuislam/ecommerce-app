@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle, Truck, XCircle } from "lucide-react";
 import { COURIER_LABEL, trackingUrl, type CourierId } from "@/lib/couriers/common";
-import { PROGRESS_STEPS, progressStep, type CustomerOrderState } from "@/lib/order-status";
+import { courierStatusText, PROGRESS_STEPS, progressStep, type CustomerOrderState } from "@/lib/order-status";
 import type { OrderStatus } from "@/generated/prisma";
 
 type Props = {
@@ -8,6 +8,8 @@ type Props = {
     events: { status: OrderStatus }[];
     courier: string | null;
     trackingNumber: string | null;
+    courierStatus?: string | null;
+    courierUpdatedAt?: Date | null;
     phone?: string | null;
   };
 };
@@ -17,6 +19,8 @@ export function OrderProgress({ order }: Props) {
   const cancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
   const step = progressStep(order);
   const trackUrl = trackingUrl(order.courier, order.trackingNumber, order.phone);
+  // "booking" is our own in-flight marker, not the courier's word.
+  const courierNow = order.courierStatus === "booking" ? null : courierStatusText(order.courierStatus);
   return (
     <>
       {cancelled ? (
@@ -62,6 +66,23 @@ export function OrderProgress({ order }: Props) {
             <a href={trackUrl} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-2">
               Track parcel
             </a>
+          )}
+          {courierNow && (
+            <span className="basis-full text-xs text-muted-foreground">
+              Courier says: <span className="font-medium text-foreground">{courierNow}</span>
+              {order.courierUpdatedAt && (
+                <>
+                  {" "}·{" "}
+                  {order.courierUpdatedAt.toLocaleString("en-GB", {
+                    timeZone: "Asia/Dhaka",
+                    day: "numeric",
+                    month: "short",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </>
+              )}
+            </span>
           )}
         </div>
       )}

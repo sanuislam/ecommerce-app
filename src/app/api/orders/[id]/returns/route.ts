@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { isCustomerPhoto } from "@/lib/cloudinary";
 import { cancelReturn, createReturn, isReturnError, RETURN_REASONS } from "@/lib/returns";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,12 @@ const returnBody = z.object({
   type: z.enum(["RETURN", "EXCHANGE"]),
   reason: z.enum(RETURN_REASONS),
   note: z.string().trim().max(500).optional().default(""),
+  images: z
+    .array(z.string().max(400))
+    .max(4)
+    .optional()
+    .default([])
+    .refine((a) => a.every((u) => isCustomerPhoto(u, "eidbazar/returns")), "Photos must be uploaded here"),
   items: z
     .array(
       z.object({

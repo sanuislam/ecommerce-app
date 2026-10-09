@@ -1,6 +1,6 @@
 // Eid Bazar service worker — minimal offline shell + runtime cache.
 // Cache versioning ensures old caches are evicted on each deploy.
-const CACHE_VERSION = "eidbazar-v2";
+const CACHE_VERSION = "eidbazar-v3";
 const PRECACHE = `${CACHE_VERSION}-precache`;
 const RUNTIME = `${CACHE_VERSION}-runtime`;
 
@@ -49,7 +49,7 @@ self.addEventListener("fetch", (event) => {
 
   // Personal pages (account, orders, checkout…) are never stored: on a
   // shared phone the next person must not see them offline.
-  const personal = /^\/(account|orders|checkout|cart|wishlist|track|print|reset-password|forgot-password)(\/|$)/.test(
+  const personal = /^\/(account|orders|invoice|checkout|cart|wishlist|track|print|reset-password|forgot-password)(\/|$)/.test(
     url.pathname,
   );
 

@@ -32,7 +32,20 @@ and Stripe (test mode).
   required 01XXXXXXXXX phone, **coupon codes**, order note; bKash and Upay gateways (no manual "Send Money"),
   cash on delivery, optional card (Stripe). Prices are VAT-inclusive.
 - Order tracking page with progress steps, courier + tracking number, history timeline, customer self-cancel while pending
-- My account: profile, address book, change password; wishlist page
+- My account (menu: sidebar on desktop, tabs on phones): overview with counts and a to-do list (unpaid bKash
+  orders, items to review, no address, no e-mail); Orders with status tabs, search (order no. or product), 20 per
+  page and item pictures; Profile (name, phone, SMS offers, add / change e-mail with a 24-hour signed link that
+  must be opened signed in — the address changes only then); Addresses (add, edit — an address an order used is
+  archived and replaced, never changed under the order — default, remove); Reviews (waiting for a review + your
+  reviews, edit / delete); Security (change password, or set a first one once the account has a real e-mail;
+  sign out everywhere; delete account)
+- Order page for the customer: printable invoice (`/invoice/<id>`, own orders only), "Order again" (today's
+  prices, what's in stock, into the cart), "Pay with bKash now" for a bKash order left half-way (under 50
+  minutes; the old bKash payment is asked first, and only if it didn't complete a new one is swapped in), the
+  courier's latest status, and photos with a return request (Cloudinary, `eidbazar/returns`, shown to staff)
+- Delete account: refused while an order or return is open; wipes name, phone, e-mail (→
+  `deleted-<id>@deleted.invalid`), password, two-factor, addresses (archived), wishlist, carts, Google links and
+  stock alerts, sets `User.deletedAt` (sign-in refused, live sessions end within a minute); orders are kept
 - Phone bottom tab bar, safe-area aware layout, 40px+ touch targets on touch screens
 
 **Admin dashboard** (`/admin`, for the owner (`ADMIN`) and staff (`STAFF`), works on phones)

@@ -101,7 +101,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (err instanceof StaffMustUsePassword) throw new StaffUsePassword();
           throw err;
         }
-        if (!user) throw new OtpInvalid();
+        if (!user || user.deletedAt) throw new OtpInvalid();
         return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role, staffRole: null, needs2fa: false };
       },
     }),
@@ -131,7 +131,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({
           where: { email },
         });
-        if (!user || !user.passwordHash) return null;
+        if (!user || !user.passwordHash || user.deletedAt) return null;
 
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
@@ -189,9 +189,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const fresh = await prisma.user.findUnique({
             where: { id: token.id },
-            select: { role: true, name: true, staffRole: true, passwordChangedAt: true, twoFactorEnabledAt: true },
+            select: { role: true, name: true, email: true, staffRole: true, passwordChangedAt: true, twoFactorEnabledAt: true, deletedAt: true },
           });
-          if (!fresh) return null; // account deleted → sign out
+          if (!fresh || fresh.deletedAt) return null; // account deleted → sign out
           // Password changed (or reset) after this session started → sign out.
           if (fresh.passwordChangedAt && fresh.passwordChangedAt.getTime() > (token.signedInAt ?? 0) + 1000) {
             return null;
@@ -200,6 +200,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.staffRole = fresh.staffRole;
           token.needs2fa = await needsTwoFactor(fresh.role, fresh.twoFactorEnabledAt);
           token.name = fresh.name;
+          token.email = fresh.email;
           token.roleCheckedAt = Date.now();
         } catch {
           // Keep the existing token if the database is briefly unreachable.

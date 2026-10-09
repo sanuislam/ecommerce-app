@@ -15,7 +15,7 @@ export async function userForPhone(rawPhone: string, name?: string | null) {
   if (!phone) return null;
   const tail = phone.slice(-10);
   const matches = await prisma.user.findMany({
-    where: { phone: { endsWith: tail } },
+    where: { phone: { endsWith: tail }, deletedAt: null },
     orderBy: { createdAt: "asc" },
     take: 10,
   });

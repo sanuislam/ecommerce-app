@@ -85,6 +85,15 @@ export default async function ReturnDetailPage({ params }: Props) {
             <h2 className="font-semibold">Customer&apos;s reason</h2>
             <p className="mt-2 font-medium">{r.reason}</p>
             {r.customerNote && <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{r.customerNote}</p>}
+            {r.images.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {r.images.map((src) => (
+                  <a key={src} href={src} target="_blank" rel="noreferrer" className="relative size-20 overflow-hidden rounded-md border bg-muted">
+                    <Image src={src} alt="Customer photo" fill sizes="80px" className="object-cover" />
+                  </a>
+                ))}
+              </div>
+            )}
             {r.adminNote && (
               <p className="mt-3 rounded-md bg-muted/50 p-2 text-muted-foreground">
                 <span className="font-medium text-foreground">Shop note:</span> {r.adminNote}

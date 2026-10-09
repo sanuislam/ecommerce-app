@@ -10,8 +10,14 @@ import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronLeft,
+  FileText,
   PackageCheck,
+  RotateCcw,
 } from "lucide-react";
+import { PayAgainButton } from "@/components/site/pay-again-button";
+import { BKASH_RETRY_MINUTES } from "@/lib/order-status";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { can } from "@/lib/permissions";
 import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
 import { TrackPurchase } from "@/components/site/track-purchase";
@@ -44,6 +50,8 @@ type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ success?: string; bkash?: string; upay?: string; payment?: string }>;
 };
+
+const ageMinutes = (d: Date) => (Date.now() - d.getTime()) / 60_000;
 
 const dhakaDateTime = (d: Date) =>
   d.toLocaleString("en-GB", {
@@ -84,6 +92,13 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   }
 
   const site = await getSiteSettings();
+  const canPayAgain =
+    isOwner &&
+    order.status === "PENDING" &&
+    order.paymentMethod === "BKASH" &&
+    !!order.bkashPaymentId &&
+    !order.paymentTransactionId &&
+    ageMinutes(order.createdAt) < BKASH_RETRY_MINUTES;
   const canCancel =
     isOwner &&
     order.status === "PENDING" &&
@@ -163,6 +178,11 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         </div>
       )}
 
+      {isOwner && (
+        <Link href="/orders" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="size-4" /> My orders
+        </Link>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -172,6 +192,20 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         </div>
         <OrderStatusBadge order={order} />
       </div>
+      {isOwner && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href={`/invoice/${order.id}`} target="_blank" rel="noopener">
+              <FileText className="size-4" /> Invoice
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/orders/${order.id}/reorder`}>
+              <RotateCcw className="size-4" /> Order again
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* ---- Progress tracker ---- */}
       <section className="mt-6 rounded-lg border bg-card p-4 sm:p-5" aria-label="Order progress">
@@ -312,6 +346,15 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               </div>
             </div>
           )}
+          {canPayAgain && (
+            <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 p-4 text-sm">
+              <p className="mb-3">
+                We haven&apos;t received the bKash payment yet. Finish it now, or the order is cancelled
+                about an hour after it was placed.
+              </p>
+              <PayAgainButton orderId={order.id} />
+            </div>
+          )}
           {canCancel && <CancelOrderButton orderId={order.id} />}
           {(returns.length > 0 || returnForm) && (
             <div className="rounded-lg border bg-card p-4 text-sm">
@@ -329,6 +372,15 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
                       <div className="mt-0.5 text-xs text-muted-foreground">
                         {r.items.map((i) => `${i.orderItem.name} ×${i.quantity}`).join(", ")}
                       </div>
+                      {r.images.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {r.images.map((src) => (
+                            <a key={src} href={src} target="_blank" rel="noreferrer" className="relative size-12 overflow-hidden rounded border bg-muted">
+                              <Image src={src} alt="Your photo" fill sizes="48px" className="object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                       {r.refundedAt && r.refundAmount && (
                         <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
                           Refunded {formatPrice(Number(r.refundAmount))} via {r.refundMethod}
@@ -353,6 +405,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
                     items={returnForm}
                     reasons={RETURN_REASONS}
                     until={elig.until ? dhakaDateTime(elig.until) : null}
+                    photos={cloudinaryConfigured()}
                   />
                 </div>
               )}

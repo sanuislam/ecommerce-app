@@ -35,3 +35,21 @@ export function progressStep(o: CustomerOrderState & { events: { status: OrderSt
 }
 
 export const PROGRESS_STEPS = ["Placed", "Confirmed", "On the way", "Delivered"] as const;
+
+/** A bKash order left half-way can be paid again for this long (it expires at 60). */
+export const BKASH_RETRY_MINUTES = 50;
+
+/** Tabs on "My orders": which statuses each one shows. */
+export const ORDER_TABS = [
+  { k: "", label: "All", statuses: null },
+  { k: "active", label: "In progress", statuses: ["PENDING", "PAID", "SHIPPED"] },
+  { k: "delivered", label: "Delivered", statuses: ["DELIVERED"] },
+  { k: "cancelled", label: "Cancelled", statuses: ["CANCELLED", "REFUNDED"] },
+] as const satisfies readonly { k: string; label: string; statuses: readonly OrderStatus[] | null }[];
+
+/** Courier status words, made readable ("in_transit" → "In transit"). */
+export function courierStatusText(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const t = s.replace(/[_-]+/g, " ").trim();
+  return t ? t[0].toUpperCase() + t.slice(1).toLowerCase() : null;
+}

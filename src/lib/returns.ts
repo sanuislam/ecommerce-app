@@ -86,6 +86,8 @@ export type CreateReturnInput = {
   type: ReturnType;
   reason: string;
   note?: string;
+  /** Customer photos, already checked to be our own Cloudinary uploads. */
+  images?: string[];
   items: { orderItemId: string; quantity: number; exchangeVariantId?: string | null }[];
 };
 
@@ -126,6 +128,7 @@ export async function createReturn(orderId: string, input: CreateReturnInput, by
       type: input.type,
       reason: input.reason.slice(0, 80),
       customerNote: input.note?.slice(0, 500) || null,
+      images: (input.images ?? []).slice(0, 4),
       createdById: by.userId,
       ...(by.admin ? { status: "APPROVED" as const } : {}),
       items: { createMany: { data: rows } },
