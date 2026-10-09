@@ -5,6 +5,7 @@ import { adminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { bdMobile, getSmsSettings, sendSms } from "@/lib/sms";
 import { audit } from "@/lib/audit";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
       action: "order.sms",
       targetType: "order",
       targetId: order.id,
-      summary: `#${order.id.slice(0, 8)} SMS to ${phone}: ${parsed.data.message.slice(0, 80)}`,
+      summary: `${orderNo(order)} SMS to ${phone}: ${parsed.data.message.slice(0, 80)}`,
     });
   }
   return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: r.error }, { status: 502 });

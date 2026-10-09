@@ -75,6 +75,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
 
   const rows: OrderRow[] = orders.map((o) => ({
     id: o.id,
+    number: o.number,
     customer: o.address?.fullName || o.user.name || o.user.email,
     phone: o.address?.phone || o.user.phone || "",
     place: [o.address?.city, o.address?.state].filter(Boolean).join(", "),

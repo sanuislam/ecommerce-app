@@ -90,6 +90,14 @@ and Stripe (test mode).
   (`src/lib/track.ts`); the Facebook Conversions API sends Purchase from the server (hashed customer data, same
   event id as the browser, once per order via `Order.trackedAt`); product feed for Facebook / Google catalogues at
   `/feeds/products.xml` (one item per size / colour)
+- Honest storefront: payment logos, "ways to pay", trust badges, return window, free-delivery line and the
+  flash-sale countdown are built from real settings (`src/lib/store-facts.ts`); reviews on the home page are real
+  ones from delivered orders; newsletter gives the coupon set in Settings (shown + e-mailed); Tawk.to chat ID,
+  support hours and flash-sale end are in Admin → Settings
+- Order numbers customers can read and say on the phone (`EB-10001`, `Order.number`), searchable in Admin → Orders;
+  customer-facing statuses ("Order placed", "Awaiting payment", "Confirmed", "On the way"…)
+- `/track`: order status by order number + phone, no sign-in (SMS `{link}` points here); `/contact` form →
+  Admin → Messages (e-mailed to support when e-mail is set up)
 - Passwords: `/forgot-password` e-mails a one-time link (60 min, only its SHA-256 stored) through Resend, or sends it
   by SMS to the account's phone when e-mail isn't set up; the owner can make a 24-hour link for anyone from Users /
   Staff. Changing or resetting a password signs that account out everywhere within a minute

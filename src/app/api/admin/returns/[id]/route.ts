@@ -12,6 +12,7 @@ import {
   rejectReturn,
 } from "@/lib/returns";
 import { audit } from "@/lib/audit";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export async function POST(req: Request, ctx: Ctx) {
           action: "return.update",
           targetType: "return",
           targetId: id,
-          summary: `Replacement order #${o.id.slice(0, 8)} made (delivery ৳${b.deliveryCharge})`,
+          summary: `Replacement order ${orderNo(o)} made (delivery ৳${b.deliveryCharge})`,
         });
         return NextResponse.json({ ok: true, orderId: o.id });
       }

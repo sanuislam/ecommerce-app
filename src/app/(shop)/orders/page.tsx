@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "@/components/site/order-status-badge";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -46,14 +47,14 @@ export default async function OrdersPage() {
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4 transition hover:shadow-sm"
             >
               <div className="min-w-0">
-                <div className="font-medium">Order #{o.id.slice(0, 8)}</div>
+                <div className="font-medium">Order {orderNo(o)}</div>
                 <div className="text-sm text-muted-foreground">
                   {formatDate(o.createdAt)} · {o.items.reduce((n, i) => n + i.quantity, 0)}{" "}
                   {o.items.length === 1 && o.items[0].quantity === 1 ? "item" : "items"}
                 </div>
               </div>
               <div className="flex items-center gap-3 sm:gap-4">
-                <OrderStatusBadge status={o.status} />
+                <OrderStatusBadge order={o} />
                 <div className="font-semibold">{formatPrice(Number(o.total))}</div>
               </div>
             </Link>

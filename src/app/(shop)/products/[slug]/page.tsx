@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { absoluteUrl, formatDate, formatPrice } from "@/lib/utils";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { getSiteSettings } from "@/lib/site-settings";
+import { getStoreFacts } from "@/lib/store-facts";
 import { getShippingConfig } from "@/lib/checkout";
 import { unitPrice } from "@/lib/pricing";
 import { offerValidUntil } from "@/lib/seo-helpers";
@@ -83,6 +84,7 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product || !product.published) notFound();
 
   const session = await auth();
+  const facts = await getStoreFacts();
   const [seo, site, shipping, ratingAgg, related, delivered] = await Promise.all([
     getSeoSettings(),
     getSiteSettings(),
@@ -328,14 +330,14 @@ export default async function ProductDetailPage({ params }: Props) {
             </div>
             <div className="flex items-center gap-2 rounded-md border bg-card p-3">
               <ShieldCheck className="size-4 shrink-0" />
-              bKash, Nagad, Rocket &amp; Upay
+              {facts.wallets.length ? `Pay with ${facts.wallets.map((w) => w.name).join(" or ")}` : "Secure checkout"}
             </div>
             <Link
               href="/refund-policy"
               className="flex items-center gap-2 rounded-md border bg-card p-3 hover:text-foreground"
             >
               <RotateCcw className="size-4 shrink-0" />
-              Easy returns
+              {facts.returnsEnabled ? `${facts.returnDays}-day returns` : "Refund policy"}
             </Link>
           </div>
 

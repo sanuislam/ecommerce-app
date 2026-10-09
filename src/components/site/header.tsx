@@ -51,7 +51,7 @@ export type HeaderCategory = { name: string; slug: string };
 const noop = () => () => {};
 
 export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
   const count = useCart((s) => s.count());
   const mounted = useSyncExternalStore(noop, () => true, () => false);
@@ -252,6 +252,9 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          ) : status === "loading" ? (
+            // Don't flash "Sign in" at a signed-in shopper while the session loads.
+            <span className="hidden size-9 animate-pulse rounded-full bg-muted md:inline-block" aria-hidden />
           ) : (
             <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
               <Link href="/sign-in">Sign in</Link>

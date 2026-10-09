@@ -8,6 +8,7 @@ import { REFUND_METHODS, RETURN_STATUS_LABEL, returnLabel } from "@/lib/returns"
 import { auth } from "@/auth";
 import { can } from "@/lib/permissions";
 import { ReturnActions } from "@/components/admin/return-actions";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function ReturnDetailPage({ params }: Props) {
           <p className="text-sm text-muted-foreground">
             {fmt(r.createdAt)} · order{" "}
             <Link href={`/admin/orders/${o.id}`} className="underline">
-              #{o.id.slice(0, 8)}
+              {orderNo(o)}
             </Link>
           </p>
         </div>

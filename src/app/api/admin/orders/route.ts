@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminSession } from "@/lib/admin-auth";
 import { createAdminOrder, createOrderSchema, OrderWriteError } from "@/lib/admin-order-write";
 import { audit } from "@/lib/audit";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
       action: "order.create",
       targetType: "order",
       targetId: order.id,
-      summary: `#${order.id.slice(0, 8)} typed in (${parsed.data.source}), ৳${Number(order.total)}`,
+      summary: `${orderNo(order)} typed in (${parsed.data.source}), ৳${Number(order.total)}`,
     });
     return NextResponse.json({ id: order.id }, { status: 201 });
   } catch (err) {

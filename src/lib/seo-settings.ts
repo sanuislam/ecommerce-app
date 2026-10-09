@@ -23,7 +23,7 @@ export const DEFAULT_SEO: SeoSettingsValues = {
   titleTemplate: "%s | Eid Bazar",
   defaultTitle: "Eid Bazar — Online Eid Shopping in Bangladesh | Panjabi, Saree, Attar & Gifts",
   defaultDescription:
-    "Shop Eid collections online in Bangladesh: panjabi, saree, three-piece, abaya, kids wear, attar, watches and gifts. Cash on delivery across all 64 districts, bKash & Nagad accepted.",
+    "Shop Eid collections online in Bangladesh: panjabi, saree, three-piece, abaya, kids wear, attar, watches and gifts. Cash on delivery across all 64 districts, bKash accepted.",
   defaultKeywords:
     "eid shopping bangladesh, online shopping bd, panjabi, saree, three piece, salwar kameez, abaya, borka, hijab, kids eid dress, attar, perfume bd, prayer mat, eid gift, cash on delivery bangladesh, bkash payment",
   defaultOgImage: "",

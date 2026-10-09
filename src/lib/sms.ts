@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma";
 import { siteUrl } from "@/lib/site-url";
 import { getSeoSettings } from "@/lib/seo-settings";
+import { orderNo } from "@/lib/order-number";
 
 /**
  * Customer SMS through Alpha SMS (sms.net.bd).
@@ -25,11 +26,11 @@ export const SMS_EVENT_LABEL: Record<SmsEvent, string> = {
 
 // English keeps one SMS to 160 characters (Bangla fits only 70 per part).
 export const DEFAULT_TEMPLATES: Record<SmsEvent, string> = {
-  placed: "Hi {name}, we received your order #{order} ({total}). We will call you to confirm. - {shop}",
-  confirmed: "Hi {name}, payment of {total} for order #{order} is received. Thank you! - {shop}",
-  shipped: "Your order #{order} is on the way with {courier}. Tracking: {tracking} - {shop}",
-  delivered: "Your order #{order} is delivered. Thanks for shopping with {shop}!",
-  cancelled: "Your order #{order} has been cancelled. Questions? Call us. - {shop}",
+  placed: "Hi {name}, we received your order {order} ({total}). We will call you to confirm. - {shop}",
+  confirmed: "Hi {name}, payment of {total} for order {order} is received. Thank you! - {shop}",
+  shipped: "Your order {order} is on the way with {courier}. Tracking: {tracking} - {shop}",
+  delivered: "Your order {order} is delivered. Thanks for shopping with {shop}!",
+  cancelled: "Your order {order} has been cancelled. Questions? Call us. - {shop}",
 };
 
 export const TEMPLATE_VARS = ["{name}", "{order}", "{total}", "{courier}", "{tracking}", "{link}", "{shop}"];
@@ -136,14 +137,16 @@ export async function orderSmsMessage(orderId: string, event: SmsEvent, tpl?: st
   const settings = tpl ? null : await getSmsSettings();
   const shop = (await getSeoSettings().catch(() => null))?.siteName || "Eid Bazar";
   const name = (order.address?.fullName || order.user.name || "Customer").split(" ")[0];
-  const message = renderTemplate(tpl ?? settings!.templates[event], {
+  // Old templates wrote "#{order}"; the number already reads "EB-10001".
+  const message = renderTemplate((tpl ?? settings!.templates[event]).replace(/#\{order\}/g, "{order}"), {
     name,
-    order: order.id.slice(0, 8),
+    order: orderNo(order),
     // "Tk", not "৳": one non-GSM character makes the whole SMS Unicode (70 chars, more parts).
     total: `Tk ${Number(order.total).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`,
     courier: COURIER_NAME[order.courier ?? ""] ?? order.courier ?? "our courier",
     tracking: order.trackingNumber ?? "-",
-    link: `${siteUrl()}/orders/${order.id}`,
+    // Works without signing in (order number + phone).
+    link: `${siteUrl()}/track?order=${orderNo(order)}`,
     shop,
   });
   return { phone, message };

@@ -16,6 +16,14 @@ export type SiteSettingsView = {
   shippingOutsideDhaka: number;
   /** Subtotal (৳) at or above which shipping is free; 0 = never free. */
   freeShippingThreshold: number;
+  /** "Every day 10 am – 10 pm"; empty = not shown. */
+  supportHours: string;
+  /** Tawk.to "propertyId/widgetId"; empty = no chat widget. */
+  tawkId: string;
+  /** Coupon code new newsletter subscribers get; empty = no offer. */
+  newsletterCoupon: string;
+  /** ISO time the flash sale ends; null = no countdown. */
+  flashSaleEndsAt: string | null;
 };
 
 export const SETTINGS_DEFAULTS: SiteSettingsView = {
@@ -28,12 +36,28 @@ export const SETTINGS_DEFAULTS: SiteSettingsView = {
   shippingInsideDhaka: DEFAULT_SHIPPING.insideDhaka,
   shippingOutsideDhaka: DEFAULT_SHIPPING.outsideDhaka,
   freeShippingThreshold: DEFAULT_SHIPPING.freeThreshold,
+  supportHours: "",
+  tawkId: "",
+  newsletterCoupon: "",
+  flashSaleEndsAt: null,
 };
+
+type Row = Partial<Omit<SiteSettingsView, "flashSaleEndsAt">> & { flashSaleEndsAt?: Date | string | null };
+
+function storefrontFrom(row: Row | null) {
+  const end = row?.flashSaleEndsAt;
+  return {
+    supportHours: row?.supportHours?.trim() ?? "",
+    tawkId: row?.tawkId?.trim() ?? "",
+    newsletterCoupon: row?.newsletterCoupon?.trim() ?? "",
+    flashSaleEndsAt: end ? new Date(end).toISOString() : null,
+  };
+}
 
 const intOr = (v: unknown, fallback: number) =>
   typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : fallback;
 
-function shippingFrom(row: Partial<SiteSettingsView> | null) {
+function shippingFrom(row: Row | null) {
   return {
     shippingInsideDhaka: intOr(row?.shippingInsideDhaka, SETTINGS_DEFAULTS.shippingInsideDhaka),
     shippingOutsideDhaka: intOr(row?.shippingOutsideDhaka, SETTINGS_DEFAULTS.shippingOutsideDhaka),
@@ -41,7 +65,7 @@ function shippingFrom(row: Partial<SiteSettingsView> | null) {
   };
 }
 
-function merge(row: Partial<SiteSettingsView> | null): SiteSettingsView {
+function merge(row: Row | null): SiteSettingsView {
   if (!row) return SETTINGS_DEFAULTS;
   return {
     facebookUrl: row.facebookUrl?.trim() || SETTINGS_DEFAULTS.facebookUrl,
@@ -51,6 +75,7 @@ function merge(row: Partial<SiteSettingsView> | null): SiteSettingsView {
     supportPhone: row.supportPhone?.trim() || SETTINGS_DEFAULTS.supportPhone,
     address: row.address?.trim() || SETTINGS_DEFAULTS.address,
     ...shippingFrom(row),
+    ...storefrontFrom(row),
   };
 }
 
@@ -80,6 +105,7 @@ export async function getSiteSettingsRaw(): Promise<SiteSettingsView> {
       supportPhone: row.supportPhone ?? "",
       address: row.address ?? "",
       ...shippingFrom(row),
+      ...storefrontFrom(row),
     };
   } catch (err) {
     console.error("getSiteSettingsRaw failed", err);

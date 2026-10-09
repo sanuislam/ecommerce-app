@@ -5,6 +5,7 @@ import { abandonedWhere, cleanLines, getCartReminderSettings, MAX_REMINDERS, res
 import { getSmsSettings, bdMobile } from "@/lib/sms";
 import { ListPager } from "@/components/admin/list-pager";
 import { CartsTable, CartReminderForm } from "@/components/admin/carts-manager";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 const PAGE = 50;
@@ -44,7 +45,7 @@ export default async function AbandonedCartsPage({ searchParams }: Props) {
   const lines = await Promise.all(snaps.map((s) => resolveLines(cleanLines(s.items))));
   const recoveredOrders = await prisma.order.findMany({
     where: { id: { in: recovered.map((r) => r.recoveredOrderId!).filter(Boolean) } },
-    select: { id: true, total: true, status: true, user: { select: { name: true, email: true } } },
+    select: { id: true, number: true, total: true, status: true, user: { select: { name: true, email: true } } },
   });
   const recoveredValue = recoveredOrders
     .filter((o) => o.status !== "CANCELLED")
@@ -112,7 +113,7 @@ export default async function AbandonedCartsPage({ searchParams }: Props) {
             {recoveredOrders.map((o) => (
               <li key={o.id} className="flex items-center justify-between gap-3 py-2">
                 <Link href={`/admin/orders/${o.id}`} className="hover:underline">
-                  #{o.id.slice(0, 8)} · {o.user.name || o.user.email}
+                  {orderNo(o)} · {o.user.name || o.user.email}
                 </Link>
                 <span className="tabular-nums">
                   {formatPrice(Number(o.total))}

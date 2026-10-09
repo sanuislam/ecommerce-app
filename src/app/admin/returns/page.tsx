@@ -4,6 +4,7 @@ import { cn, formatPrice } from "@/lib/utils";
 import { RETURN_STATUS_LABEL, returnLabel } from "@/lib/returns";
 import { ReturnStatus } from "@/generated/prisma";
 import { ListPager, listParams } from "@/components/admin/list-pager";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ export default async function ReturnsPage({ searchParams }: Props) {
                 </span>
                 <span className="min-w-0 text-sm">
                   <span className="block truncate">
-                    {r.order.address?.fullName ?? "Customer"} · order #{r.orderId.slice(0, 8)}
+                    {r.order.address?.fullName ?? "Customer"} · order {orderNo(r.order)}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {r.reason} — {r.items.map((i) => `${i.orderItem.name} ×${i.quantity}`).join(", ")}

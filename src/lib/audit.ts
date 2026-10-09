@@ -111,6 +111,7 @@ export const AUDIT_LABEL: Record<string, string> = {
   "campaign.send": "SMS campaign sent",
   "settings.tracking": "Pixel & analytics",
   "settings.carts": "Cart reminder settings",
+  "message.handled": "Message handled",
 };
 
 export const AUDIT_GROUPS: Record<string, string> = {
@@ -129,4 +130,5 @@ export const AUDIT_GROUPS: Record<string, string> = {
   customer: "Customers",
   cart: "Abandoned carts",
   campaign: "Campaigns",
+  message: "Messages",
 };

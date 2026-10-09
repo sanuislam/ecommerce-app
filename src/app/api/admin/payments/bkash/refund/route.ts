@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { bkashConfigured, refundBkashPayment } from "@/lib/bkash";
 import { transitionOrder } from "@/lib/orders";
 import { audit } from "@/lib/audit";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +117,7 @@ export async function POST(req: Request) {
     action: "order.refund",
     targetType: "order",
     targetId: order.id,
-    summary: `#${order.id.slice(0, 8)} refunded ৳${Number(order.total)} via bKash (${result.refundTrxID ?? "-"})`,
+    summary: `${orderNo(order)} refunded ৳${Number(order.total)} via bKash (${result.refundTrxID ?? "-"})`,
   });
   return NextResponse.json({
     ok: true,

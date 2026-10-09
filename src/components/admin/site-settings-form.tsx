@@ -18,13 +18,43 @@ export type SiteSettingsFormValues = {
   shippingInsideDhaka: number;
   shippingOutsideDhaka: number;
   freeShippingThreshold: number;
+  supportHours: string;
+  tawkId: string;
+  newsletterCoupon: string;
+  flashSaleEndsAt: string | null;
 };
 
 type TextKey = Exclude<
   keyof SiteSettingsFormValues,
-  "shippingInsideDhaka" | "shippingOutsideDhaka" | "freeShippingThreshold"
+  "shippingInsideDhaka" | "shippingOutsideDhaka" | "freeShippingThreshold" | "flashSaleEndsAt" | "supportHours" | "tawkId" | "newsletterCoupon"
 >;
-type ShippingKey = Exclude<keyof SiteSettingsFormValues, TextKey>;
+type StoreKey = "supportHours" | "tawkId" | "newsletterCoupon";
+
+/** ISO → "YYYY-MM-DDTHH:mm" in Dhaka time for <input type="datetime-local">. */
+const toLocalInput = (iso: string | null) =>
+  iso ? new Date(new Date(iso).getTime() + 6 * 3600_000).toISOString().slice(0, 16) : "";
+
+const STORE_FIELDS: Array<{ key: StoreKey; label: string; placeholder: string; help: string }> = [
+  {
+    key: "supportHours",
+    label: "Support hours",
+    placeholder: "Every day, 10 am – 10 pm",
+    help: "Shown on the Contact page and in the trust badges. Leave blank to show nothing.",
+  },
+  {
+    key: "newsletterCoupon",
+    label: "Coupon for newsletter sign-ups",
+    placeholder: "WELCOME10",
+    help: "New subscribers see this code (and get it by e-mail when e-mail is set up). Blank = the box offers news only, no discount.",
+  },
+  {
+    key: "tawkId",
+    label: "Live chat (Tawk.to) ID",
+    placeholder: "6a00d6da11568a1c34746620/1jo9kei7h",
+    help: "From the Tawk.to embed code: the two parts after embed.tawk.to/. Blank turns the chat off.",
+  },
+];
+type ShippingKey = "shippingInsideDhaka" | "shippingOutsideDhaka" | "freeShippingThreshold";
 
 const SHIPPING_FIELDS: Array<{ key: ShippingKey; label: string; help: string }> = [
   {
@@ -51,6 +81,7 @@ export function SiteSettingsForm({
 }) {
   const router = useRouter();
   const [values, setValues] = useState<SiteSettingsFormValues>(initial);
+  const [flashEnd, setFlashEnd] = useState(toLocalInput(initial.flashSaleEndsAt));
   const [saving, setSaving] = useState(false);
   const [shippingText, setShippingText] = useState<Record<ShippingKey, string>>({
     shippingInsideDhaka: String(initial.shippingInsideDhaka),
@@ -82,7 +113,7 @@ export function SiteSettingsForm({
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...values, ...shipping }),
+        body: JSON.stringify({ ...values, ...shipping, flashSaleEndsAt: flashEnd }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -185,6 +216,36 @@ export function SiteSettingsForm({
               <p className="text-xs text-muted-foreground">{help}</p>
             </div>
           ))}
+        </div>
+      </fieldset>
+      <fieldset className="grid gap-4 rounded-lg border bg-card p-4">
+        <legend className="px-1 text-sm font-semibold">Storefront</legend>
+        {STORE_FIELDS.map(({ key, label, placeholder, help }) => (
+          <div key={key} className="grid gap-1.5">
+            <Label htmlFor={key}>{label}</Label>
+            <Input
+              id={key}
+              value={values[key]}
+              placeholder={placeholder}
+              onChange={(e) => update(key, key === "newsletterCoupon" ? e.target.value.toUpperCase() : e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">{help}</p>
+          </div>
+        ))}
+        <div className="grid gap-1.5">
+          <Label htmlFor="flashEnd">Flash sale ends (Dhaka time)</Label>
+          <div className="flex gap-2">
+            <Input id="flashEnd" type="datetime-local" value={flashEnd} onChange={(e) => setFlashEnd(e.target.value)} className="w-auto" />
+            {flashEnd ? (
+              <Button type="button" variant="ghost" onClick={() => setFlashEnd("")}>
+                Clear
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The Flash Deals countdown runs to this time and the section hides after it. Blank = deals show without a
+            countdown.
+          </p>
         </div>
       </fieldset>
       <div>

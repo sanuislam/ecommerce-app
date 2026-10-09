@@ -62,10 +62,13 @@ function stockLabel(stock: number) {
 export function ProductBannerCarousel({
   products,
   freeShippingThreshold = 0,
+  returnDays = null,
 }: {
   products: BannerProduct[];
   /** From admin settings; 0 = no free-delivery offer. */
   freeShippingThreshold?: number;
+  /** Return window in days, or null when returns are off. */
+  returnDays?: number | null;
 }) {
   const reducedMotion = useReducedMotion();
   const multiple = products.length > 1;
@@ -166,7 +169,7 @@ export function ProductBannerCarousel({
           : "Delivery across Bangladesh",
     },
     { icon: Banknote, text: "Cash on delivery" },
-    { icon: RefreshCcw, text: "Easy returns" },
+    ...(returnDays ? [{ icon: RefreshCcw, text: `${returnDays}-day returns` }] : []),
   ];
 
   return (

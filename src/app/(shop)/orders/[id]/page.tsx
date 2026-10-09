@@ -10,21 +10,17 @@ import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   CheckCircle2,
-  Circle,
   PackageCheck,
-  Truck,
-  XCircle,
 } from "lucide-react";
-import type { OrderStatus } from "@/generated/prisma";
 import { can } from "@/lib/permissions";
 import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
 import { TrackPurchase } from "@/components/site/track-purchase";
 import { OrderStatusBadge } from "@/components/site/order-status-badge";
+import { OrderProgress } from "@/components/site/order-progress";
 import { CancelOrderButton } from "@/components/site/cancel-order-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
 import { STATUS_LABEL } from "@/lib/orders";
 import { settleUpayOrder } from "@/lib/upay-settle";
-import { COURIER_LABEL, trackingUrl, type CourierId } from "@/lib/couriers/common";
 import {
   RETURN_REASONS,
   RETURN_STATUS_LABEL,
@@ -34,6 +30,7 @@ import {
 } from "@/lib/returns";
 import { CancelReturnButton, ReturnRequestButton } from "@/components/return-request-form";
 import { getSiteSettings } from "@/lib/site-settings";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -58,12 +55,6 @@ const dhakaDateTime = (d: Date) =>
     minute: "2-digit",
   });
 
-const STEPS: { status: OrderStatus; label: string }[] = [
-  { status: "PENDING", label: "Placed" },
-  { status: "PAID", label: "Confirmed" },
-  { status: "SHIPPED", label: "Shipped" },
-  { status: "DELIVERED", label: "Delivered" },
-];
 
 export default async function OrderDetailPage({ params, searchParams }: Props) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
@@ -93,13 +84,6 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   }
 
   const site = await getSiteSettings();
-  const cancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
-  const reached = new Set(order.events.map((e) => e.status));
-  // COD orders skip "Confirmed" until delivery; treat later steps as reaching it.
-  const stepIndex = Math.max(
-    0,
-    ...STEPS.map((s, i) => (reached.has(s.status) || order.status === s.status ? i : 0)),
-  );
   const canCancel =
     isOwner &&
     order.status === "PENDING" &&
@@ -108,7 +92,6 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
     !order.upayTxnId &&
     !order.stripeId;
 
-  const trackUrl = trackingUrl(order.courier, order.trackingNumber, order.address?.phone);
 
   // Returns / exchanges: the customer's requests, and whether they can ask now.
   const [returns, elig] = await Promise.all([
@@ -183,65 +166,18 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Order #{order.id.slice(0, 8)}
+            Order {orderNo(order)}
           </h1>
           <p className="text-sm text-muted-foreground">Placed {dhakaDateTime(order.createdAt)}</p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <OrderStatusBadge order={order} />
       </div>
 
       {/* ---- Progress tracker ---- */}
       <section className="mt-6 rounded-lg border bg-card p-4 sm:p-5" aria-label="Order progress">
-        {cancelled ? (
-          <div className="flex items-center gap-3 text-sm">
-            <XCircle className="size-5 text-destructive" />
-            <span>
-              This order was {order.status === "REFUNDED" ? "refunded" : "cancelled"}.
-            </span>
-          </div>
-        ) : (
-          <ol className="grid grid-cols-4 gap-1">
-            {STEPS.map((s, i) => {
-              const done = i <= stepIndex;
-              return (
-                <li key={s.status} className="flex flex-col items-center text-center">
-                  <div className="flex w-full items-center">
-                    <span className={`h-0.5 flex-1 ${i === 0 ? "invisible" : done ? "bg-primary" : "bg-border"}`} />
-                    {done ? (
-                      <CheckCircle2 className="size-6 shrink-0 text-primary" />
-                    ) : (
-                      <Circle className="size-6 shrink-0 text-muted-foreground/40" />
-                    )}
-                    <span
-                      className={`h-0.5 flex-1 ${i === STEPS.length - 1 ? "invisible" : i < stepIndex ? "bg-primary" : "bg-border"}`}
-                    />
-                  </div>
-                  <span className={`mt-1.5 text-xs sm:text-sm ${done ? "font-medium" : "text-muted-foreground"}`}>
-                    {s.label}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        {(order.courier || order.trackingNumber) && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-3 text-sm">
-            <Truck className="size-4 shrink-0" />
-            <span>
-              {COURIER_LABEL[order.courier as CourierId] ?? order.courier ?? "Courier"}
-              {order.trackingNumber && (
-                <>
-                  {" "}· Tracking no. <span className="font-mono font-medium">{order.trackingNumber}</span>
-                </>
-              )}
-            </span>
-            {trackUrl && (
-              <a href={trackUrl} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-2">
-                Track parcel
-              </a>
-            )}
-          </div>
-        )}
+        <OrderProgress
+          order={{ ...order, phone: order.address?.phone }}
+        />
         {order.events.length > 0 && (
           <details className="mt-4 text-sm">
             <summary className="cursor-pointer font-medium">Order history</summary>

@@ -9,6 +9,7 @@ import { getSeoSettings } from "@/lib/seo-settings";
 import { getPwaSettings } from "@/lib/pwa-settings";
 import { getSiteSettings } from "@/lib/site-settings";
 import { siteUrl } from "@/lib/site-url";
+import { getStoreFacts } from "@/lib/store-facts";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -96,10 +97,11 @@ export async function generateViewport(): Promise<Viewport> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const [seo, pwa, site] = await Promise.all([
+  const [seo, pwa, site, facts] = await Promise.all([
     getSeoSettings(),
     getPwaSettings(),
     getSiteSettings(),
+    getStoreFacts(),
   ]);
   const base = siteUrl();
   const sameAs = [site.facebookUrl, site.instagramUrl].filter(Boolean);
@@ -115,7 +117,7 @@ export default async function RootLayout({
         description: seo.defaultDescription,
         areaServed: { "@type": "Country", name: "Bangladesh" },
         currenciesAccepted: "BDT",
-        paymentAccepted: "Cash, bKash, Nagad, Rocket, Upay",
+        paymentAccepted: ["Cash", ...facts.wallets.map((w) => w.name)].join(", "),
         ...(sameAs.length ? { sameAs } : {}),
         ...(site.supportPhone || site.supportEmail
           ? {

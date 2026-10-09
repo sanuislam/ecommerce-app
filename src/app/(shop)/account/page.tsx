@@ -10,6 +10,7 @@ import { AddressBook, PasswordForm, ProfileForm } from "@/components/account/acc
 import { SmsOffersToggle } from "@/components/account/sms-offers-toggle";
 import { OrderStatusBadge } from "@/components/site/order-status-badge";
 import { SignOutButton } from "@/components/account/sign-out-button";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -80,11 +81,11 @@ export default async function AccountPage() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3 text-sm hover:shadow-sm"
               >
                 <span>
-                  <span className="font-medium">#{o.id.slice(0, 8)}</span>
+                  <span className="font-medium">{orderNo(o)}</span>
                   <span className="text-muted-foreground"> · {formatDate(o.createdAt)}</span>
                 </span>
                 <span className="flex items-center gap-3">
-                  <OrderStatusBadge status={o.status} />
+                  <OrderStatusBadge order={o} />
                   <span className="font-medium">{formatPrice(Number(o.total))}</span>
                 </span>
               </Link>

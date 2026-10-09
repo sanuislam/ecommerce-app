@@ -10,6 +10,7 @@ import { STATUS_LABEL } from "@/lib/orders";
 import { COURIER_LABEL, type CourierId } from "@/lib/couriers/common";
 import { LogoMark } from "@/components/brand/logo";
 import { PrintToolbar } from "@/components/admin/print-toolbar";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Print orders", robots: { index: false, follow: false } };
@@ -90,7 +91,7 @@ export default async function PrintOrdersPage({ searchParams }: Props) {
                     </div>
                   </div>
                   <div className="text-right leading-tight">
-                    <div className="text-lg font-bold tracking-wide">#{o.id.slice(0, 8)}</div>
+                    <div className="text-lg font-bold tracking-wide">{orderNo(o)}</div>
                     <div className="text-xs text-neutral-500">{dhakaDate(o.createdAt)}</div>
                   </div>
                 </header>
@@ -173,7 +174,7 @@ export default async function PrintOrdersPage({ searchParams }: Props) {
                 <div className="text-right">
                   <div className="text-2xl font-semibold tracking-tight">Invoice</div>
                   <div className="mt-1 text-sm text-neutral-600">
-                    Order <span className="font-medium text-neutral-900">#{o.id.slice(0, 8)}</span>
+                    Order <span className="font-medium text-neutral-900">{orderNo(o)}</span>
                   </div>
                   <div className="text-sm text-neutral-600">{dhakaDate(o.createdAt)}</div>
                 </div>

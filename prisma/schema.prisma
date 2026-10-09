@@ -259,6 +259,8 @@ model Address {
 
 model Order {
   id           String      @id @default(cuid())
+  /// Order number customers see (shown as EB-10001). Never reused.
+  number       Int         @unique @default(autoincrement())
   userId       String
   status       OrderStatus @default(PENDING)
   subtotal     Decimal     @db.Decimal(10, 2)
@@ -372,6 +374,14 @@ model SiteSettings {
   shippingInsideDhaka   Int @default(80)
   shippingOutsideDhaka  Int @default(120)
   freeShippingThreshold Int @default(1000)
+  /// "Every day 10 am – 10 pm"; empty hides the support-hours line.
+  supportHours  String   @default("")
+  /// Tawk.to "propertyId/widgetId"; empty turns the chat off.
+  tawkId        String   @default("")
+  /// Coupon given to new newsletter subscribers (empty = no offer).
+  newsletterCoupon String @default("")
+  /// End of the current flash sale (countdown); null = no countdown.
+  flashSaleEndsAt  DateTime?
   updatedAt     DateTime @updatedAt
 }
 
@@ -735,4 +745,22 @@ model CartReminderSettings {
   /// Message template; empty = the default text.
   template    String   @default("")
   updatedAt   DateTime @updatedAt
+}
+
+/// A message sent from the Contact page.
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  phone     String    @default("")
+  email     String    @default("")
+  orderRef  String    @default("")
+  message   String    @db.Text
+  userId    String?
+  ip        String?
+  handledAt DateTime?
+  handledBy String?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([handledAt])
 }

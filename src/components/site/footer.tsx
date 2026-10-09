@@ -96,7 +96,7 @@ export async function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link href="/orders" className="hover:text-foreground">
+              <Link href="/track" className="hover:text-foreground">
                 Track my order
               </Link>
             </li>

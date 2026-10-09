@@ -13,6 +13,7 @@ import {
   DollarSign,
   ArrowRight,
 } from "lucide-react";
+import { orderNo } from "@/lib/order-number";
 
 type Props = { searchParams: Promise<{ denied?: string }> };
 
@@ -223,7 +224,7 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
                   className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-muted/50"
                 >
                   <div className="min-w-0">
-                    <div className="font-medium">#{o.id.slice(0, 8)}</div>
+                    <div className="font-medium">{orderNo(o)}</div>
                     <div className="truncate text-xs text-muted-foreground">
                       {o.address?.fullName || o.user.name || ""}
                       {" · "}

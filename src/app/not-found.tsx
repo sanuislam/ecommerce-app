@@ -3,6 +3,7 @@ import { SiteFooter } from "@/components/site/footer";
 import { PaymentsStrip } from "@/components/site/payments-strip";
 import { TawkChat } from "@/components/site/tawk-chat";
 import NotFoundContent from "@/components/site/not-found-content";
+import { getStoreFacts } from "@/lib/store-facts";
 
 export const metadata = {
   title: "Page not found",
@@ -10,7 +11,8 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function NotFound() {
+export default async function NotFound() {
+  const facts = await getStoreFacts();
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
@@ -19,7 +21,7 @@ export default function NotFound() {
       </main>
       <PaymentsStrip />
       <SiteFooter />
-      <TawkChat />
+      <TawkChat tawkId={facts.tawkId} />
     </div>
   );
 }

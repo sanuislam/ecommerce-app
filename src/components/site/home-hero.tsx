@@ -11,7 +11,7 @@ export function HomeHero({ banners }: { banners: SanityBanner[] }) {
   const title = primary?.title ?? "Everything for Eid, delivered to your door.";
   const subtitle =
     primary?.subtitle ??
-    "Panjabi, saree, abaya, attar, gifts and more — cash on delivery across all 64 districts, or pay with bKash, Nagad & Rocket.";
+    "Panjabi, saree, abaya, attar, gifts and more — cash on delivery across all 64 districts, or pay online with mobile banking.";
   const ctaLabel = primary?.ctaLabel ?? "Shop the collection";
   const ctaHref = primary?.ctaHref ?? "/products";
 

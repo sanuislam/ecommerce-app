@@ -172,7 +172,7 @@ async function History({ page, productId }: { page: number; productId: string })
                       {STOCK_REASONS[m.reason as StockReason] ?? m.reason}
                       {m.orderId && (
                         <Link href={`/admin/orders/${m.orderId}`} className="ml-1 text-xs text-muted-foreground underline">
-                          #{m.orderId.slice(0, 8)}
+                          Order
                         </Link>
                       )}
                       {m.note && <div className="text-xs text-muted-foreground">{m.note}</div>}

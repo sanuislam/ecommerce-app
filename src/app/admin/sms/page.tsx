@@ -47,7 +47,7 @@ export default async function SmsPage() {
                   <span className="font-medium tabular-nums">{l.phone}</span>
                   {l.orderId && (
                     <a href={`/admin/orders/${l.orderId}`} className="ml-2 text-xs underline">
-                      #{l.orderId.slice(0, 8)}
+                      Order
                     </a>
                   )}
                   <span className="block truncate text-muted-foreground">{l.message}</span>

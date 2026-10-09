@@ -1,5 +1,6 @@
 import "server-only";
 import { OrderStatus, PaymentMethod, type Prisma } from "@/generated/prisma";
+import { parseOrderNo } from "@/lib/order-number";
 
 export const ORDER_STATUSES = Object.values(OrderStatus);
 export const PAYMENT_METHODS = Object.values(PaymentMethod);
@@ -84,6 +85,8 @@ export function orderWhere(f: OrderFilters, withStatus = true): Prisma.OrderWher
       { trackingNumber: { contains: q, mode: "insensitive" } },
       { courierConsignmentId: { contains: q, mode: "insensitive" } },
     ];
+    const no = parseOrderNo(q);
+    if (no != null && no <= 2_147_483_647) or.push({ number: no });
     if (digits.length >= 4) {
       // Match the last digits so "01711…", "+8801711…" and "1711…" all hit.
       const tail = digits.slice(-10);
@@ -115,4 +118,4 @@ export function ordersHref(f: OrderFilters, change: Partial<OrderFilters> = {}) 
 }
 
 /** Customer-facing short order number. */
-export const shortId = (id: string) => id.slice(0, 8).toUpperCase();
+

@@ -17,6 +17,7 @@ import { Newsletter } from "@/components/site/newsletter";
 import { CARD_INCLUDE, toCardProduct } from "@/lib/product-view";
 import { getShippingConfig } from "@/lib/checkout";
 import { formatPrice } from "@/lib/utils";
+import { getStoreFacts } from "@/lib/store-facts";
 
 export const revalidate = 60;
 
@@ -44,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [featured, latest, categories, banners, dealsRaw, speciallyRaw, shipping] = await Promise.all([
+  const [featured, latest, categories, banners, dealsRaw, speciallyRaw, shipping, facts, reviewsRaw] = await Promise.all([
     prisma.product.findMany({
       where: { published: true, featured: true },
       include: { category: { select: { name: true } }, ...CARD_INCLUDE },
@@ -88,7 +89,36 @@ export default async function HomePage() {
       orderBy: [{ createdAt: "desc" }],
     }),
     getShippingConfig(),
+    getStoreFacts(),
+    // Real reviews (only buyers of a delivered order can write one).
+    prisma.review.findMany({
+      where: { rating: { gte: 4 }, comment: { not: null }, product: { published: true } },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        comment: true,
+        user: { select: { firstName: true, name: true } },
+        product: { select: { name: true, slug: true } },
+      },
+    }),
   ]);
+  const reviews = reviewsRaw
+    .filter((r) => (r.comment ?? "").trim().length >= 10)
+    .slice(0, 3)
+    .map((r) => {
+      const full = r.user.firstName || r.user.name || "Customer";
+      return {
+        id: r.id,
+        rating: r.rating,
+        text: (r.comment ?? "").trim(),
+        name: full.split(" ")[0],
+        product: r.product,
+      };
+    });
+  const saleOver = facts.flashSaleOver;
 
   // Only categories with something to buy; image falls back to a product photo.
   const shopCategories = categories
@@ -148,6 +178,7 @@ export default async function HomePage() {
           <ProductBannerCarousel
             products={bannerProducts}
             freeShippingThreshold={shipping.freeThreshold}
+            returnDays={facts.returnsEnabled ? facts.returnDays : null}
           />
         </>
       ) : (
@@ -171,15 +202,15 @@ export default async function HomePage() {
             {
               icon: ShieldCheck,
               title: "Secure payments",
-              text: "bKash, Nagad, Rocket, Upay or cash on delivery",
+              text: facts.paymentText.charAt(0).toUpperCase() + facts.paymentText.slice(1),
               bg: "from-sky-50 to-indigo-100/60 dark:from-sky-950/40 dark:to-indigo-900/30",
               ring: "ring-sky-200/70 dark:ring-sky-800/50",
               iconBg: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
             },
             {
               icon: RotateCcw,
-              title: "Easy returns",
-              text: "See our refund policy for details",
+              title: facts.returnsEnabled ? `${facts.returnDays}-day returns` : "Help after delivery",
+              text: facts.returnsEnabled ? "Return or exchange from your order page" : "See our refund policy for details",
               bg: "from-rose-50 to-amber-100/60 dark:from-rose-950/40 dark:to-amber-900/30",
               ring: "ring-rose-200/70 dark:ring-rose-800/50",
               iconBg: "bg-rose-500/15 text-rose-600 dark:text-rose-300",
@@ -201,7 +232,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <FlashDeals products={flashDeals} />
+      <FlashDeals products={saleOver ? [] : flashDeals} endsAt={facts.flashSaleEndsAt} />
 
       <SpeciallyForYou products={speciallyForYou} />
 
@@ -272,7 +303,7 @@ export default async function HomePage() {
             Eid Bazar brings your whole Eid list to one place — men&apos;s panjabi and kurta,
             sarees, three-piece and salwar kameez, abaya and hijab, kids&apos; Eid outfits,
             footwear, attar and perfume, watches, prayer essentials, home decor and Eid gifts.
-            Order online and pay with cash on delivery, bKash, Nagad, Rocket or Upay. We deliver
+            Order online and pay with {facts.paymentText}. We deliver
             to all 64 districts, with faster delivery inside Dhaka.
           </p>
           {categories.length > 0 && (
@@ -292,9 +323,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <Testimonials />
-      <TrustStrip />
-      <Newsletter />
+      <Testimonials reviews={reviews} />
+      <TrustStrip facts={facts} />
+      <Newsletter offer={facts.newsletterOffer} />
     </div>
   );
 }

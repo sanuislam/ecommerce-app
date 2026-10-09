@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getShippingConfig } from "@/lib/site-settings";
 import { OrderEditor } from "@/components/admin/order-editor";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function EditOrderPage({ params }: Props) {
   return (
     <div className="p-4 sm:p-6">
       <Link href={`/admin/orders/${order.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Order #{order.id.slice(0, 8)}
+        <ArrowLeft className="size-4" /> Order {orderNo(order)}
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">Edit order</h1>
       {!editable ? (

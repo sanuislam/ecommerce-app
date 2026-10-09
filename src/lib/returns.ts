@@ -8,6 +8,7 @@ import { refundUpayPayment } from "@/lib/upay";
 import { round2, variantLabel } from "@/lib/pricing";
 import { scheduleOrderText } from "@/lib/sms";
 import { logStock } from "@/lib/stock-log";
+import { orderNo } from "@/lib/order-number";
 
 export const RETURN_REASONS = [
   "Wrong size",
@@ -142,22 +143,22 @@ async function move(id: string, from: ReturnStatus[], data: Prisma.ReturnRequest
 const label = (r: { number: number }) => `R-${String(r.number).padStart(4, "0")}`;
 
 export async function approveReturn(id: string, note?: string) {
-  const r = await prisma.returnRequest.findUniqueOrThrow({ where: { id } });
+  const r = await prisma.returnRequest.findUniqueOrThrow({ where: { id }, include: { order: { select: { number: true } } } });
   await move(id, ["REQUESTED"], { status: "APPROVED", adminNote: note || null });
   scheduleOrderText(
     r.orderId,
     `return:${id}:approved`,
-    `Your ${r.type === "EXCHANGE" ? "exchange" : "return"} request ${label(r)} for order #${r.orderId.slice(0, 8)} is approved. We will contact you for pickup.`,
+    `Your ${r.type === "EXCHANGE" ? "exchange" : "return"} request ${label(r)} for order ${orderNo(r.order)} is approved. We will contact you for pickup.`,
   );
 }
 
 export async function rejectReturn(id: string, note: string) {
-  const r = await prisma.returnRequest.findUniqueOrThrow({ where: { id } });
+  const r = await prisma.returnRequest.findUniqueOrThrow({ where: { id }, include: { order: { select: { number: true } } } });
   await move(id, ["REQUESTED", "APPROVED"], { status: "REJECTED", adminNote: note || null });
   scheduleOrderText(
     r.orderId,
     `return:${id}:rejected`,
-    `Sorry, your request ${label(r)} for order #${r.orderId.slice(0, 8)} was not approved.${note ? ` ${note.slice(0, 80)}` : ""}`,
+    `Sorry, your request ${label(r)} for order ${orderNo(r.order)} was not approved.${note ? ` ${note.slice(0, 80)}` : ""}`,
   );
 }
 
@@ -277,7 +278,7 @@ export async function refundReturn(
   scheduleOrderText(
     order.id,
     `return:${id}:refunded`,
-    `We refunded Tk ${amount.toLocaleString("en-IN")} for return ${label(req)} (order #${order.id.slice(0, 8)}) via ${method}.`,
+    `We refunded Tk ${amount.toLocaleString("en-IN")} for return ${label(req)} (order ${orderNo(order)}) via ${method}.`,
   );
 }
 
@@ -350,9 +351,9 @@ export async function createReplacementOrder(id: string, deliveryCharge: number,
         createdById: adminId,
         codConfirmedAt: new Date(),
         codConfirmNote: `Exchange for ${label(req)}`,
-        notes: `Exchange for order #${req.orderId.slice(0, 8)} (${label(req)})`,
+        notes: `Exchange for order ${orderNo(req.order)} (${label(req)})`,
         items: { create: lines },
-        events: { create: { status: "PENDING", note: `Replacement for order #${req.orderId.slice(0, 8)}` } },
+        events: { create: { status: "PENDING", note: `Replacement for order ${orderNo(req.order)}` } },
       },
     });
     await tx.returnRequest.update({ where: { id }, data: { replacementOrderId: o.id } });

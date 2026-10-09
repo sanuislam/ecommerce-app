@@ -6,6 +6,7 @@ import { BottomNav, BottomNavSpacer } from "@/components/site/bottom-nav";
 import { PwaInstallBanner } from "@/components/pwa-install-button";
 import { prisma } from "@/lib/prisma";
 import { CartSync } from "@/components/site/cart-sync";
+import { getStoreFacts } from "@/lib/store-facts";
 
 async function getNavCategories() {
   try {
@@ -20,7 +21,7 @@ async function getNavCategories() {
 }
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const categories = await getNavCategories();
+  const [categories, facts] = await Promise.all([getNavCategories(), getStoreFacts()]);
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader categories={categories} />
@@ -29,7 +30,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <SiteFooter />
       <BottomNavSpacer />
       <BottomNav />
-      <TawkChat />
+      <TawkChat tawkId={facts.tawkId} />
       <PwaInstallBanner />
       <CartSync />
     </div>

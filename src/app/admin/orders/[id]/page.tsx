@@ -23,6 +23,7 @@ import { ReturnRequestButton } from "@/components/return-request-form";
 import { COURIER_LABEL, prettyStatus, trackingUrl, type CourierId } from "@/lib/couriers/common";
 import { getSmsSettings, SMS_EVENT_LABEL, type SmsEvent } from "@/lib/sms";
 import { SOURCE_LABEL } from "@/lib/admin-orders";
+import { orderNo } from "@/lib/order-number";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -120,7 +121,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Order #{order.id.slice(0, 8)}
+            Order {orderNo(order)}
           </h1>
           <p className="text-sm break-all text-muted-foreground">
             {fmtDateTime(order.createdAt)}

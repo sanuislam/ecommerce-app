@@ -1,10 +1,11 @@
 import Script from "next/script";
 
-const TAWK_SRC = "https://embed.tawk.to/6a00d6da11568a1c34746620/1jo9kei7h";
-
-export function TawkChat() {
+/** Tawk.to live chat; the ID comes from Admin → Settings (empty = no chat). */
+export function TawkChat({ tawkId }: { tawkId: string }) {
+  if (!/^[a-z0-9]+\/[a-z0-9]+$/i.test(tawkId)) return null;
+  const src = `https://embed.tawk.to/${tawkId}`;
   return (
-    <Script id="tawk-to" strategy="afterInteractive">
+    <Script id="tawk-to" strategy="lazyOnload">
       {`
         var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
         // Lift the chat bubble above the phone bottom bar / sticky buy bar.
@@ -13,7 +14,7 @@ export function TawkChat() {
           var s1 = document.createElement("script"),
               s0 = document.getElementsByTagName("script")[0];
           s1.async = true;
-          s1.src = ${JSON.stringify(TAWK_SRC)};
+          s1.src = ${JSON.stringify(src)};
           s1.charset = "UTF-8";
           s1.setAttribute("crossorigin", "*");
           s0.parentNode.insertBefore(s1, s0);

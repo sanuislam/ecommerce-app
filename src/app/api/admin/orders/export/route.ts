@@ -3,6 +3,7 @@ import { adminSession } from "@/lib/admin-auth";
 import { orderWhere, parseOrderFilters, SOURCE_LABEL } from "@/lib/admin-orders";
 import { STATUS_LABEL } from "@/lib/orders";
 import { audit } from "@/lib/audit";
+import { orderNo } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -54,7 +55,7 @@ export async function GET(req: Request) {
     "Payment", "TrxID", "Courier", "Consignment", "Tracking", "Courier status", "Coupon", "Note",
   ];
   const rows = orders.map((o) => [
-    o.id.slice(0, 8),
+    orderNo(o),
     dhaka(o.createdAt),
     STATUS_LABEL[o.status],
     SOURCE_LABEL[o.source] ?? o.source,

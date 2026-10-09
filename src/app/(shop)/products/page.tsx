@@ -49,7 +49,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     ? await prisma.category.findUnique({ where: { slug: category }, select: { description: true } })
     : null;
   const description = categoryName
-    ? `${categoryRow?.description ? categoryRow.description.trim().replace(/\.?$/, ". ") : ""}Shop ${categoryName} online at ${seo.siteName} — best prices in Bangladesh, cash on delivery in all 64 districts, bKash & Nagad accepted.`
+    ? `${categoryRow?.description ? categoryRow.description.trim().replace(/\.?$/, ". ") : ""}Shop ${categoryName} online at ${seo.siteName} — best prices in Bangladesh, cash on delivery in all 64 districts, mobile banking accepted.`
     : q
       ? `Search results for “${q}” on ${seo.siteName}. Authentic products, fair prices, and fast delivery across Bangladesh.`
       : `Browse the full ${seo.siteName} catalog. Authentic products, fair prices, and fast delivery across Bangladesh.`;

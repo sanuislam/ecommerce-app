@@ -20,9 +20,11 @@ import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/generated/prisma";
 import { CourierBookDialog } from "@/components/admin/courier-book-dialog";
 import { RiskBadge, type RiskView } from "@/components/admin/order-cod-card";
+import { orderNo } from "@/lib/order-number";
 
 export type OrderRow = {
   id: string;
+  number: number;
   customer: string;
   phone: string;
   place: string;
@@ -127,11 +129,11 @@ export function OrdersTable({ rows, empty }: { rows: OrderRow[]; empty: string }
                 className="mt-1"
                 checked={selected.has(o.id)}
                 onCheckedChange={(v) => toggle(o.id, v === true)}
-                aria-label={`Select order ${o.id.slice(0, 8)}`}
+                aria-label={`Select order ${orderNo(o)}`}
               />
               <Link href={`/admin/orders/${o.id}`} className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">#{o.id.slice(0, 8)}</span>
+                  <span className="font-medium">{orderNo(o)}</span>
                   <Badge variant={statusVariant(o.status)}>{o.statusLabel}</Badge>
                 </div>
                 <div className="mt-1 truncate text-sm">
@@ -197,12 +199,12 @@ export function OrdersTable({ rows, empty }: { rows: OrderRow[]; empty: string }
                     <Checkbox
                       checked={selected.has(o.id)}
                       onCheckedChange={(v) => toggle(o.id, v === true)}
-                      aria-label={`Select order ${o.id.slice(0, 8)}`}
+                      aria-label={`Select order ${orderNo(o)}`}
                     />
                   </TableCell>
                   <TableCell>
                     <Link href={`/admin/orders/${o.id}`} className="font-medium hover:underline">
-                      #{o.id.slice(0, 8)}
+                      {orderNo(o)}
                     </Link>
                     <div className="text-xs text-muted-foreground">
                       {o.placed}

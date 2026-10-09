@@ -24,6 +24,16 @@ const schema = z.object({
   shippingInsideDhaka: shippingInt("Inside-Dhaka delivery charge"),
   shippingOutsideDhaka: shippingInt("Outside-Dhaka delivery charge"),
   freeShippingThreshold: shippingInt("Free-shipping threshold"),
+  supportHours: z.string().trim().max(80).default(""),
+  tawkId: z
+    .string()
+    .trim()
+    .max(80)
+    .refine((v) => v === "" || /^[a-z0-9]+\/[a-z0-9]+$/i.test(v), "Tawk ID looks like 6a00d6da11568a1c34746620/1jo9kei7h")
+    .default(""),
+  newsletterCoupon: z.string().trim().toUpperCase().max(40).default(""),
+  /** "YYYY-MM-DDTHH:mm" in Dhaka time, or "" for none. */
+  flashSaleEndsAt: z.string().trim().max(30).default(""),
 });
 
 export async function PUT(req: Request) {
@@ -49,10 +59,21 @@ export async function PUT(req: Request) {
       );
     }
   }
+  if (data.newsletterCoupon && !(await prisma.coupon.findUnique({ where: { code: data.newsletterCoupon }, select: { id: true } }))) {
+    return NextResponse.json({ error: `Coupon ${data.newsletterCoupon} doesn't exist. Create it in Coupons first.` }, { status: 400 });
+  }
+  let flashSaleEndsAt: Date | null = null;
+  if (data.flashSaleEndsAt) {
+    flashSaleEndsAt = new Date(`${data.flashSaleEndsAt.slice(0, 16)}:00+06:00`);
+    if (Number.isNaN(flashSaleEndsAt.getTime())) {
+      return NextResponse.json({ error: "Flash sale end time is not valid" }, { status: 400 });
+    }
+  }
+  const values = { ...data, flashSaleEndsAt };
   const row = await prisma.siteSettings.upsert({
     where: { id: "default" },
-    create: { id: "default", ...data },
-    update: data,
+    create: { id: "default", ...values },
+    update: values,
   });
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");

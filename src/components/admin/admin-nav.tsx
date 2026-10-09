@@ -30,6 +30,7 @@ import {
   ShoppingBag,
   Megaphone,
   Radar,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessPath } from "@/lib/permissions";
@@ -53,6 +54,7 @@ const NAV = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/returns", label: "Returns", icon: Undo2 },
   { href: "/admin/customers", label: "Customers", icon: Contact },
+  { href: "/admin/messages", label: "Messages", icon: Inbox },
   { href: "/admin/carts", label: "Abandoned carts", icon: ShoppingBag },
   { href: "/admin/campaigns", label: "SMS campaigns", icon: Megaphone },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },
