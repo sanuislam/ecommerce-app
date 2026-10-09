@@ -25,6 +25,11 @@ import {
   KeyRound,
   Boxes,
   Upload,
+  BarChart3,
+  Contact,
+  ShoppingBag,
+  Megaphone,
+  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canAccessPath } from "@/lib/permissions";
@@ -40,12 +45,16 @@ import {
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes },
   { href: "/admin/products/import", label: "Import / export", icon: Upload },
   { href: "/admin/categories", label: "Categories", icon: Tag },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/returns", label: "Returns", icon: Undo2 },
+  { href: "/admin/customers", label: "Customers", icon: Contact },
+  { href: "/admin/carts", label: "Abandoned carts", icon: ShoppingBag },
+  { href: "/admin/campaigns", label: "SMS campaigns", icon: Megaphone },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/policies", label: "Legal pages", icon: FileText },
@@ -54,6 +63,7 @@ const NAV = [
   { href: "/admin/sms", label: "SMS", icon: MessageSquare },
   { href: "/admin/order-rules", label: "Order rules", icon: ShieldCheck },
   { href: "/admin/seo", label: "SEO & PWA", icon: Search },
+  { href: "/admin/tracking", label: "Pixel & analytics", icon: Radar },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/staff", label: "Staff", icon: UserCog },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },

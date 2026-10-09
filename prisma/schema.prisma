@@ -54,6 +54,8 @@ model User {
   twoFactorRecovery  String[]  @default([])
   /// Sessions issued before this are signed out.
   passwordChangedAt  DateTime?
+  /// The customer asked not to get promotional SMS (order messages still go).
+  smsOptOut          Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -281,6 +283,8 @@ model Order {
   courierStatus        String?
   courierUpdatedAt     DateTime?
   courierCharge        Decimal?  @db.Decimal(10, 2)
+  /// The Purchase event went to the Facebook Conversions API (sent once).
+  trackedAt            DateTime?
   /// Cash on delivery: confirmed by a call to the customer (or OTP at checkout).
   codConfirmedAt       DateTime?
   codCallAttempts      Int       @default(0)
@@ -662,4 +666,73 @@ model AdminSettings {
   /// Owner and staff must turn on two-factor sign-in before using the admin panel.
   require2fa     Boolean  @default(false)
   updatedAt      DateTime @updatedAt
+}
+
+/// A signed-in shopper's cart as last seen (the cart itself lives in the
+/// browser). Used to find abandoned carts and send a reminder.
+model CartSnapshot {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  /// [{ productId, variantId, quantity }] — names and prices are read fresh.
+  items         Json      @default("[]")
+  itemCount     Int       @default(0)
+  /// Shop price of the items when last synced (for sorting / display).
+  value         Decimal   @default(0) @db.Decimal(10, 2)
+  updatedAt     DateTime  @default(now())
+  remindedAt    DateTime?
+  reminderCount Int       @default(0)
+  reminderCoupon String?
+  /// An order placed after a reminder.
+  recoveredOrderId String?
+  recoveredAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([remindedAt])
+}
+
+/// A promotional SMS to a group of customers.
+model SmsCampaign {
+  id          String    @id @default(cuid())
+  name        String
+  message     String    @db.Text
+  /// The customer filter used (segment, days, district, category…).
+  audience    Json
+  status      String    @default("sending") // sending | done | failed
+  recipients  Int       @default(0)
+  sent        Int       @default(0)
+  failed      Int       @default(0)
+  smsParts    Int       @default(1)
+  error       String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([createdAt])
+}
+
+/// Facebook Conversions API and the product feed. One row. (The Pixel,
+/// GA4 and GTM IDs live in the SEO settings.)
+model TrackingSettings {
+  id             String   @id @default("default")
+  /// Conversions API access token (server-side Purchase events).
+  fbCapiToken    String   @default("")
+  /// Set while testing in Events Manager → Test events; empty in normal use.
+  fbTestCode     String   @default("")
+  /// Product feed at /feeds/products.xml (Facebook / Google catalogue).
+  feedEnabled    Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
+}
+
+/// Abandoned-cart reminders. One row.
+model CartReminderSettings {
+  id          String   @id @default("default")
+  /// Send reminders by themselves once a day (late morning, Dhaka time).
+  auto        Boolean  @default(false)
+  /// A cart counts as abandoned after this many hours without an order.
+  afterHours  Int      @default(3)
+  /// Optional coupon code put in the message.
+  couponCode  String   @default("")
+  /// Message template; empty = the default text.
+  template    String   @default("")
+  updatedAt   DateTime @updatedAt
 }

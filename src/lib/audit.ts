@@ -104,6 +104,13 @@ export const AUDIT_LABEL: Record<string, string> = {
   "security.password": "Password changed",
   "security.password_reset": "Password reset",
   "security.recovery": "New recovery codes",
+  "report.export": "Report exported",
+  "customer.export": "Customers exported",
+  "customer.marketing": "Customer SMS preference",
+  "cart.remind": "Cart reminder sent",
+  "campaign.send": "SMS campaign sent",
+  "settings.tracking": "Pixel & analytics",
+  "settings.carts": "Cart reminder settings",
 };
 
 export const AUDIT_GROUPS: Record<string, string> = {
@@ -118,4 +125,8 @@ export const AUDIT_GROUPS: Record<string, string> = {
   user: "Users",
   staff: "Staff",
   security: "Security",
+  report: "Reports",
+  customer: "Customers",
+  cart: "Abandoned carts",
+  campaign: "Campaigns",
 };

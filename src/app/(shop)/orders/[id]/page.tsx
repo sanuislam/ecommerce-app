@@ -18,6 +18,7 @@ import {
 import type { OrderStatus } from "@/generated/prisma";
 import { can } from "@/lib/permissions";
 import { ClearCartOnSuccess } from "@/components/site/clear-cart-on-success";
+import { TrackPurchase } from "@/components/site/track-purchase";
 import { OrderStatusBadge } from "@/components/site/order-status-badge";
 import { CancelOrderButton } from "@/components/site/cancel-order-button";
 import { MFS_LABELS, type MfsMethod } from "@/lib/mfs";
@@ -143,6 +144,23 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         (sp.upay && order.status !== "CANCELLED" && order.status !== "PENDING")) && (
         <ClearCartOnSuccess />
       )}
+      {isOwner &&
+        (sp.success || sp.upay) &&
+        (["PAID", "SHIPPED", "DELIVERED"].includes(order.status) ||
+          (order.status === "PENDING" && order.paymentMethod === "COD")) && (
+          <TrackPurchase
+            orderId={order.id}
+            value={Number(order.total)}
+            shipping={Number(order.shipping)}
+            items={order.items.map((i) => ({
+              id: i.productId,
+              name: i.name,
+              price: Number(i.price),
+              quantity: i.quantity,
+              variant: i.variantName,
+            }))}
+          />
+        )}
       {sp.success && order.status !== "CANCELLED" && (
         <div className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
           <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />

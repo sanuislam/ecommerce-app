@@ -7,6 +7,7 @@ import { isAdminUser } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { AddressBook, PasswordForm, ProfileForm } from "@/components/account/account-forms";
+import { SmsOffersToggle } from "@/components/account/sms-offers-toggle";
 import { OrderStatusBadge } from "@/components/site/order-status-badge";
 import { SignOutButton } from "@/components/account/sign-out-button";
 
@@ -24,7 +25,7 @@ export default async function AccountPage() {
   const [user, addresses, recent, wishlistCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, firstName: true, lastName: true, phone: true, email: true, role: true, staffRole: true },
+      select: { name: true, firstName: true, lastName: true, phone: true, email: true, role: true, staffRole: true, smsOptOut: true },
     }),
     prisma.address.findMany({
       where: { userId: session.user.id, archived: false },
@@ -118,6 +119,11 @@ export default async function AccountPage() {
             isDefault: a.isDefault,
           }))}
         />
+      </section>
+
+      <section className="mt-6 rounded-lg border bg-card p-4 sm:p-5">
+        <h2 className="mb-4 text-lg font-semibold">Messages</h2>
+        <SmsOffersToggle initial={!user.smsOptOut} />
       </section>
 
       <section className="mt-6 rounded-lg border bg-card p-4 sm:p-5">

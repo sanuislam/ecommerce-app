@@ -15,7 +15,9 @@ export const PERMISSIONS = {
   coupons: "Coupons",
   customers: "Customer list",
   content: "Legal pages, SEO",
-  owner: "Settings, payments, couriers, SMS setup, staff, audit log",
+  reports: "Sales reports, revenue and profit",
+  marketing: "Abandoned carts, SMS campaigns",
+  owner: "Settings, payments, couriers, SMS setup, tracking pixels, staff, audit log",
 } as const;
 export type Permission = keyof typeof PERMISSIONS;
 
@@ -23,7 +25,7 @@ export const STAFF_ROLES = {
   manager: {
     label: "Manager",
     description: "Runs the shop day to day: everything except settings and staff.",
-    perms: ["orders", "refunds", "returns", "products", "inventory", "coupons", "customers", "content"],
+    perms: ["orders", "refunds", "returns", "products", "inventory", "coupons", "customers", "content", "reports", "marketing"],
   },
   orders: {
     label: "Order staff",
@@ -37,8 +39,8 @@ export const STAFF_ROLES = {
   },
   content: {
     label: "Content staff",
-    description: "Products, coupons, legal pages and SEO.",
-    perms: ["products", "coupons", "content"],
+    description: "Products, coupons, legal pages, SEO and marketing.",
+    perms: ["products", "coupons", "content", "marketing"],
   },
 } as const satisfies Record<string, { label: string; description: string; perms: readonly Permission[] }>;
 export type StaffRole = keyof typeof STAFF_ROLES;
@@ -69,6 +71,11 @@ const PAGE_RULES: [string, Permission | "any"][] = [
   ["/admin/returns", "returns"],
   ["/admin/coupons", "coupons"],
   ["/admin/users", "customers"],
+  ["/admin/customers", "customers"],
+  ["/admin/reports", "reports"],
+  ["/admin/carts", "marketing"],
+  ["/admin/campaigns", "marketing"],
+  ["/admin/tracking", "owner"],
   ["/admin/policies", "content"],
   ["/admin/seo", "content"],
   ["/admin/security", "any"],
@@ -93,6 +100,8 @@ const API_RULES: [string, Permission | "any"][] = [
   ["/api/admin/sms/send", "orders"],
   ["/api/admin/sms", "owner"],
   ["/api/admin/orders", "orders"],
+  ["/api/admin/customers/export", "customers"],
+  ["/api/admin/customer-sms", "customers"],
   ["/api/admin/customers", "orders"],
   ["/api/admin/returns", "returns"],
   ["/api/admin/inventory", "inventory"],
@@ -104,6 +113,9 @@ const API_RULES: [string, Permission | "any"][] = [
   ["/api/admin/coupons", "coupons"],
   ["/api/admin/policies", "content"],
   ["/api/admin/seo", "content"],
+  ["/api/admin/reports", "reports"],
+  ["/api/admin/carts", "marketing"],
+  ["/api/admin/campaigns", "marketing"],
   ["/api/admin/security", "any"],
   ["/api/admin", "owner"],
 ];

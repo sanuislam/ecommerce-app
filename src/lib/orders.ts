@@ -3,6 +3,17 @@ import { prisma } from "@/lib/prisma";
 import type { OrderStatus, PaymentMethod, Prisma } from "@/generated/prisma";
 import { scheduleOrderSms, type SmsEvent } from "@/lib/sms";
 import { logStock, type StockReason } from "@/lib/stock-log";
+import { after } from "next/server";
+import { sendPurchaseEvent } from "@/lib/tracking";
+
+/** after() when inside a request, else just start it. */
+function runAfter(fn: () => Promise<unknown>) {
+  try {
+    after(fn);
+  } catch {
+    void fn().catch(() => {});
+  }
+}
 
 type Tx = Prisma.TransactionClient;
 
@@ -137,6 +148,8 @@ export async function transitionOrder(opts: {
   if (ok && before) {
     const event = smsEventFor(before, opts.to, opts.data?.paymentTransactionId);
     if (event) scheduleOrderSms(opts.orderId, event);
+    // A paid online order is a Purchase for Facebook (sent once; web orders only).
+    if (opts.to === "PAID") runAfter(() => sendPurchaseEvent(opts.orderId));
   }
   return ok;
 }

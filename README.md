@@ -74,6 +74,22 @@ and Stripe (test mode).
 - Two-factor sign-in (Admin → My security): authenticator app (TOTP), secret encrypted with `AUTH_SECRET`,
   8 one-time recovery codes (hashed). The owner can require it for everyone (Admin → Staff); until someone turns it
   on they only reach My security. The owner can reset a staff member's two-factor
+- Reports (Admin → Reports): any date range (Dhaka days) vs the period before — sales, orders, average order,
+  profit, items, new vs returning customers, cancellations, refunds; sales per day chart; payment method, order
+  source, district, top products (with profit), categories, courier success rate, coupons; CSV export
+- Customers (Admin → Customers): spend, orders and last order per customer; groups (buyers, repeat, new, recent,
+  lapsed, never ordered, top spenders) filtered by district / category bought; CSV export; promotional-SMS opt-out
+  (customers also switch it on My account)
+- Abandoned carts (Admin → Abandoned carts): a signed-in shopper's cart is saved (`CartSnapshot`); carts idle for N
+  hours get a reminder SMS (by hand, or daily at 11:00 Dhaka via `/api/cron/cart-reminders`), at most two per cart,
+  with an optional coupon; the link `/cart/restore/<id>` refills the cart and opens checkout with the coupon;
+  orders placed within 7 days of a reminder count as recovered
+- SMS campaigns (Admin → SMS campaigns): promotional SMS to a customer group with a cost estimate (GSM / Unicode
+  parts), a test send, opt-outs left out, one campaign at a time, progress and results per campaign
+- Pixel & analytics: Facebook Pixel, GA4 and GTM get ViewContent / AddToCart / InitiateCheckout / Purchase
+  (`src/lib/track.ts`); the Facebook Conversions API sends Purchase from the server (hashed customer data, same
+  event id as the browser, once per order via `Order.trackedAt`); product feed for Facebook / Google catalogues at
+  `/feeds/products.xml` (one item per size / colour)
 - Passwords: `/forgot-password` e-mails a one-time link (60 min, only its SHA-256 stored) through Resend, or sends it
   by SMS to the account's phone when e-mail isn't set up; the owner can make a 24-hour link for anyone from Users /
   Staff. Changing or resetting a password signs that account out everywhere within a minute

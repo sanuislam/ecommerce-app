@@ -21,7 +21,7 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
   const role = session?.user?.role;
   const staffRole = session?.user?.staffRole;
   // Money figures only for those who handle money; lists for those who work them.
-  const seeMoney = can(role, staffRole, "refunds");
+  const seeMoney = can(role, staffRole, "reports");
   const seeOrders = can(role, staffRole, "orders");
   const seeStock =
     can(role, staffRole, "inventory") || can(role, staffRole, "products");

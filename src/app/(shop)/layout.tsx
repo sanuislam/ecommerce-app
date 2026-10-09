@@ -5,6 +5,7 @@ import { TawkChat } from "@/components/site/tawk-chat";
 import { BottomNav, BottomNavSpacer } from "@/components/site/bottom-nav";
 import { PwaInstallBanner } from "@/components/pwa-install-button";
 import { prisma } from "@/lib/prisma";
+import { CartSync } from "@/components/site/cart-sync";
 
 async function getNavCategories() {
   try {
@@ -30,6 +31,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <BottomNav />
       <TawkChat />
       <PwaInstallBanner />
+      <CartSync />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Minus, Plus, Zap } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/wishlist-button";
 import { MAX_QTY_PER_LINE, useCart } from "@/store/cart";
+import { track } from "@/lib/track";
 import { strikePrice, unitPrice, variantLabel, type PricedProduct } from "@/lib/pricing";
 import { cn, formatPrice } from "@/lib/utils";
 
@@ -79,6 +80,11 @@ export function AddToCart({
       ? Math.min(...optionPrices)
       : null;
 
+  // Product page seen (Pixel ViewContent / GA4 view_item), once per product.
+  useEffect(() => {
+    track("ViewContent", [{ id: product.id, name: product.name, price: unitPrice(product), quantity: 1 }]);
+  }, [product]);
+
   const optionInStock = (s: string, c: string) =>
     variants.some(
       (v) =>
@@ -110,6 +116,9 @@ export function AddToCart({
       quantity: qty,
       stock,
     });
+    track("AddToCart", [
+      { id: product.id, name: product.name, price, quantity: qty, variant: variant ? variantLabel(variant) : null },
+    ]);
     return true;
   }
 

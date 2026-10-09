@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +15,8 @@ import { verifyOtp } from "@/lib/otp";
 import { rateLimit } from "@/lib/rate-limit";
 import { Prisma } from "@/generated/prisma";
 import { siteUrl } from "@/lib/site-url";
+import { markCartOrdered } from "@/lib/carts";
+import { browserContext, sendPurchaseEvent } from "@/lib/tracking";
 
 const addressSchema = z.object({
   fullName: z.string().trim().min(2, "Please enter your full name").max(80),
@@ -314,6 +316,8 @@ export async function POST(req: Request) {
     }
     throw err;
   }
+  // The saved cart is done (and a recent reminder gets the credit).
+  after(() => markCartOrdered(userId, order.id).catch((e) => console.error("markCartOrdered", e)));
 
   const cancelUnpaid = (note: string) =>
     transitionOrder({ orderId: order.id, from: "PENDING", to: "CANCELLED", note });
@@ -367,5 +371,8 @@ export async function POST(req: Request) {
 
   // Cash on delivery: the order is placed now (online orders send it when paid).
   scheduleOrderSms(order.id, "placed");
+  // Cash on delivery: the order is the conversion (online orders count when paid).
+  const browser = await browserContext();
+  after(() => sendPurchaseEvent(order.id, browser));
   return NextResponse.json({ id: order.id });
 }

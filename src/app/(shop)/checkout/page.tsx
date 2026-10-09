@@ -16,9 +16,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function CheckoutPage() {
+type Props = { searchParams: Promise<{ coupon?: string }> };
+
+export default async function CheckoutPage({ searchParams }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/sign-in?callbackUrl=/checkout");
+  const { coupon } = await searchParams;
+  const initialCoupon =
+    typeof coupon === "string" && /^[A-Za-z0-9_-]{2,40}$/.test(coupon) ? coupon.toUpperCase() : "";
 
   const [user, addresses, bkashLive, upayLive, rules] = await Promise.all([
     prisma.user.findUnique({
@@ -58,6 +63,7 @@ export default async function CheckoutPage() {
         }))}
         wallets={{ BKASH: bkashLive, NAGAD: false, ROCKET: false, UPAY: upayLive }}
         codMax={rules.codMaxAmount}
+        initialCoupon={initialCoupon}
       />
     </div>
   );

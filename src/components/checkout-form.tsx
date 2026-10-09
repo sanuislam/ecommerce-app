@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { track } from "@/lib/track";
 import { useCart } from "@/store/cart";
 import { useQuote } from "@/hooks/use-quote";
 import { BD_DISTRICTS, normalizeBdPhone } from "@/lib/districts";
@@ -85,6 +86,7 @@ export function CheckoutForm({
   savedAddresses,
   wallets,
   codMax = null,
+  initialCoupon = "",
 }: {
   userEmail: string;
   defaultName: string;
@@ -94,12 +96,24 @@ export function CheckoutForm({
   wallets: Record<Wallet, boolean>;
   /** Largest total allowed with cash on delivery (null = no limit). */
   codMax?: number | null;
+  initialCoupon?: string;
 }) {
   const router = useRouter();
   const mounted = useSyncExternalStore(noop, () => true, () => false);
   const items = useCart((s) => s.items);
   const clear = useCart((s) => s.clear);
   const [submitting, setSubmitting] = useState(false);
+
+  // Checkout opened with something in the cart (Pixel InitiateCheckout / GA4 begin_checkout), once.
+  const trackedCheckout = useRef(false);
+  useEffect(() => {
+    if (!mounted || trackedCheckout.current || !items.length) return;
+    trackedCheckout.current = true;
+    track(
+      "InitiateCheckout",
+      items.map((i) => ({ id: i.productId, name: i.name, price: i.price, quantity: i.quantity, variant: i.variantName })),
+    );
+  }, [mounted, items]);
 
   const [addressId, setAddressId] = useState<string | "new">(
     savedAddresses[0]?.id ?? "new",
@@ -129,8 +143,9 @@ export function CheckoutForm({
 
   const [notes, setNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
-  const [couponInput, setCouponInput] = useState("");
-  const [couponCode, setCouponCode] = useState("");
+  // A reminder link may bring a coupon (?coupon=CODE); it is applied at once.
+  const [couponInput, setCouponInput] = useState(initialCoupon);
+  const [couponCode, setCouponCode] = useState(initialCoupon);
 
   const selectedSaved = savedAddresses.find((a) => a.id === addressId);
   const district = selectedSaved?.state || form.state;
