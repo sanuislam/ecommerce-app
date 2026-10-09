@@ -49,6 +49,7 @@ export function BottomNav() {
                   active ? "text-primary" : "text-muted-foreground",
                 )}
               >
+                {active && <span aria-hidden className="absolute top-0 h-0.5 w-8 rounded-full bg-primary" />}
                 <Icon className="size-5" />
                 {label}
                 {href === "/cart" && mounted && count > 0 && (

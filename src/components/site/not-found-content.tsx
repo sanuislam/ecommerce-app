@@ -10,15 +10,15 @@ export default function NotFoundContent() {
     <div className="relative flex min-h-[70vh] items-center justify-center overflow-hidden px-4 py-16">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-rose-50 via-amber-50 to-sky-50 dark:from-rose-950/40 dark:via-amber-950/30 dark:to-sky-950/40"
+        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-brand-50 via-gold-50 to-gold-50 dark:from-brand-950/40 dark:via-gold-950/30 dark:to-gold-950/40"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 top-10 -z-10 size-72 rounded-full bg-rose-300/30 blur-3xl"
+        className="pointer-events-none absolute -left-24 top-10 -z-10 size-72 rounded-full bg-brand-300/30 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-24 bottom-0 -z-10 size-80 rounded-full bg-sky-300/30 blur-3xl"
+        className="pointer-events-none absolute -right-24 bottom-0 -z-10 size-80 rounded-full bg-gold-300/30 blur-3xl"
       />
 
       <motion.div
@@ -35,9 +35,9 @@ export default function NotFoundContent() {
         >
           <span
             aria-hidden
-            className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-rose-400/30 via-fuchsia-400/30 to-amber-400/30 blur-2xl"
+            className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-brand-400/30 via-brand-300/30 to-gold-400/30 blur-2xl"
           />
-          <span className="select-none bg-gradient-to-br from-rose-500 via-fuchsia-500 to-amber-500 bg-clip-text text-[7rem] font-black leading-none tracking-tight text-transparent sm:text-[9rem]">
+          <span className="select-none bg-gradient-to-br from-brand-500 via-brand-400 to-gold-500 bg-clip-text text-[7rem] font-black leading-none tracking-tight text-transparent sm:text-[9rem]">
             404
           </span>
         </motion.div>
@@ -65,7 +65,7 @@ export default function NotFoundContent() {
           transition={{ duration: 0.4, delay: 0.3 }}
           className="mt-8 flex flex-wrap items-center justify-center gap-3"
         >
-          <Button asChild size="lg" className="bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white shadow-md hover:from-rose-600 hover:to-fuchsia-600">
+          <Button asChild size="lg" className="bg-gradient-to-r from-brand-500 to-brand-400 text-white shadow-md hover:from-brand-600 hover:to-brand-500">
             <Link href="/">
               <Home className="size-4" />
               Back to home

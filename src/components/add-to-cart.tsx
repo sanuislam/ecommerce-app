@@ -152,7 +152,7 @@ export function AddToCart({
 
   const priceBlock = (
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <span className="text-2xl font-semibold sm:text-3xl">
+      <span className={cn("text-2xl font-semibold sm:text-3xl", strike != null && fromPrice == null && "text-brand-700")}>
         {fromPrice != null && <span className="mr-1 text-base font-normal text-muted-foreground">from</span>}
         {formatPrice(fromPrice ?? price)}
       </span>
@@ -164,11 +164,11 @@ export function AddToCart({
       {needsChoice ? null : soldOut ? (
         <Badge variant="destructive">Out of stock</Badge>
       ) : stock <= 5 ? (
-        <Badge variant="secondary" className="text-amber-700 dark:text-amber-300">
+        <Badge className="border-0 bg-gold-100 text-gold-800">
           Only {stock} left
         </Badge>
       ) : (
-        <Badge variant="secondary">In stock</Badge>
+        <Badge className="border-0 bg-emerald-50 text-emerald-700">In stock</Badge>
       )}
     </div>
   );
@@ -238,7 +238,13 @@ export function AddToCart({
       ) : null}
 
       <div className="grid gap-2 sm:grid-cols-2">
-        <Button onClick={handleAdd} size="lg" variant="outline" disabled={soldOut}>
+        <Button
+          onClick={handleAdd}
+          size="lg"
+          variant="outline"
+          disabled={soldOut}
+          className="border-brand-300 text-brand-700 hover:bg-brand-50 hover:text-brand-800"
+        >
           <ShoppingCart className="size-4" />
           Add to cart
         </Button>
@@ -250,10 +256,11 @@ export function AddToCart({
           <Button
             asChild
             size="lg"
-            className="bg-[#25D366] text-white hover:bg-[#1ebe5b] sm:col-span-2"
+            variant="outline"
+            className="border-[#25D366] text-[#0b7a3e] hover:bg-[#25D366]/10 hover:text-[#0b7a3e] sm:col-span-2"
           >
             <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
-              <FaWhatsapp className="size-4" />
+              <FaWhatsapp className="size-4 text-[#25D366]" />
               Order on WhatsApp
             </a>
           </Button>
@@ -314,7 +321,7 @@ function OptionGroup({
                 "min-h-10 min-w-12 rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                 selected
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "hover:border-foreground/40",
+                  : "hover:border-brand-300 hover:bg-brand-50/60",
                 !available && !selected && "text-muted-foreground line-through decoration-1 opacity-60",
               )}
             >

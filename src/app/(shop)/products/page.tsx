@@ -262,7 +262,7 @@ export default async function ProductsPage({ searchParams }: Props) {
   const chip = (active: boolean) =>
     cn(
       "inline-flex h-9 shrink-0 items-center rounded-full border px-4 text-sm whitespace-nowrap transition-colors",
-      active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-foreground/40",
+      active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-brand-300",
     );
 
   return (

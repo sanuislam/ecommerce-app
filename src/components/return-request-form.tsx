@@ -123,7 +123,7 @@ export function ReturnRequestButton({
                 onClick={() => setType(v)}
                 className={cn(
                   "rounded-lg border p-3 text-left text-sm",
-                  type === v ? "border-foreground bg-muted/50 font-medium" : "hover:border-foreground/30",
+                  type === v ? "border-primary bg-brand-50/70 font-medium" : "hover:border-brand-300",
                 )}
               >
                 {l}

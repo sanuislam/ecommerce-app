@@ -286,7 +286,7 @@ export default async function ProductDetailPage({ params }: Props) {
             {product.name}
           </h1>
           <a href="#reviews" className="flex w-fit items-center gap-2">
-            <div className="flex items-center gap-0.5 text-amber-500" aria-hidden>
+            <div className="flex items-center gap-0.5 text-gold-500" aria-hidden>
               {[1, 2, 3, 4, 5].map((i) => (
                 <Star
                   key={i}

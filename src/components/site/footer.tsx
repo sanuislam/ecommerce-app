@@ -8,7 +8,11 @@ import { getSiteSettings } from "@/lib/site-settings";
 export async function SiteFooter() {
   const settings = await getSiteSettings();
   return (
-    <footer className="mt-16 border-t bg-muted/30 sm:mt-24">
+    <footer
+      // Deep festive maroon; the tokens are re-pointed so links and text stay readable on it.
+      className="mt-16 bg-[#2a1219] text-foreground [--border:#4a2632] [--foreground:#fbf1f3] [--muted:#3c1c27] [--muted-foreground:#d9c4ca] sm:mt-24"
+    >
+      <div aria-hidden className="h-1 bg-gradient-to-r from-brand-600 via-brand-400 to-gold-400" />
       <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-8 px-4 py-10 sm:px-6 md:grid-cols-4 lg:grid-cols-5 lg:gap-10 lg:px-8 lg:py-12">
         <div className="col-span-2 md:col-span-4 lg:col-span-2">
           <h2 className="flex items-center gap-2 text-lg font-semibold">

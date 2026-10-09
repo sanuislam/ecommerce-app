@@ -313,7 +313,7 @@ export function CheckoutForm({
                       onClick={() => setAddressId(a.id)}
                       className={cn(
                         "relative flex items-start gap-3 rounded-xl border p-3.5 text-left text-sm transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                        on ? "border-foreground bg-muted/40" : "hover:border-foreground/30",
+                        on ? "border-primary bg-brand-50/70" : "hover:border-brand-300",
                       )}
                     >
                       <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -343,8 +343,8 @@ export function CheckoutForm({
                   className={cn(
                     "flex min-h-16 items-center justify-center gap-2 rounded-xl border border-dashed p-3.5 text-sm font-medium transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                     addressId === "new"
-                      ? "border-foreground bg-muted/40"
-                      : "text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+                      ? "border-primary bg-brand-50/70"
+                      : "text-muted-foreground hover:border-brand-300 hover:text-foreground",
                   )}
                 >
                   <Plus className="size-4" /> New address
@@ -513,7 +513,7 @@ export function CheckoutForm({
                     {i.image && (
                       <Image src={i.image} alt="" fill sizes="56px" className="object-cover" />
                     )}
-                    <span className="absolute -top-0 -right-0 rounded-bl-md bg-foreground px-1.5 text-[11px] font-medium text-background tabular-nums">
+                    <span className="absolute -top-0 -right-0 rounded-bl-md bg-primary px-1.5 text-[11px] font-medium text-primary-foreground tabular-nums">
                       {i.quantity}
                     </span>
                   </span>
@@ -677,9 +677,9 @@ export function CheckoutForm({
                   className={cn(
                     "relative flex h-32 flex-col items-center justify-center gap-3 rounded-xl border-2 bg-white p-3 transition-[border-color,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                     on && available
-                      ? "border-foreground shadow-[0_0_0_4px] shadow-foreground/10"
+                      ? "border-primary shadow-[0_0_0_4px] shadow-brand-500/15"
                       : "border-border",
-                    available ? "hover:border-foreground/40" : "cursor-not-allowed",
+                    available ? "hover:border-brand-300" : "cursor-not-allowed",
                   )}
                 >
                   <span className={cn("flex h-14 items-center", !available && "opacity-40 grayscale")}>
@@ -693,7 +693,7 @@ export function CheckoutForm({
                     {!available && <span className="block text-neutral-400">Coming soon</span>}
                   </span>
                   {on && available && (
-                    <span className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+                    <span className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Check className="size-3" strokeWidth={3} />
                     </span>
                   )}
@@ -775,7 +775,7 @@ export function CheckoutForm({
 function StepHeading({ step, title, hint }: { step: number; title: string; hint?: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background tabular-nums">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground tabular-nums">
         {step}
       </span>
       <div className="min-w-0">
@@ -812,7 +812,7 @@ function Field({
 
 function RadioDot() {
   return (
-    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
       <Check className="size-3" strokeWidth={3} />
     </span>
   );
@@ -844,17 +844,17 @@ function PayOption({
       onClick={onSelect}
       className={cn(
         "relative flex w-full items-start gap-3.5 rounded-xl border p-4 text-left transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
-        checked ? "border-foreground bg-muted/40" : "hover:border-foreground/30",
+        checked ? "border-primary bg-brand-50/70" : "hover:border-brand-300",
       )}
     >
       <span
         className={cn(
           "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2",
-          checked ? "border-foreground" : "border-muted-foreground/40",
+          checked ? "border-primary" : "border-muted-foreground/40",
         )}
         aria-hidden
       >
-        {checked && <span className="size-2.5 rounded-full bg-foreground" />}
+        {checked && <span className="size-2.5 rounded-full bg-primary" />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2 font-medium">

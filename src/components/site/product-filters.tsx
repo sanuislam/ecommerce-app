@@ -50,7 +50,7 @@ function FilterForm({ state, facets, onDone }: { state: FilterState; facets: Fac
                 onClick={() => setSizes((s) => toggle(s, f.value))}
                 className={cn(
                   "h-9 min-w-10 rounded-md border px-2.5 text-sm transition",
-                  sizes.has(f.value) ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/40",
+                  sizes.has(f.value) ? "border-primary bg-primary text-primary-foreground" : "hover:border-brand-300",
                 )}
               >
                 {f.value}

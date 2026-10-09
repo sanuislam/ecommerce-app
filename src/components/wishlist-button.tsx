@@ -56,7 +56,7 @@ export function WishlistButton({
       onClick={onClick}
       className={cn("rounded-full", withLabel && "rounded-lg", className)}
     >
-      <Heart className={cn("size-4", active && "fill-rose-500 text-rose-500")} />
+      <Heart className={cn("size-4", active && "fill-brand-500 text-brand-500")} />
       {withLabel && <span>{active ? "Saved" : "Wishlist"}</span>}
     </Button>
   );

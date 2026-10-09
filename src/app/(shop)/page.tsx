@@ -178,32 +178,23 @@ export default async function HomePage() {
                 shipping.freeThreshold > 0
                   ? `On orders over ${formatPrice(shipping.freeThreshold)} across Bangladesh`
                   : "Cash on delivery across all 64 districts",
-              bg: "from-emerald-50 to-teal-100/60 dark:from-emerald-950/40 dark:to-teal-900/30",
-              ring: "ring-emerald-200/70 dark:ring-emerald-800/50",
-              iconBg: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
             },
             {
               icon: ShieldCheck,
               title: "Secure payments",
               text: facts.paymentText.charAt(0).toUpperCase() + facts.paymentText.slice(1),
-              bg: "from-sky-50 to-indigo-100/60 dark:from-sky-950/40 dark:to-indigo-900/30",
-              ring: "ring-sky-200/70 dark:ring-sky-800/50",
-              iconBg: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
             },
             {
               icon: RotateCcw,
               title: facts.returnsEnabled ? `${facts.returnDays}-day returns` : "Help after delivery",
               text: facts.returnsEnabled ? "Return or exchange from your order page" : "See our refund policy for details",
-              bg: "from-rose-50 to-amber-100/60 dark:from-rose-950/40 dark:to-amber-900/30",
-              ring: "ring-rose-200/70 dark:ring-rose-800/50",
-              iconBg: "bg-rose-500/15 text-rose-600 dark:text-rose-300",
             },
-          ].map(({ icon: Icon, title, text, bg, ring, iconBg }) => (
+          ].map(({ icon: Icon, title, text }) => (
             <div
               key={title}
-              className={`group flex items-start gap-3 rounded-xl bg-gradient-to-br ${bg} p-5 ring-1 ${ring} shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md`}
+              className="group flex items-start gap-3 rounded-xl bg-gradient-to-br from-brand-50 via-card to-gold-50 p-5 shadow-sm ring-1 ring-brand-100 transition-all hover:-translate-y-0.5 hover:shadow-md"
             >
-              <div className={`rounded-lg p-2.5 ${iconBg} transition-transform group-hover:scale-110`}>
+              <div className="rounded-lg bg-gradient-to-br from-brand-500 to-gold-500 p-2.5 text-white shadow-sm transition-transform group-hover:scale-110">
                 <Icon className="size-5" />
               </div>
               <div>
@@ -294,7 +285,7 @@ export default async function HomePage() {
       )}
 
       <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8" aria-labelledby="about-shop">
-        <div className="rounded-2xl border bg-muted/30 p-5 sm:p-8">
+        <div className="rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/60 to-gold-50/60 p-5 sm:p-8">
           <h2 id="about-shop" className="text-xl font-semibold tracking-tight sm:text-2xl">
             Online Eid shopping in Bangladesh
           </h2>
@@ -311,7 +302,7 @@ export default async function HomePage() {
                 <li key={c.id}>
                   <Link
                     href={`/category/${c.slug}`}
-                    className="inline-flex h-9 items-center rounded-full border bg-background px-3 hover:border-foreground/40"
+                    className="inline-flex h-9 items-center rounded-full border bg-background px-3 hover:border-brand-300 hover:text-brand-700"
                   >
                     {c.name}
                   </Link>

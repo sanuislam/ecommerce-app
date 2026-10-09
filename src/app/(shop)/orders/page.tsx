@@ -93,7 +93,7 @@ export default async function OrdersPage({ searchParams }: Props) {
                   aria-selected={t.k === tab.k}
                   className={cn(
                     "shrink-0 rounded-md px-3 py-1.5 text-sm whitespace-nowrap",
-                    t.k === tab.k ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+                    t.k === tab.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
                   )}
                 >
                   {t.label}

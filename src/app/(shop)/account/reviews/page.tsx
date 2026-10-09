@@ -18,7 +18,7 @@ function Stars({ n }: { n: number }) {
   return (
     <span className="inline-flex" aria-label={`${n} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} className={`size-4 ${i <= n ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
+        <Star key={i} className={`size-4 ${i <= n ? "fill-gold-400 text-gold-400" : "text-muted-foreground/30"}`} />
       ))}
     </span>
   );

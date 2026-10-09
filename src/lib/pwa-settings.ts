@@ -21,8 +21,8 @@ export const DEFAULT_PWA: PwaSettingsValues = {
   shortName: "Eid Bazar",
   description:
     "Your trusted Eid shopping destination — curated finds, fair prices, and fast delivery across Bangladesh.",
-  themeColor: "#0f172a",
-  backgroundColor: "#ffffff",
+  themeColor: "#d81f4a",
+  backgroundColor: "#fffcfa",
   icon192Url: "",
   icon512Url: "",
   maskableIconUrl: "",
@@ -42,7 +42,8 @@ export async function getPwaSettings(): Promise<PwaSettingsValues> {
       appName: row.appName || DEFAULT_PWA.appName,
       shortName: row.shortName || DEFAULT_PWA.shortName,
       description: row.description || DEFAULT_PWA.description,
-      themeColor: row.themeColor || DEFAULT_PWA.themeColor,
+      // "#0f172a" was the old default, never chosen by hand: follow the new brand colour.
+      themeColor: row.themeColor && row.themeColor !== "#0f172a" ? row.themeColor : DEFAULT_PWA.themeColor,
       backgroundColor: row.backgroundColor || DEFAULT_PWA.backgroundColor,
       icon192Url: row.icon192Url,
       icon512Url: row.icon512Url,

@@ -160,6 +160,10 @@ and Stripe (test mode).
 
 - Sanity Studio embedded at `/studio` with product/category/banner schemas
 - Home hero reads optional banners from Sanity (falls back to defaults)
+- Colours: brand tokens in `src/app/globals.css` — rose (`brand-*`, primary `#d81f4a`, taken from the logo) and
+  gold (`gold-*`) on warm cream neutrals, deep maroon footer; text pairs checked for WCAG AA (≥ 4.5:1). Status
+  colours (green delivered, amber waiting, red cancelled) stay separate. The admin panel overrides the tokens back
+  to neutral ink (`app/admin/layout.tsx`) so "Save" never looks like "Delete"
 
 ## Requirements
 

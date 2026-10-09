@@ -40,7 +40,7 @@ function Countdown({ endsAt }: { endsAt: string }) {
   const ms = sec == null ? null : Math.max(0, Date.parse(endsAt) - sec * 1000);
   if (ms == null) {
     return (
-      <div className="flex items-center gap-1.5 text-sm font-medium text-rose-600 dark:text-rose-300">
+      <div className="flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-300">
         <Clock className="size-4" />
         <span>--:--:--</span>
       </div>
@@ -52,26 +52,26 @@ function Countdown({ endsAt }: { endsAt: string }) {
   const secs = Math.floor((ms % 60_000) / 1000);
   return (
     <div className="flex items-center gap-1.5">
-      <Clock className="size-4 text-rose-600 dark:text-rose-300" />
+      <Clock className="size-4 text-brand-600 dark:text-brand-300" />
       <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
         Ends in
       </span>
       <div className="flex items-center gap-1 text-sm font-semibold tabular-nums">
         {days > 0 ? (
           <>
-            <span className="rounded bg-rose-600 px-1.5 py-0.5 text-white">{days}d</span>
-            <span className="text-rose-600 dark:text-rose-300">:</span>
+            <span className="rounded bg-brand-600 px-1.5 py-0.5 text-white">{days}d</span>
+            <span className="text-brand-600 dark:text-brand-300">:</span>
           </>
         ) : null}
-        <span className="rounded bg-rose-600 px-1.5 py-0.5 text-white">
+        <span className="rounded bg-brand-600 px-1.5 py-0.5 text-white">
           {pad(hours)}
         </span>
-        <span className="text-rose-600 dark:text-rose-300">:</span>
-        <span className="rounded bg-rose-600 px-1.5 py-0.5 text-white">
+        <span className="text-brand-600 dark:text-brand-300">:</span>
+        <span className="rounded bg-brand-600 px-1.5 py-0.5 text-white">
           {pad(mins)}
         </span>
-        <span className="text-rose-600 dark:text-rose-300">:</span>
-        <span className="rounded bg-rose-600 px-1.5 py-0.5 text-white">
+        <span className="text-brand-600 dark:text-brand-300">:</span>
+        <span className="rounded bg-brand-600 px-1.5 py-0.5 text-white">
           {pad(secs)}
         </span>
       </div>
@@ -84,11 +84,11 @@ export function FlashDeals({ products, endsAt }: { products: ProductCardData[]; 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div
-        className="overflow-hidden rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50 via-orange-50 to-amber-100 p-5 shadow-sm dark:border-rose-900/40 dark:from-rose-950/40 dark:via-orange-950/30 dark:to-amber-950/30 sm:p-6"
+        className="overflow-hidden rounded-2xl border border-brand-200/70 bg-gradient-to-br from-brand-50 via-gold-50 to-gold-100 p-5 shadow-sm dark:border-brand-900/40 dark:from-brand-950/40 dark:via-gold-950/30 dark:to-gold-950/30 sm:p-6"
       >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-md">
+            <span className="inline-flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-gold-500 text-white shadow-md">
               <Flame className="size-5" />
             </span>
             <div>
@@ -110,7 +110,7 @@ export function FlashDeals({ products, endsAt }: { products: ProductCardData[]; 
         <div className="mt-5 flex justify-end">
           <Link
             href="/products?sale=1"
-            className="inline-flex items-center gap-1 text-sm font-medium text-rose-700 hover:underline dark:text-rose-300"
+            className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline dark:text-brand-300"
           >
             View all deals <ArrowRight className="size-4" />
           </Link>

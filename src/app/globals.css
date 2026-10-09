@@ -39,6 +39,26 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-gold-50: var(--gold-50);
+  --color-gold-100: var(--gold-100);
+  --color-gold-200: var(--gold-200);
+  --color-gold-300: var(--gold-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-gold-700: var(--gold-700);
+  --color-gold-800: var(--gold-800);
+  --color-gold-900: var(--gold-900);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,72 +69,99 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /*
+   * Eid Bazar colours, taken from the logo (rose → gold) on warm,
+   * cream-tinted neutrals. Components use the tokens below; the brand-*
+   * and gold-* scales are for the few decorative touches (badges, deals,
+   * gradients). Admin pages switch back to neutral ink (admin/layout.tsx).
+   */
+  --brand-50: #fff1f3;
+  --brand-100: #ffe0e5;
+  --brand-200: #ffc6cf;
+  --brand-300: #fd9aab;
+  --brand-400: #f8607b;
+  --brand-500: #ee3a5c;
+  --brand-600: #d81f4a;
+  --brand-700: #b5153c;
+  --brand-800: #971536;
+  --brand-900: #801633;
+  --gold-50: #fff8eb;
+  --gold-100: #feecc7;
+  --gold-200: #fdd889;
+  --gold-300: #fbbf4c;
+  --gold-400: #f9a825;
+  --gold-500: #f08c0b;
+  --gold-600: #d46a06;
+  --gold-700: #b04a09;
+  --gold-800: #8f3a0e;
+  --gold-900: #76300f;
+
+  --background: #fffcfa;
+  --foreground: #23171b;
+  --card: #ffffff;
+  --card-foreground: #23171b;
+  --popover: #ffffff;
+  --popover-foreground: #23171b;
+  --primary: var(--brand-600);
+  --primary-foreground: #ffffff;
+  --secondary: #fdf0ee;
+  --secondary-foreground: #5c1a2c;
+  --muted: #f8f2ef;
+  --muted-foreground: #6e6066;
+  --accent: #fcefec;
+  --accent-foreground: #3a1f27;
+  --destructive: #c42b1c;
+  --border: #eee4e1;
+  --input: #e6dbd7;
+  --ring: var(--brand-400);
+  --chart-1: var(--brand-600);
+  --chart-2: var(--gold-500);
+  --chart-3: #0f766e;
+  --chart-4: #6d28d9;
+  --chart-5: #64748b;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #fbf7f5;
+  --sidebar-foreground: #23171b;
+  --sidebar-primary: var(--brand-600);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6eeeb;
+  --sidebar-accent-foreground: #23171b;
+  --sidebar-border: #eee4e1;
+  --sidebar-ring: var(--brand-400);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #171012;
+  --foreground: #f7eff0;
+  --card: #21181b;
+  --card-foreground: #f7eff0;
+  --popover: #21181b;
+  --popover-foreground: #f7eff0;
+  --primary: var(--brand-400);
+  --primary-foreground: #23171b;
+  --secondary: #2d2125;
+  --secondary-foreground: #f7eff0;
+  --muted: #2d2125;
+  --muted-foreground: #b8a9ae;
+  --accent: #2d2125;
+  --accent-foreground: #f7eff0;
+  --destructive: #f87171;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 15%);
+  --ring: var(--brand-400);
+  --chart-1: var(--brand-400);
+  --chart-2: var(--gold-300);
+  --chart-3: #2dd4bf;
+  --chart-4: #a78bfa;
+  --chart-5: #94a3b8;
+  --sidebar: #21181b;
+  --sidebar-foreground: #f7eff0;
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: #23171b;
+  --sidebar-accent: #2d2125;
+  --sidebar-accent-foreground: #f7eff0;
+  --sidebar-border: rgb(255 255 255 / 10%);
+  --sidebar-ring: var(--brand-400);
 }
 
 @layer base {

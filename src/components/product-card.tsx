@@ -33,7 +33,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     <div className="group relative">
       <Link
         href={`/products/${product.slug}`}
-        className="block overflow-hidden rounded-xl border bg-card transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="block overflow-hidden rounded-xl border bg-card transition-all hover:border-brand-200 hover:shadow-md hover:shadow-brand-900/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         <div className="relative aspect-square overflow-hidden bg-muted">
           {image ? (
@@ -50,8 +50,12 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             </div>
           )}
           <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
-            {hasDiscount && <Badge variant="destructive">-{pct}%</Badge>}
-            {product.featured && !hasDiscount && <Badge>Featured</Badge>}
+            {hasDiscount && (
+              <Badge className="border-0 bg-brand-600 font-semibold text-white shadow-sm">-{pct}%</Badge>
+            )}
+            {product.featured && !hasDiscount && (
+              <Badge className="border-0 bg-gold-400 font-semibold text-foreground shadow-sm">Featured</Badge>
+            )}
             {soldOut && <Badge variant="secondary">Sold out</Badge>}
           </div>
         </div>
@@ -60,7 +64,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             {product.name}
           </div>
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-sm font-semibold sm:text-base">
+            <span className={`text-sm font-semibold sm:text-base ${hasDiscount ? "text-brand-700" : ""}`}>
               {formatPrice(product.price)}
             </span>
             {hasDiscount && (

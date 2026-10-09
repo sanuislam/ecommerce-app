@@ -64,7 +64,7 @@ export function ReviewForm({
             aria-checked={rating === i}
             aria-label={`${i} star${i > 1 ? "s" : ""}`}
             onClick={() => setRating(i)}
-            className="rounded p-1 text-amber-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="rounded p-1 text-gold-500 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <Star className={cn("size-7", i <= rating ? "fill-current" : "text-muted-foreground/40")} />
           </button>

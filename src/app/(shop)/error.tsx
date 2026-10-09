@@ -21,15 +21,15 @@ export default function ErrorPage({
     <div className="relative flex min-h-[70vh] items-center justify-center overflow-hidden px-4 py-16">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50 dark:from-rose-950/40 dark:via-orange-950/30 dark:to-amber-950/40"
+        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-brand-50 via-gold-50 to-gold-50 dark:from-brand-950/40 dark:via-gold-950/30 dark:to-gold-950/40"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 -top-12 -z-10 size-80 rounded-full bg-rose-300/30 blur-3xl"
+        className="pointer-events-none absolute -left-24 -top-12 -z-10 size-80 rounded-full bg-brand-300/30 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-24 bottom-0 -z-10 size-80 rounded-full bg-amber-300/30 blur-3xl"
+        className="pointer-events-none absolute -right-24 bottom-0 -z-10 size-80 rounded-full bg-gold-300/30 blur-3xl"
       />
 
       <motion.div
@@ -42,9 +42,9 @@ export default function ErrorPage({
           initial={{ scale: 0.6, rotate: -8, opacity: 0 }}
           animate={{ scale: 1, rotate: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 180, damping: 14, delay: 0.05 }}
-          className="relative mx-auto mb-6 inline-flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-lg sm:size-24"
+          className="relative mx-auto mb-6 inline-flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-gold-500 text-white shadow-lg sm:size-24"
         >
-          <span aria-hidden className="absolute inset-0 -z-10 rounded-full bg-rose-400/40 blur-2xl" />
+          <span aria-hidden className="absolute inset-0 -z-10 rounded-full bg-brand-400/40 blur-2xl" />
           <AlertTriangle className="size-9 sm:size-11" />
         </motion.div>
 
@@ -85,7 +85,7 @@ export default function ErrorPage({
           <Button
             size="lg"
             onClick={() => unstable_retry()}
-            className="bg-gradient-to-r from-rose-500 to-orange-500 text-white shadow-md hover:from-rose-600 hover:to-orange-600"
+            className="bg-gradient-to-r from-brand-500 to-gold-500 text-white shadow-md hover:from-brand-600 hover:to-gold-600"
           >
             <RotateCcw className="size-4" />
             Try again

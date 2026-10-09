@@ -15,12 +15,13 @@ export type CategoryCardData = {
 
 // Fallback washes when a category has no photo yet.
 const FALLBACKS = [
-  "from-rose-500 to-amber-400",
-  "from-sky-500 to-indigo-500",
-  "from-emerald-500 to-teal-400",
-  "from-violet-500 to-fuchsia-500",
-  "from-amber-500 to-orange-500",
-  "from-slate-600 to-slate-400",
+  // Brand family only: rose, gold and their deep shades.
+  "from-brand-600 to-gold-400",
+  "from-brand-800 to-brand-500",
+  "from-gold-600 to-gold-300",
+  "from-brand-700 to-gold-500",
+  "from-brand-900 to-brand-600",
+  "from-gold-700 to-brand-500",
 ];
 
 // One small rendition serves both the blurred backdrop and the thumbnail,
@@ -37,7 +38,7 @@ export function CategoryCards({ categories }: { categories: CategoryCardData[] }
         <li key={c.id} className={wide ? "col-span-2 sm:col-span-1" : undefined}>
           <Link
             href={`/category/${c.slug}`}
-            className={`group relative isolate flex ${wide ? "aspect-[2/1]" : "aspect-[5/6]"} flex-col justify-between overflow-hidden rounded-2xl bg-neutral-900 p-3 text-white shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none sm:aspect-square sm:p-4 md:aspect-[4/3]`}
+            className={`group relative isolate flex ${wide ? "aspect-[2/1]" : "aspect-[5/6]"} flex-col justify-between overflow-hidden rounded-2xl bg-brand-900 p-3 text-white shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:outline-none sm:aspect-square sm:p-4 md:aspect-[4/3]`}
           >
             {/* Blurred backdrop */}
             {c.image ? (
@@ -56,7 +57,7 @@ export function CategoryCards({ categories }: { categories: CategoryCardData[] }
               />
             )}
             {/* Readability scrim + soft light */}
-            <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/25 to-black/5" />
+            <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-[#2a0f18]/80 via-[#2a0f18]/25 to-transparent" />
             <div
               aria-hidden
               className="absolute -top-10 -right-10 -z-10 size-32 rounded-full bg-white/20 blur-2xl transition-opacity duration-500 group-hover:opacity-60"
@@ -84,7 +85,7 @@ export function CategoryCards({ categories }: { categories: CategoryCardData[] }
                   {c.productCount} {c.productCount === 1 ? "item" : "items"}
                 </p>
               </div>
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/40 backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-neutral-900 sm:size-9">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/40 backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-brand-700 sm:size-9">
                 <ArrowUpRight className="size-4" />
               </span>
             </div>

@@ -8,9 +8,9 @@ export const metadata = {
 export default function OfflinePage() {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
-      <div className="mb-6 rounded-2xl bg-gradient-to-br from-rose-100 to-amber-100 p-5 shadow-sm">
+      <div className="mb-6 rounded-2xl bg-gradient-to-br from-brand-100 to-gold-100 p-5 shadow-sm">
         <svg
-          className="size-12 text-rose-600"
+          className="size-12 text-brand-600"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

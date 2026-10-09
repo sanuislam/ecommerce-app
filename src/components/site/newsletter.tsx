@@ -41,7 +41,7 @@ export function Newsletter({ offer }: { offer: boolean }) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-8 text-primary-foreground shadow-lg sm:p-12"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 p-8 text-primary-foreground shadow-lg sm:p-12"
       >
         {/* Decorative blobs */}
         <div
@@ -50,7 +50,7 @@ export function Newsletter({ offer }: { offer: boolean }) {
         />
         <div
           aria-hidden
-          className="absolute -bottom-16 -right-10 size-64 rounded-full bg-white/10 blur-3xl"
+          className="absolute -bottom-16 -right-10 size-64 rounded-full bg-gold-400/40 blur-3xl"
         />
 
         <div className="relative grid gap-6 md:grid-cols-2 md:items-center">
@@ -91,9 +91,8 @@ export function Newsletter({ offer }: { offer: boolean }) {
             <Button
               type="submit"
               size="lg"
-              variant="secondary"
               disabled={loading || done}
-              className="h-11 gap-1.5"
+              className="h-11 gap-1.5 bg-gold-400 text-foreground hover:bg-gold-300"
             >
               {done ? "Subscribed" : loading ? "Subscribing..." : "Subscribe"}
               {!done && !loading && <Send className="size-4" />}

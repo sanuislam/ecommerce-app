@@ -5,7 +5,7 @@ import { PaymentLogos } from "@/components/site/payment-logos";
 export async function PaymentsStrip() {
   const facts = await getStoreFacts();
   return (
-    <section className="border-t bg-muted/20 py-8">
+    <section className="border-t border-brand-100 bg-gradient-to-b from-background to-brand-50/50 py-8">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 text-center sm:px-6 lg:px-8">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Ways to pay</h2>

@@ -68,7 +68,7 @@ export function ProductReviews({
               >
                 <span className="w-8 shrink-0 tabular-nums">{n} ★</span>
                 <span className="h-2 flex-1 rounded-full bg-muted">
-                  <span className="block h-2 rounded-full bg-amber-400" style={{ width: `${total ? (c / total) * 100 : 0}%` }} />
+                  <span className="block h-2 rounded-full bg-gold-400" style={{ width: `${total ? (c / total) * 100 : 0}%` }} />
                 </span>
                 <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{c}</span>
               </button>
@@ -88,7 +88,7 @@ export function ProductReviews({
           {list.map((r) => (
             <article key={r.id} className="rounded-lg border bg-card p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex text-amber-500" aria-label={`${r.rating} out of 5 stars`}>
+                <div className="flex text-gold-500" aria-label={`${r.rating} out of 5 stars`}>
                   {[1, 2, 3, 4, 5].map((i) => (
                     <Star key={i} className={i <= r.rating ? "size-4 fill-current" : "size-4 text-muted-foreground/40"} />
                   ))}

@@ -23,7 +23,7 @@ export function Testimonials({ reviews }: { reviews: ReviewQuote[] }) {
           <li key={r.id} className="flex flex-col rounded-xl border bg-card p-4">
             <div className="flex gap-0.5" aria-label={`${r.rating} out of 5 stars`}>
               {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className={`size-4 ${i < r.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
+                <Star key={i} className={`size-4 ${i < r.rating ? "fill-gold-400 text-gold-400" : "text-muted-foreground/30"}`} />
               ))}
             </div>
             <p className="mt-2 line-clamp-4 flex-1 text-sm leading-relaxed">{r.text}</p>

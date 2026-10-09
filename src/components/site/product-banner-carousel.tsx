@@ -186,7 +186,7 @@ export function ProductBannerCarousel({
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) resumeIfAllowed();
       }}
-      className="relative isolate overflow-hidden border-b bg-gradient-to-b from-rose-50/70 via-white to-amber-50/60 text-neutral-900 md:bg-gradient-to-br"
+      className="relative isolate overflow-hidden border-b bg-gradient-to-b from-brand-50/70 via-background to-gold-50/60 text-foreground md:bg-gradient-to-br"
     >
       <div ref={emblaRef} className="overflow-hidden">
         <div className="flex touch-pan-y">
@@ -216,7 +216,7 @@ export function ProductBannerCarousel({
               >
                 {/* ---------- Phone: image on top, card below ---------- */}
                 <div className="relative w-full md:hidden">
-                  <div className="relative h-[clamp(240px,40vh,400px)] w-full overflow-hidden bg-neutral-100">
+                  <div className="relative h-[clamp(240px,40vh,400px)] w-full overflow-hidden bg-muted">
                     {image ? (
                       <motion.div
                         key={active ? `m-zoom-${enterKey}` : "m-still"}
@@ -235,21 +235,21 @@ export function ProductBannerCarousel({
                         />
                       </motion.div>
                     ) : (
-                      <div className="absolute inset-0 bg-neutral-200" />
+                      <div className="absolute inset-0 bg-muted" />
                     )}
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
 
                     <div className="absolute inset-x-4 top-4 flex items-start justify-between gap-3">
                       {p.category?.name ? (
                         <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/20 bg-black/25 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white uppercase backdrop-blur-md">
-                          <span className="inline-flex size-1.5 shrink-0 rounded-full bg-rose-400" />
+                          <span className="inline-flex size-1.5 shrink-0 rounded-full bg-brand-400" />
                           <span className="truncate">{p.category.name}</span>
                         </span>
                       ) : (
                         <span />
                       )}
                       {discount > 0 && (
-                        <span className="shrink-0 rounded-full bg-gradient-to-br from-rose-600 to-rose-500 px-3 py-1.5 text-[11px] font-bold tracking-wider text-white uppercase shadow-lg ring-2 shadow-rose-500/30 ring-white/70">
+                        <span className="shrink-0 rounded-full bg-gradient-to-br from-brand-600 to-brand-500 px-3 py-1.5 text-[11px] font-bold tracking-wider text-white uppercase shadow-lg ring-2 shadow-brand-500/30 ring-white/70">
                           Save {discount}%
                         </span>
                       )}
@@ -262,11 +262,11 @@ export function ProductBannerCarousel({
                       initial={enter.initial}
                       animate={enter.animate}
                       transition={{ duration: 0.55, ease: EASE }}
-                      className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/95 px-5 pt-5 pb-5 text-neutral-900 shadow-2xl ring-1 shadow-black/20 ring-black/5 backdrop-blur-xl"
+                      className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/95 px-5 pt-5 pb-5 text-foreground shadow-2xl ring-1 shadow-black/20 ring-black/5 backdrop-blur-xl"
                     >
                       <div
                         aria-hidden
-                        className="pointer-events-none absolute -top-12 -right-12 size-32 rounded-full bg-gradient-to-br from-rose-300/40 to-amber-300/40 blur-2xl"
+                        className="pointer-events-none absolute -top-12 -right-12 size-32 rounded-full bg-gradient-to-br from-brand-300/40 to-gold-300/40 blur-2xl"
                       />
                       {/* Fixed two-line height keeps the page from jumping between slides. */}
                       <h2 className="line-clamp-2 min-h-[2.3em] text-[clamp(1.25rem,5.4vw,1.75rem)] leading-[1.15] font-semibold tracking-tight text-balance">
@@ -278,7 +278,7 @@ export function ProductBannerCarousel({
                           {formatPrice(p.price)}
                         </span>
                         {discount > 0 && (
-                          <span className="text-base text-neutral-400 line-through">
+                          <span className="text-base text-muted-foreground/70 line-through">
                             {formatPrice(p.compareAt!)}
                           </span>
                         )}
@@ -286,9 +286,9 @@ export function ProductBannerCarousel({
                           className={cn(
                             "rounded-full px-2 py-0.5 text-[11px] font-semibold",
                             soldOut
-                              ? "bg-neutral-100 text-neutral-600"
+                              ? "bg-muted text-muted-foreground"
                               : p.stock <= 5
-                                ? "bg-amber-100 text-amber-800"
+                                ? "bg-gold-100 text-gold-800"
                                 : "bg-emerald-100 text-emerald-700",
                           )}
                         >
@@ -300,7 +300,7 @@ export function ProductBannerCarousel({
                         <Button
                           asChild
                           size="lg"
-                          className="group h-11 flex-1 rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 hover:brightness-105"
+                          className="group h-11 flex-1 rounded-full bg-gradient-to-r from-brand-600 via-brand-500 to-gold-500 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 hover:brightness-105"
                         >
                           <Link href={`/products/${p.slug}`}>
                             Shop now
@@ -311,16 +311,16 @@ export function ProductBannerCarousel({
                           asChild
                           size="lg"
                           variant="outline"
-                          className="h-11 rounded-full border-neutral-300 px-4 text-sm font-medium text-neutral-800"
+                          className="h-11 rounded-full border-brand-200 px-4 text-sm font-medium text-foreground"
                         >
                           <Link href="/products?featured=1">Browse</Link>
                         </Button>
                       </div>
 
-                      <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-neutral-100 pt-3 text-[11px] font-medium text-neutral-500">
+                      <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-brand-100 pt-3 text-[11px] font-medium text-muted-foreground">
                         {trustItems.map(({ icon: Icon, text }) => (
                           <li key={text} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                            <Icon className="size-3.5 text-rose-500" />
+                            <Icon className="size-3.5 text-brand-500" />
                             {text}
                           </li>
                         ))}
@@ -331,8 +331,8 @@ export function ProductBannerCarousel({
 
                 {/* ---------- Tablet / desktop: text + image split ---------- */}
                 <div className="relative hidden h-[clamp(520px,72vh,700px)] w-full md:block">
-                  <div aria-hidden className="pointer-events-none absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-rose-300/30 blur-[120px]" />
-                  <div aria-hidden className="pointer-events-none absolute -right-32 bottom-0 h-[32rem] w-[32rem] rounded-full bg-amber-300/30 blur-[120px]" />
+                  <div aria-hidden className="pointer-events-none absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-brand-300/30 blur-[120px]" />
+                  <div aria-hidden className="pointer-events-none absolute -right-32 bottom-0 h-[32rem] w-[32rem] rounded-full bg-gold-300/30 blur-[120px]" />
                   <div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 [background-image:radial-gradient(rgb(15_23_42)_1px,transparent_1px)] [background-size:18px_18px] opacity-[0.07]"
@@ -348,18 +348,18 @@ export function ProductBannerCarousel({
                       className="col-span-6 space-y-5 lg:col-span-5"
                     >
                       {p.category?.name && (
-                        <div className="flex items-center gap-2 text-xs font-medium tracking-[0.22em] text-rose-700/80 uppercase">
-                          <span className="inline-flex size-1.5 rounded-full bg-rose-500" />
+                        <div className="flex items-center gap-2 text-xs font-medium tracking-[0.22em] text-brand-700/80 uppercase">
+                          <span className="inline-flex size-1.5 rounded-full bg-brand-500" />
                           <span className="truncate">{p.category.name}</span>
                         </div>
                       )}
 
-                      <h2 className="line-clamp-2 text-[clamp(2rem,3.6vw,3.75rem)] leading-[1.05] font-semibold tracking-tight text-balance text-neutral-900">
+                      <h2 className="line-clamp-2 text-[clamp(2rem,3.6vw,3.75rem)] leading-[1.05] font-semibold tracking-tight text-balance text-foreground">
                         {p.name}
                       </h2>
 
                       {p.description && (
-                        <p className="line-clamp-3 max-w-md text-base leading-relaxed text-neutral-600 lg:text-lg">
+                        <p className="line-clamp-3 max-w-md text-base leading-relaxed text-muted-foreground lg:text-lg">
                           {p.description}
                         </p>
                       )}
@@ -370,10 +370,10 @@ export function ProductBannerCarousel({
                         </span>
                         {discount > 0 && (
                           <>
-                            <span className="text-xl text-neutral-400 line-through lg:text-2xl">
+                            <span className="text-xl text-muted-foreground/70 line-through lg:text-2xl">
                               {formatPrice(p.compareAt!)}
                             </span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold tracking-wide text-emerald-700 uppercase">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gold-100 px-2.5 py-1 text-xs font-semibold tracking-wide text-gold-800 uppercase">
                               <Sparkles className="size-3" />
                               Save {formatPrice(p.compareAt! - p.price).replace(".00", "")}
                             </span>
@@ -385,7 +385,7 @@ export function ProductBannerCarousel({
                         <Button
                           asChild
                           size="lg"
-                          className="group h-12 rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 px-7 text-base font-semibold text-white shadow-lg shadow-rose-500/25 hover:brightness-105"
+                          className="group h-12 rounded-full bg-gradient-to-r from-brand-600 via-brand-500 to-gold-500 px-7 text-base font-semibold text-white shadow-lg shadow-brand-500/25 hover:brightness-105"
                         >
                           <Link href={`/products/${p.slug}`}>
                             Shop now
@@ -396,16 +396,16 @@ export function ProductBannerCarousel({
                           asChild
                           size="lg"
                           variant="outline"
-                          className="h-12 rounded-full border-neutral-300 bg-white/80 px-6 text-base font-medium text-neutral-800 backdrop-blur hover:bg-white"
+                          className="h-12 rounded-full border-brand-200 bg-white/80 px-6 text-base font-medium text-foreground backdrop-blur hover:bg-white"
                         >
                           <Link href="/products?featured=1">View collection</Link>
                         </Button>
                       </div>
 
-                      <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2 text-xs font-medium text-neutral-500">
+                      <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2 text-xs font-medium text-muted-foreground">
                         {trustItems.map(({ icon: Icon, text }) => (
                           <li key={text} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                            <Icon className="size-3.5 text-rose-500" />
+                            <Icon className="size-3.5 text-brand-500" />
                             {text}
                           </li>
                         ))}
@@ -415,10 +415,10 @@ export function ProductBannerCarousel({
                     <div className="relative col-span-6 flex h-full items-center justify-center lg:col-span-7">
                       <div
                         aria-hidden
-                        className="absolute top-1/2 right-6 h-[78%] w-[78%] -translate-y-1/2 rotate-[6deg] rounded-[2.5rem] bg-gradient-to-br from-rose-500 via-rose-400 to-amber-400 opacity-90 shadow-[0_30px_80px_-20px_rgba(244,63,94,0.45)]"
+                        className="absolute top-1/2 right-6 h-[78%] w-[78%] -translate-y-1/2 rotate-[6deg] rounded-[2.5rem] bg-gradient-to-br from-brand-500 via-brand-400 to-gold-400 opacity-90 shadow-[0_30px_80px_-20px_rgba(216,31,74,0.4)]"
                       />
                       <div className="relative aspect-square h-[min(100%,34rem)] max-w-full overflow-hidden rounded-[2rem] bg-white p-3 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.25)] ring-1 ring-black/5">
-                        <div className="relative h-full w-full overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-neutral-50 to-neutral-100">
+                        <div className="relative h-full w-full overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-brand-50 to-gold-50">
                           {image ? (
                             <motion.div
                               key={active ? `d-zoom-${enterKey}` : "d-still"}
@@ -440,7 +440,7 @@ export function ProductBannerCarousel({
                         </div>
 
                         {discount > 0 && (
-                          <div className="absolute top-3 left-3 flex size-20 rotate-[-8deg] items-center justify-center rounded-full bg-gradient-to-br from-rose-600 to-rose-500 text-center font-bold text-white shadow-xl ring-4 shadow-rose-500/30 ring-white">
+                          <div className="absolute top-3 left-3 flex size-20 rotate-[-8deg] items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-500 text-center font-bold text-white shadow-xl ring-4 shadow-brand-500/30 ring-white">
                             <div className="leading-none">
                               <div className="text-2xl">{discount}%</div>
                               <div className="text-[10px] font-semibold tracking-[0.14em] uppercase">Off</div>
@@ -452,14 +452,14 @@ export function ProductBannerCarousel({
                           <span
                             className={cn(
                               "flex size-7 items-center justify-center rounded-full",
-                              soldOut ? "bg-neutral-100 text-neutral-500" : "bg-emerald-100 text-emerald-700",
+                              soldOut ? "bg-muted text-muted-foreground" : "bg-emerald-100 text-emerald-700",
                             )}
                           >
                             <ShieldCheck className="size-4" />
                           </span>
                           <div className="pr-1 leading-tight">
-                            <div className="text-xs font-semibold text-neutral-900">{stockLabel(p.stock)}</div>
-                            <div className="text-[10px] tracking-wider text-neutral-500 uppercase">
+                            <div className="text-xs font-semibold text-foreground">{stockLabel(p.stock)}</div>
+                            <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
                               Cash on delivery
                             </div>
                           </div>
@@ -493,14 +493,14 @@ export function ProductBannerCarousel({
                   >
                     <span
                       className={cn(
-                        "relative block h-1.5 overflow-hidden rounded-full bg-neutral-900/20 transition-[width] duration-300",
-                        isActive ? "w-8 sm:w-10" : "w-3 group-hover:bg-neutral-900/40 sm:w-5",
+                        "relative block h-1.5 overflow-hidden rounded-full bg-brand-600/20 transition-[width] duration-300",
+                        isActive ? "w-8 sm:w-10" : "w-3 group-hover:bg-brand-600/40 sm:w-5",
                       )}
                     >
                       {isActive && (
                         <span
                           key={`bar-${timerKey}-${selected}`}
-                          className="absolute inset-y-0 left-0 block w-full origin-left bg-neutral-900"
+                          className="absolute inset-y-0 left-0 block w-full origin-left bg-brand-600"
                           style={
                             timerKey === 0
                               ? { transform: "scaleX(0)" }
@@ -522,7 +522,7 @@ export function ProductBannerCarousel({
                 type="button"
                 onClick={togglePlay}
                 aria-label={userPaused || reducedMotion ? "Play slideshow" : "Pause slideshow"}
-                className="inline-flex size-9 items-center justify-center rounded-full border border-neutral-300 bg-white/80 text-neutral-900 backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+                className="inline-flex size-9 items-center justify-center rounded-full border border-brand-200 bg-white/80 text-foreground backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
               >
                 {userPaused || reducedMotion ? <Play className="size-4" /> : <Pause className="size-4" />}
               </button>
@@ -530,7 +530,7 @@ export function ProductBannerCarousel({
                 type="button"
                 onClick={scrollPrev}
                 aria-label="Previous slide"
-                className="hidden size-9 items-center justify-center rounded-full border border-neutral-300 bg-white/80 text-neutral-900 backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 md:inline-flex"
+                className="hidden size-9 items-center justify-center rounded-full border border-brand-200 bg-white/80 text-foreground backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 md:inline-flex"
               >
                 <ChevronLeft className="size-5" />
               </button>
@@ -538,13 +538,13 @@ export function ProductBannerCarousel({
                 type="button"
                 onClick={scrollNext}
                 aria-label="Next slide"
-                className="hidden size-9 items-center justify-center rounded-full border border-neutral-300 bg-white/80 text-neutral-900 backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 md:inline-flex"
+                className="hidden size-9 items-center justify-center rounded-full border border-brand-200 bg-white/80 text-foreground backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 md:inline-flex"
               >
                 <ChevronRight className="size-5" />
               </button>
-              <span className="ml-1 hidden font-mono text-xs tracking-widest text-neutral-700 tabular-nums min-[360px]:inline" aria-live={timerRunning ? "off" : "polite"}>
+              <span className="ml-1 hidden font-mono text-xs tracking-widest text-muted-foreground tabular-nums min-[360px]:inline" aria-live={timerRunning ? "off" : "polite"}>
                 {String(selected + 1).padStart(2, "0")}
-                <span className="mx-1 text-neutral-400">/</span>
+                <span className="mx-1 text-muted-foreground/70">/</span>
                 {String(total).padStart(2, "0")}
               </span>
             </div>

@@ -82,7 +82,7 @@ export default async function ContactPage() {
                     href={href}
                     target={href.startsWith("http") ? "_blank" : undefined}
                     rel="noreferrer"
-                    className="block rounded-lg border bg-card p-4 transition hover:border-foreground/30"
+                    className="block rounded-lg border bg-card p-4 transition hover:border-brand-300"
                   >
                     {inner}
                   </a>

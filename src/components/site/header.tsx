@@ -61,7 +61,7 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
   const isActive = (href: string) => href === "/products" && pathname === "/products";
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b border-brand-100 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-1 sm:gap-6">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -179,6 +179,7 @@ export function SiteHeader({ categories = [] }: { categories?: HeaderCategory[] 
                 className={cn(
                   "whitespace-nowrap transition-colors hover:text-foreground",
                   isActive(link.href) && "text-foreground",
+                  link.href === "/products?sale=1" && "font-medium text-brand-600 hover:text-brand-700",
                   // Keep the bar from wrapping on small tablets.
                   (link.href === "/about" || link.href === "/contact") && "hidden lg:inline",
                 )}
