@@ -66,16 +66,26 @@ export async function SiteFooter() {
               </a>
             )}
           </div>
-          {settings.supportEmail && (
-            <p className="mt-4 text-sm text-muted-foreground">
-              <a
-                href={`mailto:${settings.supportEmail}`}
-                className="hover:text-foreground"
-              >
-                {settings.supportEmail}
-              </a>
-            </p>
-          )}
+          {/* The business's legal details, as on its trade licence (Meta business verification checks them). */}
+          <address className="mt-4 space-y-1 text-sm not-italic text-muted-foreground">
+            <div className="font-medium text-foreground">{SITE_CONFIG.name}</div>
+            {settings.address && <div>{settings.address}</div>}
+            {settings.supportPhone && (
+              <div>
+                <a href={`tel:${settings.supportPhone.replace(/[^+\d]/g, "")}`} className="hover:text-foreground">
+                  {settings.supportPhone}
+                </a>
+              </div>
+            )}
+            {settings.supportEmail && (
+              <div>
+                <a href={`mailto:${settings.supportEmail}`} className="hover:text-foreground">
+                  {settings.supportEmail}
+                </a>
+              </div>
+            )}
+            <div className="text-xs">Trade licence {SITE_CONFIG.tradeLicense}</div>
+          </address>
         </div>
 
         <div>
